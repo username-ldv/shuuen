@@ -1,18 +1,22 @@
 package ldv.shuuen.data.audio.training
 
 import io.github.aakira.napier.Napier
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.withContext
 import ldv.shuuen.domain.audio.engine.MidiEngine
 import ldv.shuuen.domain.audio.midi.MidiChannel
 import ldv.shuuen.domain.audio.music.Chord
 import ldv.shuuen.domain.audio.music.ContextDuration
 import ldv.shuuen.domain.audio.music.DegreeContext
+import ldv.shuuen.domain.audio.music.DegreeContextNode
 import ldv.shuuen.domain.audio.music.Note
 import ldv.shuuen.domain.audio.music.Pitch
+import ldv.shuuen.domain.audio.music.RelativeMelody
 import ldv.shuuen.domain.audio.music.Sustain
 import ldv.shuuen.domain.audio.music.constructAscSetupMelodyFlow
 import ldv.shuuen.domain.audio.music.toChord
@@ -39,6 +43,7 @@ class DegreeContextPlayer(
   val ready = _ready.asStateFlow()
   private val _setupMelodyNotes = MutableStateFlow<Note?>(null)
   val setupMelodyNotes = _setupMelodyNotes.asStateFlow()
+  private var setupMelody: RelativeMelody? = null
   private var currentlyPlaying: CurrentlyPlayingNode? = null
   private var currentNodeCount = 0
 
@@ -80,6 +85,35 @@ class DegreeContextPlayer(
     currentQuestion.value++
   }
 
+  suspend fun playSetupMelody() {
+    val m = setupMelody ?: return
+    var currentlyPlaying: Note? = null
+    // todo: actually handle
+    constructAscSetupMelodyFlow(
+      currentRoot.value,
+      m.let { melody ->
+        listOf(melody.firstDegree.degree) + melody.extraDegrees.map { it.degree }
+      },
+    )
+      .onEach { note ->
+        withContext(NonCancellable) {
+          currentlyPlaying?.let { midiEngine.stopNote(it) }
+        }
+      }
+      .onCompletion {
+        withContext(NonCancellable) {
+          currentlyPlaying?.let { midiEngine.stopNote(it) }
+        }
+        _setupMelodyNotes.value = null
+      }
+      .collect { note ->
+        midiEngine.playNote(note, MidiChannel.Notes)
+        currentlyPlaying = note
+        _setupMelodyNotes.value = note
+      }
+    delay(afterSetupMelody)
+  }
+
   private fun stopCurrent(advance: Boolean) {
     val playing = currentlyPlaying ?: return
     midiEngine.stopChord(playing.chord, playing.channel)
@@ -111,27 +145,8 @@ class DegreeContextPlayer(
         is Sustain.Endless -> {
           delay(endlessPreMelody)
           if (node.setupMelody != null) {
-            var currentlyPlaying: Note? = null
-            // todo: actually handle
-            constructAscSetupMelodyFlow(
-                    currentRoot.value,
-                    node.setupMelody.let { melody ->
-                      listOf(melody.firstDegree.degree) + melody.extraDegrees.map { it.degree }
-                    },
-                )
-                .onEach { note ->
-                  currentlyPlaying?.let { midiEngine.stopNote(it) }
-                }
-                .onCompletion {
-                  currentlyPlaying?.let { midiEngine.stopNote(it) }
-                  _setupMelodyNotes.value = null
-                }
-                .collect { note ->
-                  midiEngine.playNote(note, MidiChannel.Notes)
-                  currentlyPlaying = note
-                  _setupMelodyNotes.value = note
-                }
-            delay(afterSetupMelody)
+            setupMelody = node.setupMelody
+            playSetupMelody()
           }
           _ready.value = true
           return

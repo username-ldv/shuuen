@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.BufferOverflow
@@ -27,34 +28,38 @@ import ldv.shuuen.domain.audio.music.Pitch
 import ldv.shuuen.domain.repository.local.SinglesLocalLevelRepository
 import ldv.shuuen.domain.training.singles.SinglesLevel
 import ldv.shuuen.ui.common.music.inputs.PianoKeyboardDefaults
-import kotlin.time.Duration.Companion.milliseconds
 
 enum class AnswerColors(val color: Color) {
-  Correct(Color(0xff32cc73)), Incorrect(Color(0xffe74d3c))
+  Correct(Color(0xff32cc73)),
+  Incorrect(Color(0xffe74d3c)),
 }
 
 /** Monotone flash used for setup-melody key highlights (colorful palette is a future option). */
-//val SetupMelodyFlashColor = Color(0xFFD9D9DE)
+// val SetupMelodyFlashColor = Color(0xFFD9D9DE)
 
 /** A request from the VM for the screen to flash a key (used for setup-melody highlights). */
 data class KeyFlashRequest(val index: Int, val color: Color)
 
 sealed interface QuizPhase {
   object LoadingContext : QuizPhase
+
   object AwaitingAnswer : QuizPhase
+
   object Complete : QuizPhase
 }
 
 data class SinglesPlayScreenState(
-  val levelData: ResponseState<SinglesLevel> = ResponseState.Loading,
-  val phase: QuizPhase = QuizPhase.LoadingContext,
-  val quizState: QuizState? = null,
+    val levelData: ResponseState<SinglesLevel> = ResponseState.Loading,
+    val phase: QuizPhase = QuizPhase.LoadingContext,
+    val quizState: QuizState? = null,
 )
 
 val playNoteDuration = 1500.milliseconds
 
 class SinglesPlayScreenViewModel(
-  levelId: String, levelRepository: SinglesLocalLevelRepository, val midiEngine: MidiEngine
+    levelId: String,
+    levelRepository: SinglesLocalLevelRepository,
+    val midiEngine: MidiEngine,
 ) : ViewModel() {
   private val _state = MutableStateFlow(SinglesPlayScreenState())
   val state = _state.asStateFlow()
@@ -65,6 +70,7 @@ class SinglesPlayScreenViewModel(
   private var readyStatusJob: Job? = null
   private var setupMelodyNotesIndicationJob: Job? = null
   private var playNoteJob: Job? = null
+  private var playMelodyJob: Job? = null
 
   private var quizzer: SinglesLevelQuizzer? = null
   var lastHandledQuestion = 0
@@ -72,18 +78,17 @@ class SinglesPlayScreenViewModel(
 
   // Setup-melody highlights and answer feedback are both transient flashes driven by the screen
   // through PianoKeyboardState. The VM only emits which key/color to flash as the melody plays.
-  private val _setupMelodyFlashes = MutableSharedFlow<KeyFlashRequest>(
-    extraBufferCapacity = 8,
-    onBufferOverflow = BufferOverflow.DROP_OLDEST,
-  )
+  private val _setupMelodyFlashes =
+      MutableSharedFlow<KeyFlashRequest>(
+          extraBufferCapacity = 8,
+          onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
   val setupMelodyFlashes: SharedFlow<KeyFlashRequest> = _setupMelodyFlashes.asSharedFlow()
-
 
   init {
     Napier.v { "Started level with id: $levelId" }
 
     viewModelScope.launch {
-
       when (midiEngine.initialize()) {
         MidiEngineStatus.Ready -> {
           Napier.v { "Initialized MidiEngine" }
@@ -140,7 +145,9 @@ class SinglesPlayScreenViewModel(
     }
   }
 
-  /** Returns whether the guess was correct, or null if no quiz is active (caller should not flash). */
+  /**
+   * Returns whether the guess was correct, or null if no quiz is active (caller should not flash).
+   */
   fun userGuessed(pitch: Pitch): Boolean? {
     val quizzer = quizzer ?: return null
 
@@ -150,9 +157,7 @@ class SinglesPlayScreenViewModel(
     return isCorrect
   }
 
-  fun userGuessed(degree: Degree) {
-
-  }
+  fun userGuessed(degree: Degree) {}
 
   fun repeatNote() {
     val note = quizzer?.quizState?.value?.currentNote ?: return
@@ -178,6 +183,14 @@ class SinglesPlayScreenViewModel(
     }
   }
 
+  fun playSetupMelody() {
+    val previous = playMelodyJob
+    playMelodyJob = viewModelScope.launch {
+      previous?.cancelAndJoin()
+      degreeContextPlayer.playSetupMelody()
+    }
+  }
+
   private fun startContext(context: DegreeContext, root: Pitch): DegreeContextPlayer {
     Napier.v { "Starting context with pitch $root" }
     val player = DegreeContextPlayer(midiEngine, context, root)
@@ -199,7 +212,7 @@ class SinglesPlayScreenViewModel(
         Napier.v { "got setup melody note $note" }
         if (note != null) {
           _setupMelodyFlashes.emit(
-            KeyFlashRequest(note.pitch.ordinal, PianoKeyboardDefaults.MonochromePressedColor)
+              KeyFlashRequest(note.pitch.ordinal, PianoKeyboardDefaults.MonochromePressedColor)
           )
         }
       }

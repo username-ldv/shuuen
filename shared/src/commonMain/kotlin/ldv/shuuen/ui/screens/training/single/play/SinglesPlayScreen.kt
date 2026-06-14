@@ -46,15 +46,18 @@ import ldv.shuuen.ui.common.music.inputs.rememberPianoKeyboardState
 
 @Composable
 fun SinglesPlayScreen(
-  onNavigateBack: () -> Unit, onLevelEnd: () -> Unit, viewModel: SinglesPlayScreenViewModel
+    onNavigateBack: () -> Unit,
+    onLevelEnd: () -> Unit,
+    viewModel: SinglesPlayScreenViewModel,
 ) {
   val screenState by viewModel.state.collectAsStateWithLifecycle()
   var useCircleInput by rememberSaveable { mutableStateOf(false) }
-  val title = when (val level = screenState.levelData) {
-    is ResponseState.Loading -> "Loading..."
-    is ResponseState.Error -> "Error"
-    is ResponseState.Success -> level.result.name
-  }
+  val title =
+      when (val level = screenState.levelData) {
+        is ResponseState.Loading -> "Loading..."
+        is ResponseState.Error -> "Error"
+        is ResponseState.Success -> level.result.name
+      }
 
   LaunchedEffect(screenState.phase) {
     when (screenState.phase) {
@@ -65,21 +68,23 @@ fun SinglesPlayScreen(
   }
 
   StaticScreenFrame(
-    scrollable = false,
-    topBar = {
-      ShuuenTopAppBar(
-        title = title,
-        onBack = onNavigateBack,
-        trailingIcon = Icons.Rounded.Tune,
-        onTrailingClick = { useCircleInput = !useCircleInput },
-        type = ShuuenTopAppBarType.Simple,
-      )
-    },
+      scrollable = false,
+      topBar = {
+        ShuuenTopAppBar(
+            title = title,
+            onBack = onNavigateBack,
+            trailingIcon = Icons.Rounded.Tune,
+            onTrailingClick = { useCircleInput = !useCircleInput },
+            type = ShuuenTopAppBarType.Simple,
+        )
+      },
   ) {
-
     screenState.quizState?.let {
       TrainingStatus(
-        it.currentQuestionNumber, it.correctAnswers, it.incorrectAnswers.size, it.questionsNumber
+          it.currentQuestionNumber,
+          it.correctAnswers,
+          it.incorrectAnswers.size,
+          it.questionsNumber,
       )
     }
 
@@ -90,54 +95,66 @@ fun SinglesPlayScreen(
     LaunchedEffect(keyboardState) {
       viewModel.setupMelodyFlashes.collect { req ->
         keyboardState.flash(
-          req.index, req.color, holdMillis = 520, attackMillis = 80, releaseMillis = 300,
+            req.index,
+            req.color,
+            holdMillis = 520,
+            attackMillis = 80,
+            releaseMillis = 300,
         )
       }
     }
 
-    // pressedKeyColors stays at its neutral default (plain touch feedback); all color comes from flashes.
+    // pressedKeyColors stays at its neutral default (plain touch feedback); all color comes from
+    // flashes.
     PianoKeyboard(
-      modifier = Modifier.fillMaxWidth().aspectRatio(PianoKeyboardDefaults.aspectRatio(12)),
-      keyCount = 12,
-      state = keyboardState,
-      onKeyPressedChange = { offset, pressed ->
-        if (!pressed) {
-          val pitch = Pitch.fromOrdinal(offset)
-          viewModel.userGuessed(pitch)?.let { correct ->
-            val color = if (correct) AnswerColors.Correct.color else AnswerColors.Incorrect.color
-            keyboardState.flash(offset, color)
+        modifier = Modifier.fillMaxWidth().aspectRatio(PianoKeyboardDefaults.aspectRatio(12)),
+        keyCount = 12,
+        state = keyboardState,
+        onKeyPressedChange = { offset, pressed ->
+          if (!pressed) {
+            val pitch = Pitch.fromOrdinal(offset)
+            viewModel.userGuessed(pitch)?.let { correct ->
+              val color = if (correct) AnswerColors.Correct.color else AnswerColors.Incorrect.color
+              keyboardState.flash(offset, color)
+            }
           }
-        }
-      })
+        },
+    )
 
     Spacer(Modifier.weight(0.34f))
 
-    BottomActionBar(on1 = { viewModel.repeatNote() })
+    BottomActionBar(
+        onRepeatNote = { viewModel.repeatNote() },
+        onRepeatMelody = { viewModel.playSetupMelody() },
+    )
   }
 }
 
 @Composable
 private fun TrainingStatus(
-  questionNumber: Int = 1, correct: Int = 0, incorrect: Int = 0, questionsAmount: Int? = null
+    questionNumber: Int = 1,
+    correct: Int = 0,
+    incorrect: Int = 0,
+    questionsAmount: Int? = null,
 ) {
   Column(
-    modifier = Modifier.fillMaxWidth(),
-    verticalArrangement = Arrangement.spacedBy(12.dp),
+      modifier = Modifier.fillMaxWidth(),
+      verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Row(
-      modifier = Modifier.fillMaxWidth(),
-      verticalAlignment = Alignment.Top,
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
     ) {
       Text(
-        "$questionNumber/${questionsAmount ?: "∞"}",
-        color = ShuuenUi.Muted,
-        style = MaterialTheme.typography.titleSmall,
-        modifier = Modifier.weight(1f),
+          "$questionNumber/${questionsAmount ?: "∞"}",
+          color = ShuuenUi.Muted,
+          style = MaterialTheme.typography.titleSmall,
+          modifier = Modifier.weight(1f),
       )
 
       Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(6.dp),
       ) {
         ScoreCount("$correct", ShuuenUi.Correct)
         Text("|", color = ShuuenUi.Dim, style = MaterialTheme.typography.titleMedium)
@@ -146,35 +163,35 @@ private fun TrainingStatus(
     }
 
     LinearTrainingProgress(
-      progress = (questionNumber.toFloat() - 1) / (questionsAmount ?: questionNumber),
+        progress = (questionNumber.toFloat() - 1) / (questionsAmount ?: questionNumber),
     )
   }
 }
 
 @Composable
 private fun ScoreCount(
-  value: String,
-  tint: Color,
+    value: String,
+    tint: Color,
 ) {
   Text(value, color = tint, style = MaterialTheme.typography.titleLarge)
 }
 
 @Composable
-private fun BottomActionBar(on1: () -> Unit) {
+private fun BottomActionBar(onRepeatNote: () -> Unit, onRepeatMelody: () -> Unit) {
   Row(
-    modifier = Modifier.fillMaxWidth(),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(12.dp),
+      modifier = Modifier.fillMaxWidth(),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
-    BottomRepeatButton(Modifier.weight(1.8f).clickable { on1() })
+    BottomRepeatButton(Modifier.weight(1.8f).clickable { onRepeatNote() })
     BottomIconButton(
-      icon = Icons.Rounded.MusicNote,
-      modifier = Modifier.width(80.dp),
+        icon = Icons.Rounded.MusicNote,
+        modifier = Modifier.width(80.dp).clickable { onRepeatMelody() },
     )
     Spacer(Modifier.weight(0.34f))
     BottomIconButton(
-      icon = Icons.Rounded.Flag,
-      modifier = Modifier.width(64.dp),
+        icon = Icons.Rounded.Flag,
+        modifier = Modifier.width(64.dp),
     )
   }
 }
@@ -183,26 +200,26 @@ private fun BottomActionBar(on1: () -> Unit) {
 private fun BottomRepeatButton(modifier: Modifier = Modifier) {
   SoftControl(modifier = modifier.height(60.dp)) {
     Icon(
-      imageVector = Icons.Rounded.Replay,
-      contentDescription = null,
-      tint = ShuuenUi.Text,
-      modifier = Modifier.size(24.dp),
+        imageVector = Icons.Rounded.Replay,
+        contentDescription = null,
+        tint = ShuuenUi.Text,
+        modifier = Modifier.size(24.dp),
     )
     Text(
-      text = "Repeat",
-      color = ShuuenUi.Text,
-      style = MaterialTheme.typography.titleSmall,
-      textAlign = TextAlign.Center,
-      maxLines = 1,
-      overflow = TextOverflow.Ellipsis,
+        text = "Repeat",
+        color = ShuuenUi.Text,
+        style = MaterialTheme.typography.titleSmall,
+        textAlign = TextAlign.Center,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
     )
   }
 }
 
 @Composable
 private fun BottomIconButton(
-  icon: ImageVector,
-  modifier: Modifier = Modifier,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
 ) {
   SoftControl(modifier = modifier.height(60.dp)) {
     Icon(icon, contentDescription = null, tint = ShuuenUi.Muted, modifier = Modifier.size(24.dp))
