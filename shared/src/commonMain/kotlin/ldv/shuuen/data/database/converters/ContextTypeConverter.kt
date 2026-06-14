@@ -2,12 +2,12 @@ package ldv.shuuen.data.database.converters
 
 import androidx.room3.TypeConverter
 import ldv.shuuen.data.database.RoomJson
-import ldv.shuuen.domain.training.context.ContextConfig
+import ldv.shuuen.domain.audio.music.DegreeContextNode
 
 class ContextTypeConverter {
   @TypeConverter
-  fun contextConfigToString(c: ContextConfig): String = RoomJson.encode(c)
+  fun degreeContextNodeToString(n: List<DegreeContextNode>): String = RoomJson.encode(n)
 
   @TypeConverter
-  fun stringtoContextConfig(s: String): ContextConfig = RoomJson.decode(s)
+  fun stringToDegreeContextNode(n: String): List<DegreeContextNode> = RoomJson.decode(n)
 }

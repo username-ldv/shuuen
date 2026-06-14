@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 3,
-    "identityHash": "033b4c2cc23252b30e77ae783747eab8",
+    "identityHash": "69a5c724a483247b88231a062aa6418d",
     "entities": [
       {
         "tableName": "levels_singles",
@@ -82,7 +82,7 @@
       },
       {
         "tableName": "context",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT, `source` TEXT NOT NULL, `config` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT, `source` TEXT NOT NULL, `nodes` TEXT NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -102,8 +102,8 @@
             "notNull": true
           },
           {
-            "fieldPath": "config",
-            "columnName": "config",
+            "fieldPath": "nodes",
+            "columnName": "nodes",
             "affinity": "TEXT",
             "notNull": true
           }
@@ -118,7 +118,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '033b4c2cc23252b30e77ae783747eab8')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '69a5c724a483247b88231a062aa6418d')"
     ]
   }
 }

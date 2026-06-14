@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ldv.shuuen.common.ResponseState
+import ldv.shuuen.domain.audio.music.ContextDuration
 import ldv.shuuen.domain.audio.music.DegreeContext
 import ldv.shuuen.domain.audio.music.Sustain
 import ldv.shuuen.domain.training.level.LevelConfig
@@ -51,53 +52,57 @@ import ldv.shuuen.ui.screens.training.common.toBoxedItems
 
 @Composable
 fun SinglesLevelSelectScreen(
-  onNavigateBack: () -> Unit,
-  onStartLevel: (levelId: String) -> Unit,
-  onCreateNewLevel: () -> Unit,
-  viewModel: SinglesLevelSelectScreenViewModel
+    onNavigateBack: () -> Unit,
+    onStartLevel: (levelId: String) -> Unit,
+    onCreateNewLevel: () -> Unit,
+    viewModel: SinglesLevelSelectScreenViewModel,
 ) {
   val levels by viewModel.levels.collectAsStateWithLifecycle(ResponseState.Loading)
   StaticScreenFrame(
-    topBar = {
-      ShuuenTopAppBar(
-        title = "LEVEL SELECT",
-        subtitle = "Choose a training level.",
-        onBack = onNavigateBack,
-        type = ShuuenTopAppBarType.Labeled,
-      )
-    }, scrollable = false
+      topBar = {
+        ShuuenTopAppBar(
+            title = "LEVEL SELECT",
+            subtitle = "Choose a training level.",
+            onBack = onNavigateBack,
+            type = ShuuenTopAppBarType.Labeled,
+        )
+      },
+      scrollable = false,
   ) {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
       item {
         PrimaryCta(
-          text = "CREATE NEW",
-          icon = Icons.Rounded.Create,
-          onClick = onCreateNewLevel,
-          modifier = Modifier.padding(top = 8.dp),
+            text = "CREATE NEW",
+            icon = Icons.Rounded.Create,
+            onClick = onCreateNewLevel,
+            modifier = Modifier.padding(top = 8.dp),
         )
       }
       when (val l = levels) {
-        is ResponseState.Loading -> item {
-          Text(
-            text = "Loading...",
-            color = ShuuenUi.Muted,
-            style = MaterialTheme.typography.bodyLarge,
-          )
-        }
+        is ResponseState.Loading ->
+            item {
+              Text(
+                  text = "Loading...",
+                  color = ShuuenUi.Muted,
+                  style = MaterialTheme.typography.bodyLarge,
+              )
+            }
 
-        is ResponseState.Success -> l.result.forEach { level ->
-          item(key = level.id) {
-            LevelCard(level, onLevelChosen = { onStartLevel(it.id) })
-          }
-        }
+        is ResponseState.Success ->
+            l.result.forEach { level ->
+              item(key = level.id) {
+                LevelCard(level, onLevelChosen = { onStartLevel(it.id) })
+              }
+            }
 
-        is ResponseState.Error -> item {
-          Text(
-            text = "Error loading levels: ${l.throwable.message}",
-            color = ShuuenUi.Incorrect,
-            style = MaterialTheme.typography.bodyLarge,
-          )
-        }
+        is ResponseState.Error ->
+            item {
+              Text(
+                  text = "Error loading levels: ${l.throwable.message}",
+                  color = ShuuenUi.Incorrect,
+                  style = MaterialTheme.typography.bodyLarge,
+              )
+            }
       }
     }
   }
@@ -108,32 +113,32 @@ private fun LevelCard(level: SinglesLevel, onLevelChosen: (SinglesLevel) -> Unit
   var expanded by rememberSaveable(level.id) { mutableStateOf(false) }
 
   SurfaceCard(
-    onClick = { onLevelChosen(level) },
-    verticalSpacing = Arrangement.spacedBy(12.dp),
+      onClick = { onLevelChosen(level) },
+      verticalSpacing = Arrangement.spacedBy(12.dp),
   ) {
     Row(
-      modifier = Modifier.fillMaxWidth(),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
       Text(
-        text = level.name,
-        color = ShuuenUi.Text,
-        style = MaterialTheme.typography.titleMedium.copy(
-          letterSpacing = ShuuenUi.titlesSpacing,
-          fontWeight = FontWeight.SemiBold,
-        ),
-        modifier = Modifier.weight(1f),
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
+          text = level.name,
+          color = ShuuenUi.Text,
+          style =
+              MaterialTheme.typography.titleMedium.copy(
+                  letterSpacing = ShuuenUi.titlesSpacing,
+                  fontWeight = FontWeight.SemiBold,
+              ),
+          modifier = Modifier.weight(1f),
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
       )
       Icon(
-        imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-        contentDescription = if (expanded) "Collapse details" else "Expand details",
-        tint = ShuuenUi.Dim,
-        modifier = Modifier.size(26.dp)
-          .clip(ShuuenUi.ControlShape)
-          .clickable { expanded = !expanded },
+          imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+          contentDescription = if (expanded) "Collapse details" else "Expand details",
+          tint = ShuuenUi.Dim,
+          modifier =
+              Modifier.size(26.dp).clip(ShuuenUi.ControlShape).clickable { expanded = !expanded },
       )
     }
     LevelParameterRow(level = level)
@@ -154,17 +159,19 @@ private fun LevelCard(level: SinglesLevel, onLevelChosen: (SinglesLevel) -> Unit
 
 @Composable
 private fun LevelParameterRow(
-  level: SinglesLevel, modifier: Modifier = Modifier
+    level: SinglesLevel,
+    modifier: Modifier = Modifier,
 ) {
-  val items = listOf(
-    (level.questionsNumber?.let { "$it questions" } ?: "Unlimited") to
-      Icons.AutoMirrored.Rounded.HelpOutline,
-    level.range.toPair().toList().joinToString(" - ") to Icons.Rounded.Keyboard,
-  )
+  val items =
+      listOf(
+          (level.questionsNumber?.let { "$it questions" } ?: "Unlimited") to
+              Icons.AutoMirrored.Rounded.HelpOutline,
+          level.range.toPair().toList().joinToString(" - ") to Icons.Rounded.Keyboard,
+      )
 
   Row(
-    modifier = modifier.fillMaxWidth(),
-    horizontalArrangement = Arrangement.spacedBy(20.dp),
+      modifier = modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.spacedBy(20.dp),
   ) {
     items.forEach { (text, icon) ->
       LevelParameter(text, icon)
@@ -174,27 +181,27 @@ private fun LevelParameterRow(
 
 @Composable
 private fun LevelParameter(
-  text: String,
-  icon: ImageVector,
-  modifier: Modifier = Modifier,
+    text: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
 ) {
   Row(
-    modifier = modifier,
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(6.dp),
+      modifier = modifier,
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(6.dp),
   ) {
     Icon(
-      imageVector = icon,
-      contentDescription = null,
-      tint = ShuuenUi.Dim,
-      modifier = Modifier.size(16.dp),
+        imageVector = icon,
+        contentDescription = null,
+        tint = ShuuenUi.Dim,
+        modifier = Modifier.size(16.dp),
     )
     Text(
-      text = text,
-      color = ShuuenUi.Muted,
-      style = MaterialTheme.typography.bodyMedium,
-      maxLines = 1,
-      overflow = TextOverflow.Ellipsis,
+        text = text,
+        color = ShuuenUi.Muted,
+        style = MaterialTheme.typography.bodyMedium,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
     )
   }
 }
@@ -202,8 +209,8 @@ private fun LevelParameter(
 @Composable
 private fun LevelDetails(level: SinglesLevel) {
   Column(
-    modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
-    verticalArrangement = Arrangement.spacedBy(12.dp),
+      modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+      verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Hairline()
 
@@ -217,9 +224,9 @@ private fun LevelDetails(level: SinglesLevel) {
     val context = level.context
     if (context == null) {
       Text(
-        text = "Default context",
-        color = ShuuenUi.Muted,
-        style = MaterialTheme.typography.bodyMedium,
+          text = "Default context",
+          color = ShuuenUi.Muted,
+          style = MaterialTheme.typography.bodyMedium,
       )
     } else {
       ContextDetails(context)
@@ -232,34 +239,38 @@ private fun ContextDetails(context: DegreeContext) {
   Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
     context.name?.let {
       Text(
-        text = it,
-        color = ShuuenUi.Muted,
-        style = MaterialTheme.typography.bodyMedium,
+          text = it,
+          color = ShuuenUi.Muted,
+          style = MaterialTheme.typography.bodyMedium,
       )
     }
     context.nodes.forEachIndexed { index, node ->
       Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        val durationText =
+          when (val d = node.duration) {
+            is ContextDuration.SameAsScaleRotation -> "Same as scale"
+            is ContextDuration.Endless -> "Endless"
+            is ContextDuration.Finite -> " · ${d.durationInQuestions} questions"
+          }
         Text(
-          text = "Node ${index + 1} · ${sustainLabel(node.sustain)}" +
-            (node.durationInQuestions?.let { " · $it questions" } ?: ""),
-          color = ShuuenUi.Dim,
-          style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.2.sp),
+            text = "Node ${index + 1} · ${sustainLabel(node.sustain)} · $durationText",
+            color = ShuuenUi.Dim,
+            style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.2.sp),
         )
-        DegreeSequenceChips(
-          labels = node.degrees.mapIndexed { i, d ->
-            if (i == 0) d.toString() else d.degree.label
-          },
-        )
+        val labels = listOf(node.firstDegree.toString()) + node.extraDegrees.map { it.label }
+        DegreeSequenceChips(labels = labels)
       }
       node.setupMelody?.let { melody ->
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
           Text(
-            text = "Node ${index + 1} · Setup melody" +
-                (node.durationInQuestions?.let { " · $it questions" } ?: ""),
-            color = ShuuenUi.Dim,
-            style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.2.sp),
+              text = "Node ${index + 1} · Setup melody",
+              color = ShuuenUi.Dim,
+              style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.2.sp),
           )
-          DegreeSequenceChips(labels = listOf(melody.firstDegree.toString()) + melody.extraDegrees.map { it.toString() })
+          DegreeSequenceChips(
+              labels =
+                  listOf(melody.firstDegree.toString()) + melody.extraDegrees.map { it.toString() }
+          )
         }
       }
     }
@@ -269,17 +280,17 @@ private fun ContextDetails(context: DegreeContext) {
 @Composable
 private fun DetailRow(label: String, value: String) {
   Row(
-    modifier = Modifier.fillMaxWidth(),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(10.dp),
+      modifier = Modifier.fillMaxWidth(),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(10.dp),
   ) {
     DetailLabel(label, modifier = Modifier.weight(1f))
     Text(
-      text = value,
-      color = ShuuenUi.Muted,
-      style = MaterialTheme.typography.bodyMedium,
-      maxLines = 1,
-      overflow = TextOverflow.Ellipsis,
+        text = value,
+        color = ShuuenUi.Muted,
+        style = MaterialTheme.typography.bodyMedium,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
     )
   }
 }
@@ -287,23 +298,26 @@ private fun DetailRow(label: String, value: String) {
 @Composable
 private fun DetailLabel(text: String, modifier: Modifier = Modifier) {
   Text(
-    text = text,
-    color = ShuuenUi.Dim,
-    style = MaterialTheme.typography.labelSmall.copy(
-      letterSpacing = ShuuenUi.labelSpacing,
-      fontWeight = FontWeight.SemiBold,
-    ),
-    modifier = modifier,
+      text = text,
+      color = ShuuenUi.Dim,
+      style =
+          MaterialTheme.typography.labelSmall.copy(
+              letterSpacing = ShuuenUi.labelSpacing,
+              fontWeight = FontWeight.SemiBold,
+          ),
+      modifier = modifier,
   )
 }
 
-private fun sourceLabel(source: LevelSource): String = when (source) {
-  LevelSource.BuiltIn -> "Built-in"
-  LevelSource.User -> "Custom"
-  LevelSource.Imported -> "Imported"
-}
+private fun sourceLabel(source: LevelSource): String =
+    when (source) {
+      LevelSource.BuiltIn -> "Built-in"
+      LevelSource.User -> "Custom"
+      LevelSource.Imported -> "Imported"
+    }
 
-private fun sustainLabel(sustain: Sustain): String = when (sustain) {
-  is Sustain.Endless -> "Sustained"
-  is Sustain.Finite -> "Timed"
-}
+private fun sustainLabel(sustain: Sustain): String =
+    when (sustain) {
+      is Sustain.Endless -> "Sustained"
+      is Sustain.Finite -> "Timed"
+    }

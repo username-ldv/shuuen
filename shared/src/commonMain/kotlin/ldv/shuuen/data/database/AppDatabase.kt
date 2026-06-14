@@ -15,7 +15,7 @@ import ldv.shuuen.data.database.dao.SinglesLevelDao
 import ldv.shuuen.data.database.entity.ContextDbEntity
 import ldv.shuuen.data.database.entity.SinglesLevelDbEntity
 
-@Database(entities = [SinglesLevelDbEntity::class, ContextDbEntity::class], version = 3)
+@Database(entities = [SinglesLevelDbEntity::class, ContextDbEntity::class], version = 4)
 @TypeConverters(
   GeneralTypeConverter::class, SinglesLevelTypeConverter::class, ContextTypeConverter::class
 )
