@@ -322,6 +322,15 @@ private fun SequenceNodeCard(
           )
           NodePreviewRow()
           SetupMelodyPreviewRow()
+          // todo: make it be 4 choices:
+          // 1) Finite (has some amount of questions before going to the next node or to the start,
+          // from 1 to some number)
+          // 2) Immediate (to make Cadence-like Context's from Nodes, like a certain chord
+          // progression playing Nodes immediately one after each other, like in FET currently)
+          // 3) Endless (this node will continue/idle indefinitely to the end of the Quiz level,
+          // removing/ignoring all next nodes if they exist)
+          // 4) Rotate (go next node) exactly when the scale will rotate the root (when you've
+          // chosen multiple or Random scale in the level setup screen)
           InlineCounter(
               label = if (isLast) "QUESTIONS BEFORE RESTART" else "QUESTIONS BEFORE NEXT",
               value = node.questionsBeforeNext,

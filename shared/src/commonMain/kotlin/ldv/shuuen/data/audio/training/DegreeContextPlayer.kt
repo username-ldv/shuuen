@@ -29,11 +29,12 @@ private data class CurrentlyPlayingNode(
 class DegreeContextPlayer(
     val midiEngine: MidiEngine,
     val context: DegreeContext,
-    val root: Pitch,
+    startingRoot: Pitch,
     val endlessPreMelody: Duration = 2000.milliseconds,
     val afterSetupMelody: Duration = 1500.milliseconds,
 ) {
   private val currentQuestion = MutableStateFlow(0)
+  private val currentRoot = MutableStateFlow(startingRoot)
   private val _ready = MutableStateFlow(false)
   val ready = _ready.asStateFlow()
   private val _setupMelodyNotes = MutableStateFlow<Note?>(null)
@@ -74,7 +75,8 @@ class DegreeContextPlayer(
     }
   }
 
-  fun onNextQuestion() {
+  fun questionAdvanced(root: Pitch?) {
+    root?.let { currentRoot.value = root }
     currentQuestion.value++
   }
 
@@ -90,7 +92,7 @@ class DegreeContextPlayer(
     while (currentlyPlaying == null) {
       Napier.v { "While loop q: $questionNumber" }
       val node = c.nodes[currentNodeCount % c.nodes.size]
-      val chord = node.toChord(root)
+      val chord = node.toChord(currentRoot.value)
       val channel =
           when (node.sustain) {
             is Sustain.Endless -> MidiChannel.Drone
@@ -112,7 +114,7 @@ class DegreeContextPlayer(
             var currentlyPlaying: Note? = null
             // todo: actually handle
             constructAscSetupMelodyFlow(
-                    root,
+                    currentRoot.value,
                     node.setupMelody.let { melody ->
                       listOf(melody.firstDegree.degree) + melody.extraDegrees.map { it.degree }
                     },
