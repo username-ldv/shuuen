@@ -13,7 +13,6 @@ import ldv.shuuen.domain.audio.midi.MidiChannel
 import ldv.shuuen.domain.audio.music.Chord
 import ldv.shuuen.domain.audio.music.ContextDuration
 import ldv.shuuen.domain.audio.music.DegreeContext
-import ldv.shuuen.domain.audio.music.DegreeContextNode
 import ldv.shuuen.domain.audio.music.Note
 import ldv.shuuen.domain.audio.music.Pitch
 import ldv.shuuen.domain.audio.music.RelativeMelody

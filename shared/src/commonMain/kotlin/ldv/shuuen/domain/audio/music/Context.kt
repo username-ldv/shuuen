@@ -68,7 +68,7 @@ val defaultContext =
                     duration = ContextDuration.Endless,
                     setupMelody =
                         RelativeMelody(
-                            firstDegree = DegreeWithOctave(Degree.D1, 2),
+                            firstDegree = DegreeWithOctave(Degree.D1, 4),
                             extraDegrees =
                                 listOf(
                                     DirectedDegree(Degree.D3, DegreeDirection.Up),
