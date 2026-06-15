@@ -250,7 +250,8 @@ private fun ContextDetails(context: DegreeContext) {
           when (val d = node.duration) {
             is ContextDuration.SameAsScaleRotation -> "Same as scale"
             is ContextDuration.Endless -> "Endless"
-            is ContextDuration.Finite -> " · ${d.durationInQuestions} questions"
+            is ContextDuration.Finite -> "${d.durationInQuestions} questions"
+            is ContextDuration.Immediate -> "Immediate"
           }
         Text(
             text = "Node ${index + 1} · ${sustainLabel(node.sustain)} · $durationText",

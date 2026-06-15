@@ -41,10 +41,6 @@ sealed interface Sustain {
 
 @Serializable
 sealed interface ContextDuration {
-  @Serializable data object SameAsScaleRotation : ContextDuration
-
-  @Serializable data object Endless : ContextDuration
-
   @Serializable
   data class Finite(val durationInQuestions: Int) : ContextDuration {
     init {
@@ -53,6 +49,13 @@ sealed interface ContextDuration {
       }
     }
   }
+
+  @Serializable data object Immediate : ContextDuration
+
+  @Serializable data object Endless : ContextDuration
+
+  @Serializable data object SameAsScaleRotation : ContextDuration
+
 }
 
 val defaultContext =

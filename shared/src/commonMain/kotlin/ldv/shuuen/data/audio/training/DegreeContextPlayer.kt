@@ -135,6 +135,7 @@ class DegreeContextPlayer(
       val duration = when (val d = node.duration) {
         is ContextDuration.Endless -> null
         is ContextDuration.Finite -> d.durationInQuestions
+        is ContextDuration.Immediate -> 0
         is ContextDuration.SameAsScaleRotation -> TODO("Not implemented yet.")
       }
       currentlyPlaying =
@@ -154,8 +155,8 @@ class DegreeContextPlayer(
         is Sustain.Finite -> {
           delay(sustain.duration)
           stopCurrent(true)
-          // if durationInQuestion == null then just play next immediately
-          if (duration == null) continue
+          // if durationInQuestion == 0 then just play next immediately
+          if (duration == 0) continue
           _ready.value = true
           return
         }
