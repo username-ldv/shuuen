@@ -42,14 +42,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.aakira.napier.Napier
+import kotlin.time.Duration.Companion.seconds
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
+import ldv.shuuen.domain.audio.music.ContextDuration
 import ldv.shuuen.domain.audio.music.Degree
 import ldv.shuuen.domain.audio.music.DegreeContext
+import ldv.shuuen.domain.audio.music.DegreeContextNode
 import ldv.shuuen.domain.audio.music.DegreeDirection
 import ldv.shuuen.domain.audio.music.DegreeWithOctave
 import ldv.shuuen.domain.audio.music.DirectedDegree
 import ldv.shuuen.domain.audio.music.RelativeMelody
-import ldv.shuuen.domain.audio.music.defaultContext
+import ldv.shuuen.domain.audio.music.Sustain
 import ldv.shuuen.domain.audio.music.stepLabels
+import ldv.shuuen.domain.training.context.ContextSource
 import ldv.shuuen.ui.common.CompactDropdownMenu
 import ldv.shuuen.ui.common.DashedAddButton
 import ldv.shuuen.ui.common.FlatSection
@@ -67,17 +73,14 @@ import ldv.shuuen.ui.common.music.DegreeSequenceChips
 import ldv.shuuen.ui.common.music.DirectedDegreeSequenceEditor
 import ldv.shuuen.ui.common.music.OctaveStepper
 
-/**
- * UI state for one sequence node. Mirrors [ldv.shuuen.domain.audio.music.DegreeContextNode]: the
- * first degree carries an octave, the rest are stacked above it in ascending order. Local-only for
- * now — persistence comes with the context functionality.
- */
-private data class SequenceNodeState(
-    val firstDegree: DegreeWithOctave = DegreeWithOctave(Degree.D1, 3),
-    val extraDegrees: List<Degree> = listOf(Degree.D3, Degree.D5),
-    val sustain: Boolean = true,
-    val questionsBeforeNext: Int = 4,
-    val setupMelody: RelativeMelody? =
+private val TimedSustain = Sustain.Finite(1.seconds)
+
+private fun sequenceNode(
+    firstDegree: DegreeWithOctave = DegreeWithOctave(Degree.D1, 3),
+    extraDegrees: List<Degree> = listOf(Degree.D3, Degree.D5),
+    sustain: Sustain = Sustain.Endless,
+    duration: ContextDuration = ContextDuration.Finite(4),
+    setupMelody: RelativeMelody? =
         RelativeMelody(
             firstDegree = DegreeWithOctave(Degree.D1, 3),
             extraDegrees =
@@ -87,9 +90,16 @@ private data class SequenceNodeState(
                     DirectedDegree(Degree.D1, DegreeDirection.Up),
                 ),
         ),
-)
+) =
+    DegreeContextNode(
+        firstDegree = firstDegree,
+        extraDegrees = extraDegrees,
+        sustain = sustain,
+        duration = duration,
+        setupMelody = setupMelody,
+    )
 
-private data class SequencePreset(val label: String, val nodes: List<SequenceNodeState>)
+private data class SequencePreset(val label: String, val nodes: List<DegreeContextNode>)
 
 private val sequencePresets =
     listOf(
@@ -97,10 +107,10 @@ private val sequencePresets =
             label = "Drone",
             nodes =
                 listOf(
-                    SequenceNodeState(
+                    sequenceNode(
                         firstDegree = DegreeWithOctave(Degree.D1, 2),
                         extraDegrees = emptyList(),
-                        sustain = true,
+                        sustain = Sustain.Endless,
                     ),
                 ),
         ),
@@ -108,20 +118,20 @@ private val sequencePresets =
             label = "I-IV-V-I",
             nodes =
                 listOf(
-                    SequenceNodeState(
+                    sequenceNode(
                         DegreeWithOctave(Degree.D1, 3),
                         listOf(Degree.D3, Degree.D5),
-                        false,
+                        TimedSustain,
                     ),
-                    SequenceNodeState(
+                    sequenceNode(
                         DegreeWithOctave(Degree.D4, 3),
                         listOf(Degree.D6, Degree.D1),
-                        false,
+                        TimedSustain,
                     ),
-                    SequenceNodeState(
+                    sequenceNode(
                         DegreeWithOctave(Degree.D5, 3),
                         listOf(Degree.D7, Degree.D2),
-                        false,
+                        TimedSustain,
                     ),
                 ),
         ),
@@ -129,28 +139,37 @@ private val sequencePresets =
             label = "ii-V-I",
             nodes =
                 listOf(
-                    SequenceNodeState(
+                    sequenceNode(
                         DegreeWithOctave(Degree.D2, 3),
                         listOf(Degree.D4, Degree.D6),
-                        false,
+                        TimedSustain,
                     ),
-                    SequenceNodeState(
+                    sequenceNode(
                         DegreeWithOctave(Degree.D5, 3),
                         listOf(Degree.D7, Degree.D2),
-                        false,
+                        TimedSustain,
                     ),
-                    SequenceNodeState(
+                    sequenceNode(
                         DegreeWithOctave(Degree.D1, 3),
                         listOf(Degree.D3, Degree.D5),
-                        false,
+                        TimedSustain,
                     ),
                 ),
         ),
     )
 
+@OptIn(ExperimentalUuidApi::class)
+private fun editableContext(nodes: List<DegreeContextNode>): DegreeContext =
+    DegreeContext(
+        id = Uuid.generateV7().toString(),
+        source = ContextSource.UserLocal,
+        nodes = nodes,
+    )
+
 @Composable
 fun ContextScreen(onNavigateBack: () -> Unit, onContextChosen: (DegreeContext) -> Unit) {
-  var nodes by remember { mutableStateOf(sequencePresets[1].nodes) }
+  var context by remember { mutableStateOf(editableContext(sequencePresets[1].nodes)) }
+  val nodes = context.nodes
 
   StaticScreenFrame(
       verticalSpacing = 18.dp,
@@ -175,7 +194,7 @@ fun ContextScreen(onNavigateBack: () -> Unit, onContextChosen: (DegreeContext) -
           )
         },
     ) {
-      PresetRow(onApply = { nodes = it })
+      PresetRow(onApply = { context = context.copy(nodes = it) })
       PreviewFullSequence()
       nodes.forEachIndexed { index, node ->
         SequenceNodeCard(
@@ -183,17 +202,20 @@ fun ContextScreen(onNavigateBack: () -> Unit, onContextChosen: (DegreeContext) -
             isLast = index == nodes.lastIndex,
             node = node,
             onNodeChange = { updated ->
-              nodes = nodes.toMutableList().also { it[index] = updated }
+              context = context.copy(nodes = nodes.toMutableList().also { it[index] = updated })
             },
             onDelete =
                 if (nodes.size > 1) {
-                  { nodes = nodes.toMutableList().also { it.removeAt(index) } }
+                  {
+                    context =
+                        context.copy(nodes = nodes.toMutableList().also { it.removeAt(index) })
+                  }
                 } else null,
         )
       }
       DashedAddButton(
           text = "ADD NODE",
-          onClick = { nodes = nodes + SequenceNodeState() },
+          onClick = { context = context.copy(nodes = nodes + sequenceNode()) },
       )
     }
 
@@ -202,10 +224,8 @@ fun ContextScreen(onNavigateBack: () -> Unit, onContextChosen: (DegreeContext) -
     PrimaryCta(
         text = "SAVE CONTEXT",
         onClick = {
-          // todo: construct the actual context
-          // sending the default for now
-          onContextChosen(defaultContext)
-          Napier.v { "sending default context" }
+          onContextChosen(context)
+          Napier.v { "sending context: $context" }
           onNavigateBack()
         },
         modifier = Modifier.padding(bottom = 18.dp),
@@ -214,7 +234,7 @@ fun ContextScreen(onNavigateBack: () -> Unit, onContextChosen: (DegreeContext) -
 }
 
 @Composable
-private fun PresetRow(onApply: (List<SequenceNodeState>) -> Unit) {
+private fun PresetRow(onApply: (List<DegreeContextNode>) -> Unit) {
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Text(
         text = "PRESETS",
@@ -266,8 +286,8 @@ private fun PreviewFullSequence() {
 private fun SequenceNodeCard(
     number: Int,
     isLast: Boolean,
-    node: SequenceNodeState,
-    onNodeChange: (SequenceNodeState) -> Unit,
+    node: DegreeContextNode,
+    onNodeChange: (DegreeContextNode) -> Unit,
     onDelete: (() -> Unit)?,
 ) {
   SurfaceCard {
@@ -313,8 +333,10 @@ private fun SequenceNodeCard(
 
           NodeDegreesEditor(node = node, onNodeChange = onNodeChange)
           SustainRow(
-              sustain = node.sustain,
-              onChange = { onNodeChange(node.copy(sustain = it)) },
+              sustain = node.sustain is Sustain.Endless,
+              onChange = {
+                onNodeChange(node.copy(sustain = if (it) Sustain.Endless else TimedSustain))
+              },
           )
           SetupMelodyRow(
               melody = node.setupMelody,
@@ -333,8 +355,8 @@ private fun SequenceNodeCard(
           // chosen multiple or Random scale in the level setup screen)
           InlineCounter(
               label = if (isLast) "QUESTIONS BEFORE RESTART" else "QUESTIONS BEFORE NEXT",
-              value = node.questionsBeforeNext,
-              onChange = { onNodeChange(node.copy(questionsBeforeNext = it)) },
+              value = (node.duration as? ContextDuration.Finite)?.durationInQuestions ?: 1,
+              onChange = { onNodeChange(node.copy(duration = ContextDuration.Finite(it))) },
           )
         }
       }
@@ -348,8 +370,8 @@ private fun SequenceNodeCard(
  */
 @Composable
 private fun NodeDegreesEditor(
-    node: SequenceNodeState,
-    onNodeChange: (SequenceNodeState) -> Unit,
+    node: DegreeContextNode,
+    onNodeChange: (DegreeContextNode) -> Unit,
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
     GroupLabel("FIRST DEGREE")

@@ -220,16 +220,13 @@ private fun LevelDetails(level: SinglesLevel) {
       DetailRow("SCALE ROTATION", "Every $it questions")
     }
 
-    DetailLabel("CONTEXT")
     val context = level.context
-    if (context == null) {
-      Text(
-          text = "Default context",
-          color = ShuuenUi.Muted,
-          style = MaterialTheme.typography.bodyMedium,
-      )
-    } else {
+    val hasContext = context != null
+    if (hasContext) {
+      DetailLabel("CONTEXT")
       ContextDetails(context)
+    } else {
+      DetailRow("CONTEXT", "None")
     }
   }
 }

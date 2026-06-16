@@ -111,6 +111,7 @@ fun SinglesPlayScreen(
         keyCount = 12,
         state = keyboardState,
         onKeyPressedChange = { offset, pressed ->
+          if (screenState.phase != QuizPhase.AwaitingAnswer) return@PianoKeyboard
           if (!pressed) {
             val pitch = Pitch.fromOrdinal(offset)
             viewModel.userGuessed(pitch)?.let { correct ->

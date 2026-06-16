@@ -2,6 +2,8 @@ package ldv.shuuen.ui.screens.training.single.setup
 
 import androidx.lifecycle.ViewModel
 import io.github.aakira.napier.Napier
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -18,8 +20,6 @@ import ldv.shuuen.domain.training.level.LevelSource
 import ldv.shuuen.domain.training.level.ScaleConfig
 import ldv.shuuen.domain.training.singles.SinglesLevel
 import ldv.shuuen.ui.screens.training.common.asConfigDegreeStates
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 
 class SinglesSetupScreenViewModel(val levelRepository: SinglesLocalLevelRepository) : ViewModel() {
   @OptIn(ExperimentalUuidApi::class)
@@ -63,7 +63,6 @@ class SinglesSetupScreenViewModel(val levelRepository: SinglesLocalLevelReposito
             is ScaleConfig.AbsoluteScaleConfig ->
                 LevelConfig.Singles.Absolute(
                     scales = listOf(scaleConfig),
-                    rotateEveryQuestions = it.levelConfig.rotateEveryQuestions,
                 )
 
             is ScaleConfig.RelativeScaleConfig ->

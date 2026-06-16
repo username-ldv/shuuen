@@ -5,10 +5,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import ldv.shuuen.common.ResponseState
+import ldv.shuuen.data.database.dao.ContextDao
 import ldv.shuuen.data.database.dao.SinglesLevelDao
 import ldv.shuuen.data.database.entity.SinglesLevelDbEntity
 import ldv.shuuen.domain.repository.local.ContextLocalRepository
 import ldv.shuuen.domain.repository.local.SinglesLocalLevelRepository
+import ldv.shuuen.domain.training.context.ContextSource
 import ldv.shuuen.domain.training.singles.SinglesLevel
 
 class SinglesLocalLevelRepositoryImpl(
@@ -39,6 +41,11 @@ class SinglesLocalLevelRepositoryImpl(
   }
 
   override suspend fun upsertLevel(level: SinglesLevel) {
+    level.context?.let { context ->
+      if (context.source == ContextSource.UserLocal) {
+       contextLocalRepository.upsertContext(context)
+      }
+    }
     val entity = SinglesLevelDbEntity(
       id = level.id,
       name = level.name,
@@ -53,7 +60,6 @@ class SinglesLocalLevelRepositoryImpl(
 
   private suspend fun mapEntity(entity: SinglesLevelDbEntity): SinglesLevel {
     val context = contextLocalRepository.getDegreeContextById(entity.contextId)
-      ?: error("shoudln't happen for now")
     return SinglesLevel(
       id = entity.id,
       name = entity.name,

@@ -27,7 +27,10 @@ fun DegreeContextNode.toChord(root: Pitch): Chord {
       listOf(first) +
           this.extraDegrees.fold(
               listOf<Note>(),
-              { acc, degree -> acc + acc.last().next(degree.pitch(root)) },
+              { acc, degree ->
+                val note = (acc.lastOrNull() ?: first).next(degree.pitch(root))
+                acc + note
+              },
           )
   return notes.chord()
 }
@@ -55,7 +58,6 @@ sealed interface ContextDuration {
   @Serializable data object Endless : ContextDuration
 
   @Serializable data object SameAsScaleRotation : ContextDuration
-
 }
 
 val defaultContext =

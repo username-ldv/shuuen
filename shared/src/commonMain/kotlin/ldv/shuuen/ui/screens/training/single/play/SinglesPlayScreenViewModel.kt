@@ -64,7 +64,7 @@ class SinglesPlayScreenViewModel(
   private val _state = MutableStateFlow(SinglesPlayScreenState())
   val state = _state.asStateFlow()
 
-  private lateinit var degreeContextPlayer: DegreeContextPlayer
+  private var degreeContextPlayer: DegreeContextPlayer? = null
 
   private var degreeContextJob: Job? = null
   private var readyStatusJob: Job? = null
@@ -126,17 +126,24 @@ class SinglesPlayScreenViewModel(
 
         lastHandledQuestion = quizState.currentQuestionNumber
 
+        if (degreeContextPlayer?.isChangingNode(quizState.currentQuestionNumber, isNewRoot) ?: false) {
+          Napier.v { "cancelling the currently playing note BECAUSE of the new node starting..." }
+          playNoteJob?.cancelAndJoin()
+        }
+        degreeContextPlayer?.questionAdvanced(if (isNewRoot) quizState.root else null)
+        Napier.v { "After questionAdvanced()" }
+
         if (isNewRoot) {
-          readyStatusJob?.cancel()
-          degreeContextJob?.cancel()
-          setupMelodyNotesIndicationJob?.cancel()
+          val player: DegreeContextPlayer = degreeContextPlayer ?: startContext(c, quizState.root)
+          if (degreeContextPlayer == null) degreeContextPlayer = player
+          //          readyStatusJob?.cancel()
+          //          degreeContextJob?.cancel()
+          //          setupMelodyNotesIndicationJob?.cancel()
 
-          _state.update { it.copy(phase = QuizPhase.LoadingContext) }
+          //          _state.update { it.copy(phase = QuizPhase.LoadingContext) }
 
-          degreeContextPlayer = startContext(c, quizState.root)
           lastHandledRoot = quizState.root
-
-          degreeContextPlayer.ready.first { it }
+          degreeContextPlayer?.ready?.first { it }
         }
 
         Napier.v { "Playing ${quizState.currentNote}" }
@@ -187,7 +194,7 @@ class SinglesPlayScreenViewModel(
     val previous = playMelodyJob
     playMelodyJob = viewModelScope.launch {
       previous?.cancelAndJoin()
-      degreeContextPlayer.playSetupMelody()
+      degreeContextPlayer?.playSetupMelody()
     }
   }
 
@@ -198,6 +205,8 @@ class SinglesPlayScreenViewModel(
     readyStatusJob = viewModelScope.launch {
       player.ready.collect { ready ->
         Napier.v { "ready state: $ready" }
+//        if (!ready) {
+//        }
         _state.update {
           it.copy(phase = if (ready) QuizPhase.AwaitingAnswer else QuizPhase.LoadingContext)
         }
