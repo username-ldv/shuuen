@@ -39,7 +39,7 @@ class SinglesSetupScreenViewModel(val levelRepository: SinglesLocalLevelReposito
               context = null,
               source = LevelSource.User,
               questionsNumber = 20,
-              range = NoteRange(Note(Pitch.C, 2), Note(Pitch.C, 6)),
+              range = NoteRange(Note(Pitch.C, 2), Note(Pitch.C, 7)),
           )
       )
   val screenState = _singlesLevelState.asStateFlow()
