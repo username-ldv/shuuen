@@ -28,6 +28,18 @@ class KStoreSettingsRepository(
     }
   }
 
+  override suspend fun setVolume(channel: MidiChannel, value: Int) {
+    store.update {
+      it?.copy(
+        volumes = when (channel) {
+          MidiChannel.Notes -> it.volumes.copy(notes = value)
+          MidiChannel.Drone -> it.volumes.copy(drone = value)
+          MidiChannel.Cadence -> it.volumes.copy(cadence = value)
+        },
+      )
+    }
+  }
+
   override suspend fun setSoundFontPath(path: String?) {
     store.update { it?.copy(soundFontPath = path) }
   }

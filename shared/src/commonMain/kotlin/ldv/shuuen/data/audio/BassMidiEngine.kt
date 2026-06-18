@@ -47,8 +47,8 @@ class BassMidiEngine(
 
       MidiChannel.entries.forEach { channel ->
         setPreset(channel, settings.presets.forChannel(channel))
+        setVolume(channel, settings.volumes.forChannel(channel))
       }
-      setVolume(MidiChannel.Drone, 55)
 
       initialized = true
       MidiEngineStatus.Ready

@@ -1,6 +1,8 @@
 package ldv.shuuen.ui.screens.app_settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,8 +12,12 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Article
+import androidx.compose.material.icons.automirrored.rounded.VolumeDown
+import androidx.compose.material.icons.automirrored.rounded.VolumeOff
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.FolderOpen
@@ -26,15 +32,28 @@ import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Waves
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlin.math.roundToInt
+import ldv.shuuen.domain.audio.midi.MidiChannel
 import ldv.shuuen.ui.common.FlatSection
 import ldv.shuuen.ui.common.Hairline
 import ldv.shuuen.ui.common.IconBubble
@@ -47,7 +66,12 @@ import ldv.shuuen.ui.common.SoftControl
 import ldv.shuuen.ui.common.StaticScreenFrame
 
 @Composable
-fun SettingsScreen(onNavigateBack: () -> Unit) {
+fun SettingsScreen(
+  viewModel: SettingsViewModel,
+  onNavigateBack: () -> Unit,
+) {
+  val state by viewModel.state.collectAsStateWithLifecycle()
+
   StaticScreenFrame(
     maxWidth = 920.dp,
     topBar = {
@@ -79,7 +103,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(26.dp),
           ) {
-            SoundfontSection()
+            SoundfontSection(state = state, onAction = viewModel::onAction)
           }
         }
       } else {
@@ -89,7 +113,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
         ) {
           InputMethodSection()
           Hairline()
-          SoundfontSection()
+          SoundfontSection(state = state, onAction = viewModel::onAction)
           Hairline()
           GeneralSection()
         }
@@ -104,6 +128,18 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
         .fillMaxWidth()
         .padding(top = 10.dp, bottom = 18.dp),
       textAlign = TextAlign.Center,
+    )
+  }
+
+  state.openPickerChannel?.let { channel ->
+    PresetPickerSheet(
+      title = channelLabel(channel),
+      icon = channelIcon(channel),
+      soundbanks = state.soundbanks,
+      selectedPreset = state.resolvePreset(state.selectedPresets.forChannel(channel)),
+      onSelectPreset = { viewModel.onAction(SettingsAction.SelectPreset(channel, it)) },
+      onPreview = { viewModel.onAction(SettingsAction.Preview(channel)) },
+      onDismiss = { viewModel.onAction(SettingsAction.ClosePicker) },
     )
   }
 }
@@ -165,7 +201,10 @@ private fun InputMethodSection() {
 }
 
 @Composable
-private fun SoundfontSection() {
+private fun SoundfontSection(
+  state: SettingsUiState,
+  onAction: (SettingsAction) -> Unit,
+) {
   FlatSection(
     label = "SOUNDFONT",
     supporting = "Use one MIDI soundfont for all playback categories.",
@@ -226,21 +265,31 @@ private fun SoundfontSection() {
         }
       }
     }
-    SoundCategoryRow(
-      "Notes",
-      Icons.Rounded.MusicNote,
-      "000 - General MIDI",
-      "001 - Acoustic Grand"
-    )
-    Hairline()
-    SoundCategoryRow("Drone", Icons.Rounded.Waves, "048 - Ethnic", "045 - Shakuhachi")
-    Hairline()
-    SoundCategoryRow(
-      "Cadence",
-      Icons.Rounded.GraphicEq,
-      "000 - General MIDI",
-      "024 - Nylon Guitar"
-    )
+
+    MidiChannel.entries.forEachIndexed { index, channel ->
+      if (index > 0) Hairline()
+      val preset = state.resolvePreset(state.selectedPresets.forChannel(channel))
+      SoundCategoryRow(
+        label = channelLabel(channel),
+        icon = channelIcon(channel),
+        soundbankLabel = soundbankLabel(preset.bank),
+        presetLabel = presetName(preset),
+        volume = state.selectedVolumes.forChannel(channel),
+        onOpen = { onAction(SettingsAction.OpenPicker(channel)) },
+        onPreview = { onAction(SettingsAction.Preview(channel)) },
+        onVolumeChange = { onAction(SettingsAction.SetVolume(channel, it)) },
+        onVolumeCommit = { onAction(SettingsAction.CommitVolume(channel, it)) },
+      )
+    }
+
+    if (state.errorMessage != null) {
+      Text(
+        text = state.errorMessage,
+        color = ShuuenUi.Incorrect,
+        style = MaterialTheme.typography.bodySmall,
+        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+      )
+    }
   }
 }
 
@@ -334,17 +383,22 @@ private fun InputMethodCard(
 private fun SoundCategoryRow(
   label: String,
   icon: ImageVector,
-  soundbank: String,
-  preset: String,
+  soundbankLabel: String,
+  presetLabel: String,
+  volume: Int,
+  onOpen: () -> Unit,
+  onPreview: () -> Unit,
+  onVolumeChange: (Int) -> Unit,
+  onVolumeCommit: (Int) -> Unit,
 ) {
   BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
     val compact = maxWidth < 480.dp
 
-    if (compact) {
-      Column(
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier.fillMaxWidth()
-      ) {
+    Column(
+      modifier = Modifier.fillMaxWidth(),
+      verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+      if (compact) {
         Row(
           modifier = Modifier.fillMaxWidth(),
           verticalAlignment = Alignment.CenterVertically,
@@ -362,39 +416,103 @@ private fun SoundCategoryRow(
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
             modifier = Modifier.weight(1f),
           )
-          IconBubble(Icons.Rounded.PlayArrow, tint = ShuuenUi.Text, size = 36.dp)
+          PreviewBubble(onClick = onPreview, size = 36.dp)
         }
         Row(
           horizontalArrangement = Arrangement.spacedBy(10.dp),
           modifier = Modifier.fillMaxWidth()
         ) {
-          SoundPickerColumn("SOUNDBANK", soundbank, Modifier.weight(1f))
-          SoundPickerColumn("PRESET", preset, Modifier.weight(1f))
+          SoundPickerColumn("SOUNDBANK", soundbankLabel, onOpen, Modifier.weight(1f))
+          SoundPickerColumn("PRESET", presetLabel, onOpen, Modifier.weight(1f))
+        }
+      } else {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+          Icon(
+            icon,
+            contentDescription = null,
+            tint = ShuuenUi.Muted,
+            modifier = Modifier.size(22.dp)
+          )
+          Text(
+            text = label,
+            color = ShuuenUi.Text,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            modifier = Modifier.width(74.dp),
+          )
+          SoundPickerColumn("SOUNDBANK", soundbankLabel, onOpen, Modifier.weight(1f))
+          SoundPickerColumn("PRESET", presetLabel, onOpen, Modifier.weight(1f))
+          PreviewBubble(onClick = onPreview, size = 40.dp)
         }
       }
-    } else {
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-      ) {
-        Icon(
-          icon,
-          contentDescription = null,
-          tint = ShuuenUi.Muted,
-          modifier = Modifier.size(22.dp)
-        )
-        Text(
-          text = label,
-          color = ShuuenUi.Text,
-          style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-          modifier = Modifier.width(74.dp),
-        )
-        SoundPickerColumn("SOUNDBANK", soundbank, Modifier.weight(1f))
-        SoundPickerColumn("PRESET", preset, Modifier.weight(1f))
-        IconBubble(Icons.Rounded.PlayArrow, tint = ShuuenUi.Text, size = 40.dp)
-      }
+
+      VolumeSlider(volume = volume, onChange = onVolumeChange, onCommit = onVolumeCommit)
     }
+  }
+}
+
+@Composable
+private fun VolumeSlider(
+  volume: Int,
+  onChange: (Int) -> Unit,
+  onCommit: (Int) -> Unit,
+) {
+  // Local state drives the slider; live drags don't persist, so the incoming
+  // [volume] only changes on commit/load and re-syncs us without fighting the drag.
+  var sliderValue by remember { mutableFloatStateOf(volume.toFloat()) }
+  LaunchedEffect(volume) { sliderValue = volume.toFloat() }
+  val current = sliderValue.roundToInt()
+
+  Row(
+    modifier = Modifier.fillMaxWidth(),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(12.dp),
+  ) {
+    Icon(
+      volumeIcon(current),
+      contentDescription = null,
+      tint = ShuuenUi.Muted,
+      modifier = Modifier.size(20.dp),
+    )
+    Slider(
+      value = sliderValue,
+      onValueChange = {
+        sliderValue = it
+        onChange(it.roundToInt())
+      },
+      onValueChangeFinished = { onCommit(sliderValue.roundToInt()) },
+      valueRange = 0f..127f,
+      colors = SliderDefaults.colors(
+        thumbColor = ShuuenUi.Text,
+        activeTrackColor = ShuuenUi.Inverse,
+        inactiveTrackColor = Color.White.copy(alpha = 0.12f),
+      ),
+      modifier = Modifier.weight(1f),
+    )
+    Text(
+      text = "${(current * 100) / 127}%",
+      color = ShuuenUi.Muted,
+      style = MaterialTheme.typography.labelLarge,
+      textAlign = TextAlign.End,
+      modifier = Modifier.width(38.dp),
+    )
+  }
+}
+
+private fun volumeIcon(value: Int): ImageVector =
+  when {
+    value <= 0 -> Icons.AutoMirrored.Rounded.VolumeOff
+    value < 64 -> Icons.AutoMirrored.Rounded.VolumeDown
+    else -> Icons.AutoMirrored.Rounded.VolumeUp
+  }
+
+@Composable
+private fun PreviewBubble(onClick: () -> Unit, size: Dp) {
+  Box(modifier = Modifier.clip(CircleShape).clickable(onClick = onClick)) {
+    IconBubble(Icons.Rounded.PlayArrow, tint = ShuuenUi.Text, size = size)
   }
 }
 
@@ -402,6 +520,7 @@ private fun SoundCategoryRow(
 private fun SoundPickerColumn(
   label: String,
   value: String,
+  onClick: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -412,7 +531,7 @@ private fun SoundPickerColumn(
       maxLines = 1,
       overflow = TextOverflow.Ellipsis,
     )
-    PillControl(value)
+    PillControl(value, onClick = onClick)
   }
 }
 
@@ -453,3 +572,17 @@ private fun SettingsRow(
     }
   }
 }
+
+private fun channelLabel(channel: MidiChannel): String =
+  when (channel) {
+    MidiChannel.Notes -> "Notes"
+    MidiChannel.Drone -> "Drone"
+    MidiChannel.Cadence -> "Cadence"
+  }
+
+private fun channelIcon(channel: MidiChannel): ImageVector =
+  when (channel) {
+    MidiChannel.Notes -> Icons.Rounded.MusicNote
+    MidiChannel.Drone -> Icons.Rounded.Waves
+    MidiChannel.Cadence -> Icons.Rounded.GraphicEq
+  }

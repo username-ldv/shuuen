@@ -10,6 +10,7 @@ import ldv.shuuen.ui.navigation.result.NavResultKeys.MelodiesContextResult
 import ldv.shuuen.ui.navigation.result.NavResultKeys.SinglesContextResult
 import ldv.shuuen.ui.navigation.result.resultKey
 import ldv.shuuen.ui.screens.app_settings.SettingsScreen
+import ldv.shuuen.ui.screens.app_settings.SettingsViewModel
 import ldv.shuuen.ui.screens.context.ContextScreen
 import ldv.shuuen.ui.screens.free_play.FreePlayScreen
 import ldv.shuuen.ui.screens.free_play.FreePlayViewModel
@@ -52,9 +53,13 @@ val navigationModule = module {
     )
   }
 
+  viewModel<SettingsViewModel>()
   navigation<AppRoute.Settings> {
     val navigator = LocalAppNavigator.current
-    SettingsScreen(onNavigateBack = { navigator.goBack() })
+    SettingsScreen(
+        viewModel = koinViewModel(),
+        onNavigateBack = { navigator.goBack() },
+    )
   }
 
   navigation<AppRoute.Context> { route ->
