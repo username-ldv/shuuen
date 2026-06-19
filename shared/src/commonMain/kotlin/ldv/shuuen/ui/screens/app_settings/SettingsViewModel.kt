@@ -123,6 +123,5 @@ class SettingsViewModel(
 
   override fun onCleared() {
     midiEngine.stopAll()
-    midiEngine.close()
   }
 }

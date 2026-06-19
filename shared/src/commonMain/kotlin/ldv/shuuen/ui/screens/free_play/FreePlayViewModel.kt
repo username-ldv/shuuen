@@ -88,6 +88,5 @@ class FreePlayViewModel(
 
   override fun onCleared() {
     stopAll()
-    midiEngine.close()
   }
 }
