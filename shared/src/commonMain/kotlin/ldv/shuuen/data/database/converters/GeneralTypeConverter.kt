@@ -2,7 +2,7 @@ package ldv.shuuen.data.database.converters
 
 import androidx.room3.TypeConverter
 import ldv.shuuen.data.database.RoomJson
-import ldv.shuuen.domain.audio.music.NoteRange
+import ldv.shuuen.core.music.NoteRange
 
 class GeneralTypeConverter {
   @TypeConverter

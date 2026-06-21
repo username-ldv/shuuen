@@ -1,7 +1,7 @@
 package ldv.shuuen
 
 import ldv.shuuen.bass.Bass
-import ldv.shuuen.domain.audio.engine.SoundFontProvider
+import ldv.shuuen.core.audio.engine.SoundFontProvider
 import java.nio.file.Path
 import kotlin.io.path.exists
 

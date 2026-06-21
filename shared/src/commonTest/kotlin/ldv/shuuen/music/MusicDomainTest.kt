@@ -1,11 +1,11 @@
 package ldv.shuuen.music
 
-import ldv.shuuen.domain.audio.music.Chord
-import ldv.shuuen.domain.audio.music.Degree
-import ldv.shuuen.domain.audio.music.Note
-import ldv.shuuen.domain.audio.music.Pitch
-import ldv.shuuen.domain.audio.music.Scale
-import ldv.shuuen.domain.audio.music.withTiming
+import ldv.shuuen.core.music.Chord
+import ldv.shuuen.core.music.Degree
+import ldv.shuuen.core.music.Note
+import ldv.shuuen.core.music.Pitch
+import ldv.shuuen.core.music.Scale
+import ldv.shuuen.core.music.withTiming
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration.Companion.milliseconds

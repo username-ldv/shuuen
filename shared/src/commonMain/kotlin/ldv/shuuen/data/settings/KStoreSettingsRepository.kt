@@ -4,10 +4,10 @@ import io.github.xxfast.kstore.file.storeOf
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.io.files.Path
-import ldv.shuuen.domain.audio.midi.MidiChannel
-import ldv.shuuen.domain.audio.midi.Preset
-import ldv.shuuen.domain.repository.AppSettings
-import ldv.shuuen.domain.repository.SettingsRepository
+import ldv.shuuen.core.audio.midi.MidiChannel
+import ldv.shuuen.core.audio.midi.Preset
+import ldv.shuuen.core.settings.AppSettings
+import ldv.shuuen.core.settings.SettingsRepository
 import org.koin.core.annotation.Named
 
 class KStoreSettingsRepository(

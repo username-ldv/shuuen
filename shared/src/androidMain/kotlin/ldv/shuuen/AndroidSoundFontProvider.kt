@@ -4,7 +4,7 @@ import android.content.Context
 import android.net.Uri
 import com.un4seen.bass.BASS
 import com.un4seen.bass.BASSMIDI
-import ldv.shuuen.domain.audio.engine.SoundFontProvider
+import ldv.shuuen.core.audio.engine.SoundFontProvider
 
 internal class AndroidSoundFontProvider(
   private val context: Context,

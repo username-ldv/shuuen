@@ -9,6 +9,7 @@ import androidx.compose.ui.window.rememberWindowState
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.delay
+import ldv.shuuen.app.App
 import ldv.shuuen.logging.Utf8StdoutHandler
 import kotlin.time.Duration.Companion.milliseconds
 

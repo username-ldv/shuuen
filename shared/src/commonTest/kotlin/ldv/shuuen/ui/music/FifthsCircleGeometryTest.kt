@@ -1,6 +1,6 @@
 package ldv.shuuen.ui.music
 
-import ldv.shuuen.ui.common.music.inputs.fifthsCircleRingRadiusPx
+import ldv.shuuen.core.ui.components.music.inputs.fifthsCircleRingRadiusPx
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

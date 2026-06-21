@@ -1,7 +1,7 @@
 package ldv.shuuen.navigation
 
-import ldv.shuuen.ui.navigation.AppRoute
-import ldv.shuuen.ui.navigation.result.ContextRecipient
+import ldv.shuuen.app.navigation.AppRoute
+import ldv.shuuen.app.navigation.result.ContextRecipient
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

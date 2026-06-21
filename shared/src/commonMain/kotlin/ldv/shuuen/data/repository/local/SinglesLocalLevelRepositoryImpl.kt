@@ -4,14 +4,14 @@ import io.github.aakira.napier.Napier
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
-import ldv.shuuen.common.ResponseState
+import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.data.database.dao.ContextDao
 import ldv.shuuen.data.database.dao.SinglesLevelDao
 import ldv.shuuen.data.database.entity.SinglesLevelDbEntity
-import ldv.shuuen.domain.repository.local.ContextLocalRepository
-import ldv.shuuen.domain.repository.local.SinglesLocalLevelRepository
-import ldv.shuuen.domain.training.context.ContextSource
-import ldv.shuuen.domain.training.singles.SinglesLevel
+import ldv.shuuen.features.context.domain.ContextLocalRepository
+import ldv.shuuen.features.training.single.domain.SinglesLocalLevelRepository
+import ldv.shuuen.core.music.ContextSource
+import ldv.shuuen.features.training.single.domain.SinglesLevel
 
 class SinglesLocalLevelRepositoryImpl(
   private val singlesLevelDao: SinglesLevelDao,

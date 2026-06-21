@@ -4,14 +4,14 @@ import kotlin.math.abs
 import kotlinx.coroutines.flow.first
 import ldv.shuuen.bass.Bass
 import ldv.shuuen.bass.BassMidiEvent
-import ldv.shuuen.domain.audio.engine.LoadedMelody
-import ldv.shuuen.domain.audio.engine.MelodyNote
-import ldv.shuuen.domain.audio.engine.MidiFilePlaybackOptions
-import ldv.shuuen.domain.audio.engine.MidiFilePlayer
-import ldv.shuuen.domain.audio.midi.MidiChannel
-import ldv.shuuen.domain.audio.midi.Preset
-import ldv.shuuen.domain.audio.music.Note
-import ldv.shuuen.domain.repository.SettingsRepository
+import ldv.shuuen.core.audio.engine.LoadedMelody
+import ldv.shuuen.core.audio.engine.MelodyNote
+import ldv.shuuen.core.audio.engine.MidiFilePlaybackOptions
+import ldv.shuuen.core.audio.engine.MidiFilePlayer
+import ldv.shuuen.core.audio.midi.MidiChannel
+import ldv.shuuen.core.audio.midi.Preset
+import ldv.shuuen.core.music.Note
+import ldv.shuuen.core.settings.SettingsRepository
 
 /**
  * BASS-backed [MidiFilePlayer]. Loads the MIDI from memory, lets BASS render it at its natural

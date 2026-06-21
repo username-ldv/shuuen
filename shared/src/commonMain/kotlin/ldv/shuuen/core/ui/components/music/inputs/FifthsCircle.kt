@@ -1,0 +1,541 @@
+package ldv.shuuen.core.ui.components.music.inputs
+
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.input.pointer.PointerId
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import ldv.shuuen.core.ui.components.music.Palette
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.sin
+
+@Immutable
+data class FifthsCircleIndication(
+  val index: Int,
+  /**
+   * null = persistent while this object is present in programmaticIndications.
+   * non-null = pulse for this many milliseconds.
+   */
+  val durationMillis: Long? = null,
+)
+
+object FifthsCircleDefalts {
+  val Names = listOf(
+    "1", "♭2", "2", "♭3", "3", "4", "♯4", "5", "♭6", "6", "♭7", "7"
+  )
+
+
+  /** Monotone active-item color — the app default. */
+  fun colors(count: Int): List<Color> = List(count) { Color(0xFFE8E8E8) }
+
+  /** Opt-in per-item colors for a future settings choice. */
+  fun colorfulColors(count: Int): List<Color> =
+    List(count) { Palette.entries[it % Palette.entries.size].color }
+
+  /**
+   * For 12 items this returns:
+   * 0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5
+   */
+  fun circleOfFifthsVisualOrder(
+    count: Int,
+    fifthStep: Int = 7,
+  ): List<Int> {
+    if (count <= 0) return emptyList()
+
+    val step = ((fifthStep % count) + count) % count
+    if (step == 0 || gcd(step, count) != 1) {
+      return List(count) { it }
+    }
+
+    return List(count) { slot -> (slot * step) % count }
+  }
+}
+
+@OptIn(ExperimentalTextApi::class)
+@Composable
+fun FifthsCircle(
+  modifier: Modifier = Modifier,
+
+  itemNames: List<String> = FifthsCircleDefalts.Names,
+  itemColors: List<Color> = FifthsCircleDefalts.colors(itemNames.size),
+  enabledItems: List<Boolean> = List(itemNames.size) { true },
+
+  /**
+   * Contains item indices, not label strings.
+   * Default lays chromatic itemNames out around the circle of fifths.
+   */
+  visualOrder: List<Int> = FifthsCircleDefalts.circleOfFifthsVisualOrder(itemNames.size),
+
+  /**
+   * External, declarative visual indications.
+   *
+   * NoteDegreeIndication(index = 0, durationMillis = null) stays active until removed.
+   * NoteDegreeIndication(index = 0, durationMillis = 450) pulses for 450ms.
+   */
+  programmaticIndications: List<FifthsCircleIndication> = emptyList(),
+
+  onItemClick: (index: Int) -> Unit = {},
+  onItemPressedChange: (index: Int, pressed: Boolean) -> Unit = { _, _ -> },
+
+  backgroundColor: Color = Color.Transparent,
+  ringColor: Color = Color.White.copy(alpha = 0.18f),
+  inactiveDotColor: Color = Color(0xFF7A7A80),
+  disabledDotColor: Color = Color(0xFF4B4B50),
+  inactiveLabelColor: Color = Color(0xFF9B9BA1),
+  activeLabelColor: Color = Color.White,
+  disabledLabelColor: Color = Color(0xFF5D5D63),
+
+  ringStrokeWidth: Dp = 1.dp,
+  outerPadding: Dp = 30.dp,
+  /**
+   * When set, positions the ring so each resting dot's outer edge is this far
+   * from the component edge. Null keeps the legacy ring-center outerPadding.
+   */
+  dotEdgePadding: Dp? = null,
+  itemTouchRadius: Dp = 36.dp,
+  inactiveDotRadius: Dp = 7.dp,
+  activeDotRadius: Dp = 10.dp,
+  activeHaloRadius: Dp = 28.dp,
+  labelInset: Dp = 24.dp,
+  labelStyle: TextStyle = TextStyle(
+    fontSize = 24.sp, fontWeight = FontWeight.Normal, letterSpacing = (-5).sp
+  ),
+
+  centerButtonSize: Dp = 104.dp,
+  onCenterClick: (() -> Unit)? = null,
+  centerContent: (@Composable BoxScope.() -> Unit)? = null,
+) {
+  require(itemNames.isNotEmpty()) { "itemNames must not be empty." }
+  require(itemColors.size == itemNames.size) {
+    "itemColors must have the same size as itemNames."
+  }
+  require(enabledItems.size == itemNames.size) {
+    "enabledItems must have the same size as itemNames."
+  }
+  require(visualOrder.size == itemNames.size && visualOrder.toSet() == itemNames.indices.toSet()) {
+    "visualOrder must contain each item index exactly once."
+  }
+
+  val itemCount = itemNames.size
+  val textMeasurer = rememberTextMeasurer()
+
+  val latestOnItemClick by rememberUpdatedState(onItemClick)
+  val latestOnItemPressedChange by rememberUpdatedState(onItemPressedChange)
+
+  val touchPointers = remember { mutableStateMapOf<PointerId, Int>() }
+  val timedProgrammaticCounts = remember { mutableStateMapOf<Int, Int>() }
+
+  val timedIndications = remember(programmaticIndications) {
+    programmaticIndications.filter { it.durationMillis != null }
+  }
+
+  LaunchedEffect(timedIndications) {
+    timedIndications.forEach { indication ->
+      val index = indication.index
+      val duration = indication.durationMillis ?: return@forEach
+
+      if (index !in 0 until itemCount) return@forEach
+      if (!enabledItems[index]) return@forEach
+
+      launch {
+        timedProgrammaticCounts[index] = (timedProgrammaticCounts[index] ?: 0) + 1
+
+        try {
+          delay(duration.coerceAtLeast(1L))
+        } finally {
+          val next = (timedProgrammaticCounts[index] ?: 1) - 1
+          if (next <= 0) {
+            timedProgrammaticCounts.remove(index)
+          } else {
+            timedProgrammaticCounts[index] = next
+          }
+        }
+      }
+    }
+  }
+
+  val persistentProgrammaticItems =
+    programmaticIndications.asSequence().filter { it.durationMillis == null }.map { it.index }
+      .filter { it in 0 until itemCount && enabledItems[it] }.toSet()
+
+  val activeItems =
+    (touchPointers.values.toSet() + persistentProgrammaticItems + timedProgrammaticCounts.keys).filter { it in 0 until itemCount && enabledItems[it] }
+      .toSet()
+
+  val pressProgress = List(itemCount) { index ->
+    animateFloatAsState(
+      targetValue = if (index in activeItems) 1f else 0f,
+      animationSpec = spring(
+        dampingRatio = Spring.DampingRatioMediumBouncy,
+        stiffness = Spring.StiffnessMediumLow,
+      ),
+      label = "note-degree-press-$index",
+    ).value
+  }
+
+  val infiniteTransition = rememberInfiniteTransition(label = "note-degree-pulse")
+  val pulse by infiniteTransition.animateFloat(
+    initialValue = 0f,
+    targetValue = 1f,
+    animationSpec = infiniteRepeatable(
+      animation = tween(900, easing = LinearEasing),
+      repeatMode = RepeatMode.Restart,
+    ),
+    label = "note-degree-pulse-value",
+  )
+
+  Box(
+    modifier = modifier
+      .aspectRatio(1f)
+      .background(backgroundColor),
+    contentAlignment = Alignment.Center,
+  ) {
+    Canvas(
+      modifier = Modifier
+        .fillMaxSize()
+        .pointerInput(
+          itemCount,
+          enabledItems,
+          visualOrder,
+          outerPadding,
+          dotEdgePadding,
+          inactiveDotRadius,
+          itemTouchRadius,
+        ) {
+          fun itemPositionForSlot(slot: Int): Offset {
+            val minSide = min(size.width, size.height).toFloat()
+            val center = Offset(size.width / 2f, size.height / 2f)
+            val radius = fifthsCircleRingRadiusPx(
+              minSidePx = minSide,
+              outerPaddingPx = outerPadding.toPx(),
+              dotRadiusPx = inactiveDotRadius.toPx(),
+              dotEdgePaddingPx = dotEdgePadding?.toPx(),
+            )
+            return pointOnCircle(center, radius, slot, itemCount)
+          }
+
+          fun hitTest(position: Offset): Int? {
+            val hitRadiusPx = itemTouchRadius.toPx()
+            val hitRadiusSquared = hitRadiusPx * hitRadiusPx
+
+            var bestIndex: Int? = null
+            var bestDistanceSquared = Float.MAX_VALUE
+
+            visualOrder.forEachIndexed { slot, itemIndex ->
+              if (!enabledItems[itemIndex]) return@forEachIndexed
+
+              val itemCenter = itemPositionForSlot(slot)
+              val dx = position.x - itemCenter.x
+              val dy = position.y - itemCenter.y
+              val distanceSquared = dx * dx + dy * dy
+
+              if (distanceSquared <= hitRadiusSquared && distanceSquared < bestDistanceSquared) {
+                bestDistanceSquared = distanceSquared
+                bestIndex = itemIndex
+              }
+            }
+
+            return bestIndex
+          }
+
+          fun emitReleaseIfNeeded(itemIndex: Int) {
+            if (!touchPointers.containsValue(itemIndex)) {
+              latestOnItemPressedChange(itemIndex, false)
+            }
+          }
+
+          fun setPointerItem(pointerId: PointerId, newItem: Int?): Boolean {
+            val oldItem = touchPointers[pointerId]
+            if (oldItem == newItem) return newItem != null
+
+            if (oldItem != null) {
+              touchPointers.remove(pointerId)
+              emitReleaseIfNeeded(oldItem)
+            }
+
+            if (newItem != null) {
+              val wasAlreadyPressed = touchPointers.containsValue(newItem)
+              touchPointers[pointerId] = newItem
+
+              latestOnItemClick(newItem)
+
+              if (!wasAlreadyPressed) {
+                latestOnItemPressedChange(newItem, true)
+              }
+            }
+
+            return oldItem != null || newItem != null
+          }
+
+          fun releasePointer(pointerId: PointerId): Boolean {
+            val oldItem = touchPointers.remove(pointerId) ?: return false
+            emitReleaseIfNeeded(oldItem)
+            return true
+          }
+
+          fun releaseAll() {
+            val releasedItems = touchPointers.values.toSet()
+            touchPointers.clear()
+            releasedItems.forEach { latestOnItemPressedChange(it, false) }
+          }
+
+          try {
+            awaitEachGesture {
+              try {
+                val firstDown = awaitPointerEvent().changes.firstOrNull {
+                  it.pressed && !it.previousPressed
+                } ?: return@awaitEachGesture
+
+                if (setPointerItem(firstDown.id, hitTest(firstDown.position))) {
+                  firstDown.consume()
+                }
+
+                while (true) {
+                  val event = awaitPointerEvent()
+
+                  event.changes.forEach { change ->
+                    val consumed = when {
+                      change.pressed && !change.previousPressed -> {
+                        setPointerItem(
+                          pointerId = change.id,
+                          newItem = hitTest(change.position),
+                        )
+                      }
+
+                      change.pressed && change.previousPressed -> {
+                        setPointerItem(
+                          pointerId = change.id,
+                          newItem = hitTest(change.position),
+                        )
+                      }
+
+                      !change.pressed && change.previousPressed -> {
+                        releasePointer(change.id)
+                      }
+
+                      else -> false
+                    }
+
+                    if (consumed) change.consume()
+                  }
+
+                  if (event.changes.none { it.pressed }) break
+                }
+              } finally {
+                releaseAll()
+              }
+            }
+          } finally {
+            releaseAll()
+          }
+        },
+    ) {
+      val minSide = size.minDimension
+      val center = this.center
+
+      val ringStrokePx = ringStrokeWidth.toPx()
+      val ringRadius = fifthsCircleRingRadiusPx(
+        minSidePx = minSide,
+        outerPaddingPx = outerPadding.toPx(),
+        dotRadiusPx = inactiveDotRadius.toPx(),
+        dotEdgePaddingPx = dotEdgePadding?.toPx(),
+      )
+      val innerMaskRadius = max(0f, ringRadius - ringStrokePx / 2f)
+
+      val inactiveDotRadiusPx = inactiveDotRadius.toPx()
+      val activeDotRadiusPx = activeDotRadius.toPx()
+      val haloRadiusPx = activeHaloRadius.toPx()
+      val labelRadius = max(0f, ringRadius - labelInset.toPx())
+
+      // Outer colored halos. The inner circle is masked afterward,
+      // which creates the nice outward semicircle effect.
+      visualOrder.forEachIndexed { slot, itemIndex ->
+        val progress = pressProgress[itemIndex]
+        if (progress <= 0.01f || !enabledItems[itemIndex]) return@forEachIndexed
+
+        val itemCenter = pointOnCircle(center, ringRadius, slot, itemCount)
+        val color = itemColors[itemIndex]
+
+        val breathing = 0.94f + 0.12f * pulse
+        val haloRadius = lerpFloat(activeDotRadiusPx, haloRadiusPx * breathing, progress)
+
+        drawCircle(
+          color = color.copy(alpha = 0.34f * progress),
+          radius = haloRadius,
+          center = itemCenter,
+        )
+
+        drawCircle(
+          color = color.copy(alpha = 0.18f * progress * (1f - pulse)),
+          radius = haloRadiusPx * (0.85f + 0.35f * pulse),
+          center = itemCenter,
+          style = Stroke(width = 2.dp.toPx()),
+        )
+      }
+
+      // Mask inner half of halos.
+      drawCircle(
+        color = backgroundColor,
+        radius = innerMaskRadius,
+        center = center,
+      )
+
+      // Main ring.
+      drawCircle(
+        color = ringColor,
+        radius = ringRadius,
+        center = center,
+        style = Stroke(width = ringStrokePx),
+      )
+
+      // Dots and labels.
+      visualOrder.forEachIndexed { slot, itemIndex ->
+        val enabled = enabledItems[itemIndex]
+        val progress = pressProgress[itemIndex]
+
+        val dotCenter = pointOnCircle(center, ringRadius, slot, itemCount)
+        val labelCenter = pointOnCircle(center, labelRadius, slot, itemCount)
+
+        val dotColor = when {
+          !enabled -> disabledDotColor
+//          else -> lerp(inactiveDotColor, itemColors[itemIndex], progress)
+          else -> itemColors[itemIndex]
+        }
+
+        val dotRadius = when {
+          !enabled -> inactiveDotRadiusPx * 0.82f
+          else -> lerpFloat(inactiveDotRadiusPx, activeDotRadiusPx, progress)
+        }
+
+        drawCircle(
+          color = dotColor,
+          radius = dotRadius,
+          center = dotCenter,
+        )
+
+        val labelColor = when {
+          !enabled -> disabledLabelColor
+          progress > 0.45f -> lerp(inactiveLabelColor, activeLabelColor, progress)
+          else -> inactiveLabelColor
+        }
+
+        val layout = textMeasurer.measure(
+          text = AnnotatedString(itemNames[itemIndex]),
+          style = labelStyle.copy(color = labelColor),
+        )
+
+        drawText(
+          textLayoutResult = layout,
+          topLeft = Offset(
+            x = labelCenter.x - layout.size.width / 2f,
+            y = labelCenter.y - layout.size.height / 2f,
+          ),
+        )
+      }
+    }
+
+    if (centerContent != null || onCenterClick != null) {
+      val click = onCenterClick
+
+      Box(
+        modifier = Modifier
+          .size(centerButtonSize)
+          .clip(CircleShape)
+          .then(
+            if (click != null) {
+              Modifier.clickable(onClick = click)
+            } else {
+              Modifier
+            }
+          ),
+        contentAlignment = Alignment.Center,
+      ) {
+        centerContent?.let { it() }
+      }
+    }
+  }
+}
+
+private fun pointOnCircle(
+  center: Offset,
+  radius: Float,
+  slot: Int,
+  count: Int,
+): Offset {
+  val angle = -PI / 2.0 + 2.0 * PI * slot.toDouble() / count.toDouble()
+
+  return Offset(
+    x = center.x + cos(angle).toFloat() * radius,
+    y = center.y + sin(angle).toFloat() * radius,
+  )
+}
+
+private fun lerpFloat(
+  start: Float,
+  stop: Float,
+  fraction: Float,
+): Float = start + (stop - start) * fraction.coerceIn(0f, 1f)
+
+internal fun fifthsCircleRingRadiusPx(
+  minSidePx: Float,
+  outerPaddingPx: Float,
+  dotRadiusPx: Float,
+  dotEdgePaddingPx: Float?,
+): Float {
+  val padding = if (dotEdgePaddingPx != null) {
+    dotEdgePaddingPx + dotRadiusPx
+  } else {
+    outerPaddingPx
+  }
+
+  return max(0f, minSidePx / 2f - padding)
+}
+
+private tailrec fun gcd(a: Int, b: Int): Int {
+  return if (b == 0) abs(a) else gcd(b, a % b)
+}

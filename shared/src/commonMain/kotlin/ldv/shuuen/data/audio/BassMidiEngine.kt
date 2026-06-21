@@ -2,14 +2,14 @@ package ldv.shuuen.data.audio
 
 import kotlinx.coroutines.flow.first
 import ldv.shuuen.bass.Bass
-import ldv.shuuen.domain.audio.engine.MidiEngine
-import ldv.shuuen.domain.audio.engine.MidiEngineStatus
-import ldv.shuuen.domain.audio.engine.SoundFontProvider
-import ldv.shuuen.domain.audio.midi.MidiChannel
-import ldv.shuuen.domain.audio.midi.Preset
-import ldv.shuuen.domain.audio.music.Chord
-import ldv.shuuen.domain.audio.music.Note
-import ldv.shuuen.domain.repository.SettingsRepository
+import ldv.shuuen.core.audio.engine.MidiEngine
+import ldv.shuuen.core.audio.engine.MidiEngineStatus
+import ldv.shuuen.core.audio.engine.SoundFontProvider
+import ldv.shuuen.core.audio.midi.MidiChannel
+import ldv.shuuen.core.audio.midi.Preset
+import ldv.shuuen.core.music.Chord
+import ldv.shuuen.core.music.Note
+import ldv.shuuen.core.settings.SettingsRepository
 
 class BassMidiEngine(
   private val settingsRepository: SettingsRepository,

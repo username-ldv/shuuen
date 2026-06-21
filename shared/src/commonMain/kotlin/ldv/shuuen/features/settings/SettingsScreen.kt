@@ -1,0 +1,650 @@
+package ldv.shuuen.features.settings
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Article
+import androidx.compose.material.icons.automirrored.rounded.VolumeDown
+import androidx.compose.material.icons.automirrored.rounded.VolumeOff
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Keyboard
+import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
+import androidx.compose.material.icons.rounded.TextFields
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.Waves
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlin.math.roundToInt
+import ldv.shuuen.core.audio.midi.MidiChannel
+import ldv.shuuen.core.ui.components.FlatSection
+import ldv.shuuen.core.ui.components.Hairline
+import ldv.shuuen.core.ui.components.IconBubble
+import ldv.shuuen.core.ui.components.PillControl
+import ldv.shuuen.core.ui.components.ShuuenSwitch
+import ldv.shuuen.core.ui.components.ShuuenTopAppBar
+import ldv.shuuen.core.ui.components.ShuuenTopAppBarType
+import ldv.shuuen.core.ui.components.ShuuenUi
+import ldv.shuuen.core.ui.components.SoftControl
+import ldv.shuuen.core.ui.components.StaticScreenFrame
+
+@Composable
+fun SettingsScreen(
+  viewModel: SettingsViewModel,
+  onNavigateBack: () -> Unit,
+) {
+  val state by viewModel.state.collectAsStateWithLifecycle()
+
+  StaticScreenFrame(
+    maxWidth = 920.dp,
+    topBar = {
+      ShuuenTopAppBar(
+        title = "SETTINGS",
+        onBack = onNavigateBack,
+        trailingIcon = Icons.Rounded.Tune,
+        type = ShuuenTopAppBarType.Simple
+      )
+    },
+  ) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+      val twoColumn = maxWidth > 760.dp
+
+      if (twoColumn) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(44.dp),
+        ) {
+          Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(26.dp),
+          ) {
+            InputMethodSection()
+            Hairline()
+            GeneralSection()
+          }
+          Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(26.dp),
+          ) {
+            SoundfontSection(state = state, onAction = viewModel::onAction)
+          }
+        }
+      } else {
+        Column(
+          modifier = Modifier.fillMaxWidth(),
+          verticalArrangement = Arrangement.spacedBy(26.dp),
+        ) {
+          InputMethodSection()
+          Hairline()
+          SoundfontSection(state = state, onAction = viewModel::onAction)
+          Hairline()
+          GeneralSection()
+        }
+      }
+    }
+
+    Text(
+      text = "Changes are applied automatically.",
+      color = ShuuenUi.Dim,
+      style = MaterialTheme.typography.bodyMedium,
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(top = 10.dp, bottom = 18.dp),
+      textAlign = TextAlign.Center,
+    )
+  }
+
+  state.openPickerChannel?.let { channel ->
+    PresetPickerSheet(
+      title = channelLabel(channel),
+      icon = channelIcon(channel),
+      soundbanks = state.soundbanks,
+      selectedPreset = state.resolvePreset(state.selectedPresets.forChannel(channel)),
+      onSelectPreset = { viewModel.onAction(SettingsAction.SelectPreset(channel, it)) },
+      onPreview = { viewModel.onAction(SettingsAction.Preview(channel)) },
+      onDismiss = { viewModel.onAction(SettingsAction.ClosePicker) },
+    )
+  }
+}
+
+@Composable
+private fun InputMethodSection() {
+  FlatSection(
+    label = "INPUT METHOD",
+    supporting = "Choose how answers are entered and interpreted.",
+  ) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+      val compact = maxWidth < 390.dp
+      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+          horizontalArrangement = Arrangement.spacedBy(10.dp),
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          InputMethodCard(
+            "Piano",
+            "Absolute",
+            Icons.Rounded.Keyboard,
+            true,
+            compact,
+            Modifier.weight(1f)
+          )
+          InputMethodCard(
+            "Piano",
+            "Relative",
+            Icons.Rounded.Keyboard,
+            false,
+            compact,
+            Modifier.weight(1f)
+          )
+        }
+        Row(
+          horizontalArrangement = Arrangement.spacedBy(10.dp),
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          InputMethodCard(
+            "Circle",
+            "Absolute",
+            Icons.Rounded.GraphicEq,
+            false,
+            compact,
+            Modifier.weight(1f)
+          )
+          InputMethodCard(
+            "Circle",
+            "Relative",
+            Icons.Rounded.GraphicEq,
+            false,
+            compact,
+            Modifier.weight(1f)
+          )
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun SoundfontSection(
+  state: SettingsUiState,
+  onAction: (SettingsAction) -> Unit,
+) {
+  FlatSection(
+    label = "SOUNDFONT",
+    supporting = "Use one MIDI soundfont for all playback categories.",
+  ) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+      val compact = maxWidth < 440.dp
+      if (compact) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+          SoftControl(modifier = Modifier.fillMaxWidth()) {
+            Icon(
+              Icons.AutoMirrored.Rounded.Article,
+              contentDescription = null,
+              tint = ShuuenUi.Muted,
+              modifier = Modifier.size(22.dp)
+            )
+            Text(
+              "Arachno.sf2",
+              color = ShuuenUi.Text,
+              style = MaterialTheme.typography.titleSmall,
+              modifier = Modifier.weight(1f),
+              maxLines = 1
+            )
+          }
+          Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxWidth()
+          ) {
+            PillControl(
+              "Load",
+              leadingIcon = Icons.Rounded.FolderOpen,
+              selected = true,
+              modifier = Modifier.weight(1f)
+            )
+            PillControl("Default", modifier = Modifier.weight(1f))
+          }
+        }
+      } else {
+        SoftControl(modifier = Modifier.fillMaxWidth()) {
+          Icon(
+            Icons.AutoMirrored.Rounded.Article,
+            contentDescription = null,
+            tint = ShuuenUi.Muted,
+            modifier = Modifier.size(24.dp)
+          )
+          Text(
+            "Arachno.sf2",
+            color = ShuuenUi.Text,
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.weight(1f),
+            maxLines = 1
+          )
+          PillControl(
+            "Load from storage",
+            leadingIcon = Icons.Rounded.FolderOpen,
+            selected = true
+          )
+          PillControl("Default")
+        }
+      }
+    }
+
+    MidiChannel.entries.forEachIndexed { index, channel ->
+      if (index > 0) Hairline()
+      val preset = state.resolvePreset(state.selectedPresets.forChannel(channel))
+      SoundCategoryRow(
+        label = channelLabel(channel),
+        icon = channelIcon(channel),
+        soundbankLabel = soundbankLabel(preset.bank),
+        presetLabel = presetName(preset),
+        volume = state.selectedVolumes.forChannel(channel),
+        onOpen = { onAction(SettingsAction.OpenPicker(channel)) },
+        onPreview = { onAction(SettingsAction.Preview(channel)) },
+        onVolumeChange = { onAction(SettingsAction.SetVolume(channel, it)) },
+        onVolumeCommit = { onAction(SettingsAction.CommitVolume(channel, it)) },
+      )
+    }
+    Hairline()
+    MelodyOriginalVolumeBoostRow(
+      value = state.melodyOriginalVolumeBoost,
+      onChange = { onAction(SettingsAction.SetMelodyOriginalVolumeBoost(it)) },
+      onCommit = { onAction(SettingsAction.CommitMelodyOriginalVolumeBoost(it)) },
+    )
+
+    if (state.errorMessage != null) {
+      Text(
+        text = state.errorMessage,
+        color = ShuuenUi.Incorrect,
+        style = MaterialTheme.typography.bodySmall,
+        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+      )
+    }
+  }
+}
+
+@Composable
+private fun GeneralSection() {
+  FlatSection(label = "GENERAL") {
+    SettingsRow(Icons.Rounded.Language, "Language", trailing = "English")
+    Hairline()
+    SettingsRow(Icons.Rounded.TextFields, "Note names", subtitle = "C, D, E...")
+    Hairline()
+    SettingsRow(Icons.Rounded.TextFields, "Degree names", subtitle = "1, 2, 3...")
+    Hairline()
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(vertical = 6.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+      Icon(
+        Icons.Rounded.PlayArrow,
+        contentDescription = null,
+        tint = ShuuenUi.Muted,
+        modifier = Modifier.size(22.dp)
+      )
+      Text(
+        text = "Play next question automatically",
+        color = ShuuenUi.Text,
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.weight(1f),
+      )
+      ShuuenSwitch(checked = true)
+    }
+  }
+}
+
+@Composable
+private fun InputMethodCard(
+  title: String,
+  mode: String,
+  icon: ImageVector,
+  selected: Boolean,
+  compact: Boolean,
+  modifier: Modifier = Modifier,
+) {
+  SoftControl(
+    modifier = modifier.heightIn(min = if (compact) 92.dp else 86.dp),
+    selected = selected,
+  ) {
+    Column(
+      modifier = Modifier.fillMaxWidth(),
+      verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Icon(
+          icon,
+          contentDescription = null,
+          tint = if (selected) ShuuenUi.Text else ShuuenUi.Muted,
+          modifier = Modifier.size(if (compact) 22.dp else 24.dp)
+        )
+        Spacer(Modifier.weight(1f))
+        Icon(
+          imageVector = if (selected) Icons.Rounded.Check else Icons.Rounded.RadioButtonUnchecked,
+          contentDescription = null,
+          tint = if (selected) ShuuenUi.Text else ShuuenUi.Dim,
+          modifier = Modifier.size(if (compact) 20.dp else 22.dp),
+        )
+      }
+      Text(
+        text = title,
+        color = if (selected) ShuuenUi.Text else ShuuenUi.Muted,
+        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+      )
+      Text(
+        text = mode,
+        color = if (selected) ShuuenUi.Muted else ShuuenUi.Dim,
+        style = MaterialTheme.typography.bodyMedium,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+      )
+    }
+  }
+}
+
+@Composable
+private fun SoundCategoryRow(
+  label: String,
+  icon: ImageVector,
+  soundbankLabel: String,
+  presetLabel: String,
+  volume: Int,
+  onOpen: () -> Unit,
+  onPreview: () -> Unit,
+  onVolumeChange: (Int) -> Unit,
+  onVolumeCommit: (Int) -> Unit,
+) {
+  BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+    val compact = maxWidth < 480.dp
+
+    Column(
+      modifier = Modifier.fillMaxWidth(),
+      verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+      if (compact) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+          Icon(
+            icon,
+            contentDescription = null,
+            tint = ShuuenUi.Muted,
+            modifier = Modifier.size(22.dp)
+          )
+          Text(
+            text = label,
+            color = ShuuenUi.Text,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            modifier = Modifier.weight(1f),
+          )
+          PreviewBubble(onClick = onPreview, size = 36.dp)
+        }
+        Row(
+          horizontalArrangement = Arrangement.spacedBy(10.dp),
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          SoundPickerColumn("SOUNDBANK", soundbankLabel, onOpen, Modifier.weight(1f))
+          SoundPickerColumn("PRESET", presetLabel, onOpen, Modifier.weight(1f))
+        }
+      } else {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+          Icon(
+            icon,
+            contentDescription = null,
+            tint = ShuuenUi.Muted,
+            modifier = Modifier.size(22.dp)
+          )
+          Text(
+            text = label,
+            color = ShuuenUi.Text,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            modifier = Modifier.width(74.dp),
+          )
+          SoundPickerColumn("SOUNDBANK", soundbankLabel, onOpen, Modifier.weight(1f))
+          SoundPickerColumn("PRESET", presetLabel, onOpen, Modifier.weight(1f))
+          PreviewBubble(onClick = onPreview, size = 40.dp)
+        }
+      }
+
+      ValueSlider(
+        value = volume,
+        onChange = onVolumeChange,
+        onCommit = onVolumeCommit,
+        valueLabel = { "${(it * 100) / 127}%" },
+      )
+    }
+  }
+}
+
+@Composable
+private fun MelodyOriginalVolumeBoostRow(
+  value: Int,
+  onChange: (Int) -> Unit,
+  onCommit: (Int) -> Unit,
+) {
+  Column(
+    modifier = Modifier.fillMaxWidth(),
+    verticalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+      Icon(
+        Icons.Rounded.MusicNote,
+        contentDescription = null,
+        tint = ShuuenUi.Muted,
+        modifier = Modifier.size(22.dp),
+      )
+      Column(modifier = Modifier.weight(1f)) {
+        Text(
+          "Melody volume boost",
+          color = ShuuenUi.Text,
+          style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+        )
+        Text(
+          "Only for imported melodies with original velocities.",
+          color = ShuuenUi.Dim,
+          style = MaterialTheme.typography.bodySmall,
+        )
+      }
+    }
+    ValueSlider(
+      value = value,
+      onChange = onChange,
+      onCommit = onCommit,
+      valueLabel = ::melodyVolumeBoostLabel,
+      iconForValue = { Icons.AutoMirrored.Rounded.VolumeUp },
+    )
+  }
+}
+
+private fun melodyVolumeBoostLabel(value: Int): String {
+  val tenths = 10 + (value.coerceIn(0, 127) * 30 + 63) / 127
+  return "${tenths / 10}.${tenths % 10}x"
+}
+
+@Composable
+private fun ValueSlider(
+  value: Int,
+  onChange: (Int) -> Unit,
+  onCommit: (Int) -> Unit,
+  valueLabel: (Int) -> String,
+  iconForValue: (Int) -> ImageVector = ::volumeIcon,
+) {
+  // Local state drives the slider; live drags don't persist, so the incoming
+  // [value] only changes on commit/load and re-syncs us without fighting the drag.
+  var sliderValue by remember { mutableFloatStateOf(value.toFloat()) }
+  LaunchedEffect(value) { sliderValue = value.toFloat() }
+  val current = sliderValue.roundToInt()
+
+  Row(
+    modifier = Modifier.fillMaxWidth(),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(12.dp),
+  ) {
+    Icon(
+      iconForValue(current),
+      contentDescription = null,
+      tint = ShuuenUi.Muted,
+      modifier = Modifier.size(20.dp),
+    )
+    Slider(
+      value = sliderValue,
+      onValueChange = {
+        sliderValue = it
+        onChange(it.roundToInt())
+      },
+      onValueChangeFinished = { onCommit(sliderValue.roundToInt()) },
+      valueRange = 0f..127f,
+      colors = SliderDefaults.colors(
+        thumbColor = ShuuenUi.Text,
+        activeTrackColor = ShuuenUi.Inverse,
+        inactiveTrackColor = Color.White.copy(alpha = 0.12f),
+      ),
+      modifier = Modifier.weight(1f),
+    )
+    Text(
+      text = valueLabel(current),
+      color = ShuuenUi.Muted,
+      style = MaterialTheme.typography.labelLarge,
+      textAlign = TextAlign.End,
+      modifier = Modifier.width(48.dp),
+    )
+  }
+}
+
+private fun volumeIcon(value: Int): ImageVector =
+  when {
+    value <= 0 -> Icons.AutoMirrored.Rounded.VolumeOff
+    value < 64 -> Icons.AutoMirrored.Rounded.VolumeDown
+    else -> Icons.AutoMirrored.Rounded.VolumeUp
+  }
+
+@Composable
+private fun PreviewBubble(onClick: () -> Unit, size: Dp) {
+  Box(modifier = Modifier.clip(CircleShape).clickable(onClick = onClick)) {
+    IconBubble(Icons.Rounded.PlayArrow, tint = ShuuenUi.Text, size = size)
+  }
+}
+
+@Composable
+private fun SoundPickerColumn(
+  label: String,
+  value: String,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Text(
+      label,
+      color = ShuuenUi.Dim,
+      style = MaterialTheme.typography.labelSmall.copy(letterSpacing = ShuuenUi.labelSpacing),
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
+    )
+    PillControl(value, onClick = onClick)
+  }
+}
+
+@Composable
+private fun SettingsRow(
+  icon: ImageVector,
+  title: String,
+  subtitle: String? = null,
+  trailing: String? = null,
+) {
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .padding(vertical = 6.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(14.dp),
+  ) {
+    Icon(icon, contentDescription = null, tint = ShuuenUi.Muted, modifier = Modifier.size(22.dp))
+    Column(modifier = Modifier.weight(1f)) {
+      Text(
+        text = title,
+        color = ShuuenUi.Text,
+        style = MaterialTheme.typography.titleMedium,
+      )
+      if (subtitle != null) {
+        Text(text = subtitle, color = ShuuenUi.Dim, style = MaterialTheme.typography.bodySmall)
+      }
+    }
+    if (trailing != null) {
+      PillControl(trailing, modifier = Modifier.width(170.dp))
+    } else {
+      Icon(
+        Icons.Rounded.ChevronRight,
+        contentDescription = null,
+        tint = ShuuenUi.Dim,
+        modifier = Modifier.size(24.dp)
+      )
+    }
+  }
+}
+
+private fun channelLabel(channel: MidiChannel): String =
+  when (channel) {
+    MidiChannel.Notes -> "Notes"
+    MidiChannel.Drone -> "Drone"
+    MidiChannel.Cadence -> "Cadence"
+  }
+
+private fun channelIcon(channel: MidiChannel): ImageVector =
+  when (channel) {
+    MidiChannel.Notes -> Icons.Rounded.MusicNote
+    MidiChannel.Drone -> Icons.Rounded.Waves
+    MidiChannel.Cadence -> Icons.Rounded.GraphicEq
+  }

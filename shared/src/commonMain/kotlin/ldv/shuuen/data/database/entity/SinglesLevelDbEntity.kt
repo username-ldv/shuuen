@@ -4,9 +4,9 @@ import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
-import ldv.shuuen.domain.audio.music.NoteRange
-import ldv.shuuen.domain.training.level.LevelConfig
-import ldv.shuuen.domain.training.level.LevelSource
+import ldv.shuuen.core.music.NoteRange
+import ldv.shuuen.features.training.domain.LevelConfig
+import ldv.shuuen.features.training.domain.LevelSource
 
 @Entity(
   tableName = "levels_singles", foreignKeys = [ForeignKey(
