@@ -24,31 +24,31 @@ class PianoKeyboardTest {
   }
 
   @Test
-  fun blackKeyHitboxEndsHalfAWhiteKeyFromItsCenter() {
+  fun blackKeyHitboxExtendsIntoWideWhiteGap() {
     val geometry = testGeometry()
 
     assertEquals(3, geometry.hitTest(Offset(x = 249f, y = 20f)))
-    assertEquals(4, geometry.hitTest(Offset(x = 251f, y = 20f)))
+    assertEquals(4, geometry.hitTest(Offset(x = 299f, y = 20f)))
   }
 
   @Test
-  fun firstAndLastBlackKeyHitboxesUseTheSameHalfWidth() {
+  fun edgeBlackKeyHitboxesExtendPastVisualKeyWidth() {
     val geometry = testGeometry()
 
-    assertEquals(0, geometry.hitTest(Offset(x = 49f, y = 20f)))
-    assertEquals(1, geometry.hitTest(Offset(x = 51f, y = 20f)))
-    assertEquals(10, geometry.hitTest(Offset(x = 649f, y = 20f)))
-    assertEquals(11, geometry.hitTest(Offset(x = 651f, y = 20f)))
+    assertEquals(0, geometry.hitTest(Offset(x = 23f, y = 20f)))
+    assertEquals(1, geometry.hitTest(Offset(x = 25f, y = 20f)))
+    assertEquals(10, geometry.hitTest(Offset(x = 675f, y = 20f)))
+    assertEquals(11, geometry.hitTest(Offset(x = 677f, y = 20f)))
   }
 
   @Test
-  fun isolatedBlackKeyHitboxUsesTheSameHalfWidth() {
+  fun adjacentBlackKeyHitboxOverlapsChooseClosestKey() {
     val geometry = testGeometry()
 
-    assertEquals(5, geometry.hitTest(Offset(x = 349f, y = 20f)))
-    assertEquals(6, geometry.hitTest(Offset(x = 351f, y = 20f)))
     assertEquals(6, geometry.hitTest(Offset(x = 449f, y = 20f)))
-    assertEquals(7, geometry.hitTest(Offset(x = 451f, y = 20f)))
+    assertEquals(8, geometry.hitTest(Offset(x = 451f, y = 20f)))
+    assertEquals(8, geometry.hitTest(Offset(x = 549f, y = 20f)))
+    assertEquals(10, geometry.hitTest(Offset(x = 551f, y = 20f)))
   }
 
   private fun testGeometry(): List<PianoKeyGeometry> = buildPianoKeyGeometry(
