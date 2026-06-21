@@ -11,10 +11,28 @@ internal expect object BassPlatform {
   fun errorCode(): Int
   fun createLiveMidiStream(channels: Int, flags: Int, frequency: Int): Int
   fun createMidiStream(filePath: String, flags: Int, frequency: Int): Int
+  fun createMidiStreamFromMemory(data: ByteArray, flags: Int, frequency: Int): Int
+  fun streamGetEvents(streamHandle: Int, track: Int, filter: Int): List<BassMidiEvent>
+  fun setMidiStreamMelodyFilter(
+    streamHandle: Int,
+    enabled: Boolean,
+    preset: Int,
+    bank: Int,
+    normalizeNoteVelocity: Boolean,
+  ): Boolean
   fun loadSoundFont(filePath: String, flags: Int): Int
   fun setStreamSoundFont(streamHandle: Int, soundFontHandle: Int, preset: Int, bank: Int): Boolean
   fun play(channelHandle: Int, restart: Boolean): Boolean
   fun start(channelHandle: Int): Boolean
+  fun pause(channelHandle: Int): Boolean
+  fun stop(channelHandle: Int): Boolean
+  fun channelIsActive(channelHandle: Int): Int
+  fun channelGetPosition(channelHandle: Int, mode: Int): Long
+  fun channelSetPosition(channelHandle: Int, position: Long, mode: Int): Boolean
+  fun channelUpdate(channelHandle: Int, length: Int): Boolean
+  fun channelGetLength(channelHandle: Int, mode: Int): Long
+  fun channelBytes2Seconds(channelHandle: Int, position: Long): Double
+  fun channelSeconds2Bytes(channelHandle: Int, seconds: Double): Long
   fun setChannelAttribute(channelHandle: Int, attribute: Int, value: Float): Boolean
   fun streamEvent(streamHandle: Int, channel: Int, event: Int, parameter: Int): Boolean
   fun getSoundFontPresets(soundFontHandle: Int): List<Int>

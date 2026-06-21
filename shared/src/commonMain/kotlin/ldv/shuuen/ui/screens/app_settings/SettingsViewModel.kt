@@ -32,7 +32,11 @@ class SettingsViewModel(
     viewModelScope.launch {
       settingsRepository.settings.collect { settings ->
         mutableState.update {
-          it.copy(selectedPresets = settings.presets, selectedVolumes = settings.volumes)
+          it.copy(
+            selectedPresets = settings.presets,
+            selectedVolumes = settings.volumes,
+            melodyOriginalVolumeBoost = settings.melodyOriginalVolumeBoost,
+          )
         }
       }
     }
@@ -78,6 +82,11 @@ class SettingsViewModel(
       is SettingsAction.Preview -> preview(action.channel)
       is SettingsAction.SetVolume -> midiEngine.setVolume(action.channel, action.value)
       is SettingsAction.CommitVolume -> commitVolume(action.channel, action.value)
+      is SettingsAction.SetMelodyOriginalVolumeBoost ->
+        mutableState.update { it.copy(melodyOriginalVolumeBoost = action.value.coerceIn(0, 127)) }
+
+      is SettingsAction.CommitMelodyOriginalVolumeBoost ->
+        commitMelodyOriginalVolumeBoost(action.value)
     }
   }
 
@@ -89,6 +98,12 @@ class SettingsViewModel(
   private fun commitVolume(channel: MidiChannel, value: Int) {
     midiEngine.setVolume(channel, value)
     viewModelScope.launch { settingsRepository.setVolume(channel, value) }
+  }
+
+  private fun commitMelodyOriginalVolumeBoost(value: Int) {
+    val coerced = value.coerceIn(0, 127)
+    mutableState.update { it.copy(melodyOriginalVolumeBoost = coerced) }
+    viewModelScope.launch { settingsRepository.setMelodyOriginalVolumeBoost(coerced) }
   }
 
   /** Auditions the channel's current preset with a short phrase. */

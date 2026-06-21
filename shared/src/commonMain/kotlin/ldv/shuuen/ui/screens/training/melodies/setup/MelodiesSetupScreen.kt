@@ -30,6 +30,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ldv.shuuen.domain.audio.music.DegreeContext
 import ldv.shuuen.domain.audio.music.Note
 import ldv.shuuen.domain.audio.music.Pitch
 import ldv.shuuen.domain.audio.music.Scale
@@ -58,7 +60,9 @@ fun MelodiesSetupScreen(
   onNavigateBack: () -> Unit,
   onOpenContext: () -> Unit,
   onStartTraining: () -> Unit,
+  viewModel: MelodiesSetupScreenViewModel,
 ) {
+  val state by viewModel.state.collectAsStateWithLifecycle()
   StaticScreenFrame(
     maxWidth = 920.dp,
     verticalSpacing = 22.dp,
@@ -83,7 +87,7 @@ fun MelodiesSetupScreen(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(22.dp),
           ) {
-            LeadingSections(onOpenContext)
+            LeadingSections(state, viewModel, onOpenContext)
           }
           Column(
             modifier = Modifier.weight(1f),
@@ -97,7 +101,7 @@ fun MelodiesSetupScreen(
           modifier = Modifier.fillMaxWidth(),
           verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
-          LeadingSections(onOpenContext)
+          LeadingSections(state, viewModel, onOpenContext)
           Hairline()
           TrailingSections()
         }
@@ -106,19 +110,23 @@ fun MelodiesSetupScreen(
 
     PrimaryCta(
       text = "START TRAINING",
-      onClick = onStartTraining,
+      onClick = { if (viewModel.stageLevelForTraining()) onStartTraining() },
       modifier = Modifier.padding(top = 4.dp, bottom = 18.dp),
     )
   }
 }
 
 @Composable
-private fun LeadingSections(onOpenContext: () -> Unit) {
+private fun LeadingSections(
+  state: MelodiesSetupState,
+  viewModel: MelodiesSetupScreenViewModel,
+  onOpenContext: () -> Unit,
+) {
   MelodyScaleSection()
   Hairline()
-  ContextSection(onOpenContext)
+  ContextSection(state.context, onOpenContext)
   Hairline()
-  SourceModeSection()
+  SourceModeSection(state, viewModel)
   Hairline()
   QuestionCountSection()
 }
@@ -152,10 +160,15 @@ private fun MelodyScaleSection() {
 }
 
 @Composable
-private fun ContextSection(onOpenContext: () -> Unit) {
+private fun ContextSection(
+  context: DegreeContext?,
+  onOpenContext: () -> Unit,
+) {
   SetupNavRow(
     label = "2 · CONTEXT",
-    supporting = "Open context screen to configure.",
+    supporting =
+      context?.let { "Using context ${it.name ?: it.id}" }
+        ?: "Open context screen to configure.",
     onClick = onOpenContext,
   ) {
     Icon(
@@ -168,13 +181,17 @@ private fun ContextSection(onOpenContext: () -> Unit) {
 }
 
 @Composable
-private fun SourceModeSection() {
+private fun SourceModeSection(
+  state: MelodiesSetupState,
+  viewModel: MelodiesSetupScreenViewModel,
+) {
   FlatSection(label = "3 · SOURCE MODE") {
     PillControl(
       text = "Random",
-      selected = true,
+      selected = state.sourceMode == MelodiesSourceMode.Random,
       leadingIcon = Icons.Rounded.Casino,
       trailingCheck = true,
+      onClick = { viewModel.selectSourceMode(MelodiesSourceMode.Random) },
       modifier = Modifier.fillMaxWidth(),
     )
     Row(
@@ -182,8 +199,10 @@ private fun SourceModeSection() {
       horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
       PillControl(
-        text = "Load .midi file",
+        text = if (state.isLoadingMidi) "Loading…" else "Load .midi file",
+        selected = state.sourceMode == MelodiesSourceMode.Midi,
         leadingIcon = Icons.Rounded.FolderOpen,
+        onClick = { if (!state.isLoadingMidi) viewModel.loadMidiFile() },
         modifier = Modifier.weight(1f),
       )
       PillControl(
@@ -192,11 +211,39 @@ private fun SourceModeSection() {
         modifier = Modifier.weight(1f),
       )
     }
+    val statusText =
+      when {
+        state.midiError != null -> state.midiError
+        state.loadedMidiName != null -> "Loaded ${state.loadedMidiName}."
+        else -> "Load a .midi file to play its melody. (Random mode is coming soon.)"
+      }
     Text(
-      text = "MIDI options are used when MIDI source is selected.",
-      color = ShuuenUi.Dim,
+      text = statusText,
+      color = if (state.midiError != null) ShuuenUi.Incorrect else ShuuenUi.Dim,
       style = MaterialTheme.typography.bodyMedium,
     )
+    SoftControl(
+      modifier = Modifier.fillMaxWidth(),
+      selected = state.useOriginalVelocities,
+      onClick = { viewModel.setUseOriginalVelocities(!state.useOriginalVelocities) },
+    ) {
+      Column(modifier = Modifier.weight(1f)) {
+        Text(
+          "Note velocities",
+          color = ShuuenUi.Text,
+          style = MaterialTheme.typography.titleSmall,
+        )
+        Text(
+          if (state.useOriginalVelocities) "Original file values" else "Full velocity (127)",
+          color = ShuuenUi.Muted,
+          style = MaterialTheme.typography.bodySmall,
+        )
+      }
+      ShuuenSwitch(
+        checked = state.useOriginalVelocities,
+        onCheckedChange = null,
+      )
+    }
   }
 }
 

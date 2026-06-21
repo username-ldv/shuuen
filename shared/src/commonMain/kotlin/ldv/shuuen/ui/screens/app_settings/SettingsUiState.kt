@@ -20,6 +20,7 @@ data class SettingsUiState(
   val soundbanks: List<Soundbank> = emptyList(),
   val selectedPresets: ChannelPresets = ChannelPresets(),
   val selectedVolumes: ChannelVolumes = ChannelVolumes(),
+  val melodyOriginalVolumeBoost: Int = 0,
   /** The category whose picker sheet is currently open, or null when closed. */
   val openPickerChannel: MidiChannel? = null,
 ) {
@@ -44,6 +45,11 @@ sealed interface SettingsAction {
 
   /** Persisted once the user releases the slider. */
   data class CommitVolume(val channel: MidiChannel, val value: Int) : SettingsAction
+
+  /** Local slider state while dragging; persisted on commit. */
+  data class SetMelodyOriginalVolumeBoost(val value: Int) : SettingsAction
+
+  data class CommitMelodyOriginalVolumeBoost(val value: Int) : SettingsAction
 }
 
 /** Bank 0 is the General MIDI set by convention; other banks are shown by number. */

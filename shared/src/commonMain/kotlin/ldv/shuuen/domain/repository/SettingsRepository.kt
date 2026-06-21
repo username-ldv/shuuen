@@ -1,6 +1,7 @@
 package ldv.shuuen.domain.repository
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import ldv.shuuen.domain.audio.midi.ChannelPresets
 import ldv.shuuen.domain.audio.midi.ChannelVolumes
@@ -15,6 +16,8 @@ interface SettingsRepository {
   suspend fun setPreset(channel: MidiChannel, preset: Preset)
 
   suspend fun setVolume(channel: MidiChannel, value: Int)
+
+  suspend fun setMelodyOriginalVolumeBoost(value: Int)
 }
 
 @Serializable
@@ -22,4 +25,6 @@ data class AppSettings(
   val soundFontPath: String? = null,
   val presets: ChannelPresets = ChannelPresets(),
   val volumes: ChannelVolumes = ChannelVolumes(),
+  @SerialName("melodyOriginalVelocityBoost")
+  val melodyOriginalVolumeBoost: Int = 0,
 )

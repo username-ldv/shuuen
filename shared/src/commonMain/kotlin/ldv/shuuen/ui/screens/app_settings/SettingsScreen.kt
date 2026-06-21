@@ -281,6 +281,12 @@ private fun SoundfontSection(
         onVolumeCommit = { onAction(SettingsAction.CommitVolume(channel, it)) },
       )
     }
+    Hairline()
+    MelodyOriginalVolumeBoostRow(
+      value = state.melodyOriginalVolumeBoost,
+      onChange = { onAction(SettingsAction.SetMelodyOriginalVolumeBoost(it)) },
+      onCommit = { onAction(SettingsAction.CommitMelodyOriginalVolumeBoost(it)) },
+    )
 
     if (state.errorMessage != null) {
       Text(
@@ -449,21 +455,77 @@ private fun SoundCategoryRow(
         }
       }
 
-      VolumeSlider(volume = volume, onChange = onVolumeChange, onCommit = onVolumeCommit)
+      ValueSlider(
+        value = volume,
+        onChange = onVolumeChange,
+        onCommit = onVolumeCommit,
+        valueLabel = { "${(it * 100) / 127}%" },
+      )
     }
   }
 }
 
 @Composable
-private fun VolumeSlider(
-  volume: Int,
+private fun MelodyOriginalVolumeBoostRow(
+  value: Int,
   onChange: (Int) -> Unit,
   onCommit: (Int) -> Unit,
 ) {
+  Column(
+    modifier = Modifier.fillMaxWidth(),
+    verticalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+      Icon(
+        Icons.Rounded.MusicNote,
+        contentDescription = null,
+        tint = ShuuenUi.Muted,
+        modifier = Modifier.size(22.dp),
+      )
+      Column(modifier = Modifier.weight(1f)) {
+        Text(
+          "Melody volume boost",
+          color = ShuuenUi.Text,
+          style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+        )
+        Text(
+          "Only for imported melodies with original velocities.",
+          color = ShuuenUi.Dim,
+          style = MaterialTheme.typography.bodySmall,
+        )
+      }
+    }
+    ValueSlider(
+      value = value,
+      onChange = onChange,
+      onCommit = onCommit,
+      valueLabel = ::melodyVolumeBoostLabel,
+      iconForValue = { Icons.AutoMirrored.Rounded.VolumeUp },
+    )
+  }
+}
+
+private fun melodyVolumeBoostLabel(value: Int): String {
+  val tenths = 10 + (value.coerceIn(0, 127) * 30 + 63) / 127
+  return "${tenths / 10}.${tenths % 10}x"
+}
+
+@Composable
+private fun ValueSlider(
+  value: Int,
+  onChange: (Int) -> Unit,
+  onCommit: (Int) -> Unit,
+  valueLabel: (Int) -> String,
+  iconForValue: (Int) -> ImageVector = ::volumeIcon,
+) {
   // Local state drives the slider; live drags don't persist, so the incoming
-  // [volume] only changes on commit/load and re-syncs us without fighting the drag.
-  var sliderValue by remember { mutableFloatStateOf(volume.toFloat()) }
-  LaunchedEffect(volume) { sliderValue = volume.toFloat() }
+  // [value] only changes on commit/load and re-syncs us without fighting the drag.
+  var sliderValue by remember { mutableFloatStateOf(value.toFloat()) }
+  LaunchedEffect(value) { sliderValue = value.toFloat() }
   val current = sliderValue.roundToInt()
 
   Row(
@@ -472,7 +534,7 @@ private fun VolumeSlider(
     horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Icon(
-      volumeIcon(current),
+      iconForValue(current),
       contentDescription = null,
       tint = ShuuenUi.Muted,
       modifier = Modifier.size(20.dp),
@@ -493,11 +555,11 @@ private fun VolumeSlider(
       modifier = Modifier.weight(1f),
     )
     Text(
-      text = "${(current * 100) / 127}%",
+      text = valueLabel(current),
       color = ShuuenUi.Muted,
       style = MaterialTheme.typography.labelLarge,
       textAlign = TextAlign.End,
-      modifier = Modifier.width(38.dp),
+      modifier = Modifier.width(48.dp),
     )
   }
 }

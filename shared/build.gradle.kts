@@ -68,6 +68,9 @@ kotlin {
       implementation(libs.kstore)
       implementation(libs.kstore.file)
 
+      // native file picker (desktop + android)
+      implementation(libs.filekit.dialogs.compose)
+
       // to review
       implementation(compose.materialIconsExtended)
     }
@@ -76,6 +79,7 @@ kotlin {
     }
     commonTest.dependencies {
       implementation(libs.kotlin.test)
+      implementation(libs.kotlinx.coroutinesTest)
     }
   }
 }

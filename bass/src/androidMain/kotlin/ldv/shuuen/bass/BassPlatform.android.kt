@@ -2,8 +2,11 @@ package ldv.shuuen.bass
 
 import com.un4seen.bass.BASS
 import com.un4seen.bass.BASSMIDI
+import java.nio.ByteBuffer
 
 internal actual object BassPlatform {
+  private val melodyFilters = mutableMapOf<Int, BASSMIDI.MIDIFILTERPROC>()
+
   actual fun load() {
     BASS.BASS_GetVersion()
     BASSMIDI.BASS_MIDI_GetVersion()
@@ -31,6 +34,80 @@ internal actual object BassPlatform {
   actual fun createMidiStream(filePath: String, flags: Int, frequency: Int): Int =
     BASSMIDI.BASS_MIDI_StreamCreateFile(filePath, 0, 0, flags, frequency)
 
+  actual fun createMidiStreamFromMemory(data: ByteArray, flags: Int, frequency: Int): Int {
+    // A direct buffer is required so BASS can read the bytes; MIDI is fully loaded at creation.
+    val buffer = ByteBuffer.allocateDirect(data.size).apply {
+      put(data)
+      position(0)
+    }
+    return BASSMIDI.BASS_MIDI_StreamCreateFile(buffer, 0, data.size.toLong(), flags, frequency)
+  }
+
+  actual fun streamGetEvents(streamHandle: Int, track: Int, filter: Int): List<BassMidiEvent> {
+    val count = BASSMIDI.BASS_MIDI_StreamGetEvents(streamHandle, track, filter, null)
+    if (count <= 0) return emptyList()
+    val events = Array(count) { BASSMIDI.BASS_MIDI_EVENT() }
+    BASSMIDI.BASS_MIDI_StreamGetEvents(streamHandle, track, filter, events)
+    return events.map {
+      BassMidiEvent(
+        event = it.event,
+        param = it.param,
+        channel = it.chan,
+        tick = it.tick.toUnsignedLong(),
+        pos = it.pos.toUnsignedLong(),
+      )
+    }
+  }
+
+  actual fun setMidiStreamMelodyFilter(
+    streamHandle: Int,
+    enabled: Boolean,
+    preset: Int,
+    bank: Int,
+    normalizeNoteVelocity: Boolean,
+  ): Boolean {
+    if (!enabled) {
+      // The Android Java wrapper crashes in JNI when proc/user are null. The filter belongs to the
+      // stream, so BASS_StreamFree clears it; keep the callback pinned until then.
+      return true
+    }
+
+    val filter =
+      object : BASSMIDI.MIDIFILTERPROC {
+        override fun MIDIFILTERPROC(
+          handle: Int,
+          track: Int,
+          event: BASSMIDI.BASS_MIDI_EVENT,
+          seeking: Boolean,
+          user: Any?,
+        ): Boolean {
+          when (event.event) {
+            BASSMIDI.MIDI_EVENT_NOTE -> {
+              val velocity = (event.param shr 8) and 0xFF
+              if (normalizeNoteVelocity && velocity > 0) {
+                event.param = (event.param and 0xFF) or (NormalizedMidiValue shl 8)
+              }
+            }
+
+            BASSMIDI.MIDI_EVENT_VOLUME,
+            BASSMIDI.MIDI_EVENT_EXPRESSION -> {
+              event.param = NormalizedMidiValue
+            }
+
+            BASSMIDI.MIDI_EVENT_PROGRAM,
+            BASSMIDI.MIDI_EVENT_BANK,
+            BASSMIDI.MIDI_EVENT_BANK_LSB,
+            BASSMIDI.MIDI_EVENT_SYSTEM,
+            BASSMIDI.MIDI_EVENT_SYSTEMEX -> return false
+          }
+          return true
+        }
+      }
+
+    melodyFilters[streamHandle] = filter
+    return BASSMIDI.BASS_MIDI_StreamSetFilter(streamHandle, true, filter, MelodyFilterUser)
+  }
+
   actual fun loadSoundFont(filePath: String, flags: Int): Int =
     BASSMIDI.BASS_MIDI_FontInit(filePath, flags)
 
@@ -54,6 +131,33 @@ internal actual object BassPlatform {
   actual fun start(channelHandle: Int): Boolean =
     BASS.BASS_ChannelStart(channelHandle)
 
+  actual fun pause(channelHandle: Int): Boolean =
+    BASS.BASS_ChannelPause(channelHandle)
+
+  actual fun stop(channelHandle: Int): Boolean =
+    BASS.BASS_ChannelStop(channelHandle)
+
+  actual fun channelIsActive(channelHandle: Int): Int =
+    BASS.BASS_ChannelIsActive(channelHandle)
+
+  actual fun channelGetPosition(channelHandle: Int, mode: Int): Long =
+    BASS.BASS_ChannelGetPosition(channelHandle, mode)
+
+  actual fun channelSetPosition(channelHandle: Int, position: Long, mode: Int): Boolean =
+    BASS.BASS_ChannelSetPosition(channelHandle, position, mode)
+
+  actual fun channelUpdate(channelHandle: Int, length: Int): Boolean =
+    BASS.BASS_ChannelUpdate(channelHandle, length)
+
+  actual fun channelGetLength(channelHandle: Int, mode: Int): Long =
+    BASS.BASS_ChannelGetLength(channelHandle, mode)
+
+  actual fun channelBytes2Seconds(channelHandle: Int, position: Long): Double =
+    BASS.BASS_ChannelBytes2Seconds(channelHandle, position)
+
+  actual fun channelSeconds2Bytes(channelHandle: Int, seconds: Double): Long =
+    BASS.BASS_ChannelSeconds2Bytes(channelHandle, seconds)
+
   actual fun setChannelAttribute(channelHandle: Int, attribute: Int, value: Float): Boolean =
     BASS.BASS_ChannelSetAttribute(channelHandle, attribute, value)
 
@@ -72,9 +176,18 @@ internal actual object BassPlatform {
   actual fun getSoundFontPresetName(soundFontHandle: Int, preset: Int, bank: Int): String? =
     BASSMIDI.BASS_MIDI_FontGetPreset(soundFontHandle, preset, bank)
 
-  actual fun freeStream(streamHandle: Int): Boolean =
-    BASS.BASS_StreamFree(streamHandle)
+  actual fun freeStream(streamHandle: Int): Boolean {
+    val freed = BASS.BASS_StreamFree(streamHandle)
+    melodyFilters.remove(streamHandle)
+    return freed
+  }
 
   actual fun freeSoundFont(soundFontHandle: Int): Boolean =
     BASSMIDI.BASS_MIDI_FontFree(soundFontHandle)
 }
+
+private fun Int.toUnsignedLong(): Long = toLong() and 0xffffffffL
+
+private const val NormalizedMidiValue = 127
+
+private object MelodyFilterUser

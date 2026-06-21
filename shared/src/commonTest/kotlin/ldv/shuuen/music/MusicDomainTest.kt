@@ -8,6 +8,7 @@ import ldv.shuuen.domain.audio.music.Scale
 import ldv.shuuen.domain.audio.music.withTiming
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Duration.Companion.milliseconds
 
 class MusicDomainTest {
   @Test
@@ -50,8 +51,8 @@ class MusicDomainTest {
   @Test
   fun calculatesTimingValues() {
     withTiming(120) {
-      assertEquals(500.0, quarter())
-      assertEquals(250.0, eighth())
+      assertEquals(500.milliseconds, quarter())
+      assertEquals(250.milliseconds, eighth())
     }
   }
 }

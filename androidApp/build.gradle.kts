@@ -15,6 +15,7 @@ dependencies {
   implementation(projects.shared)
 
   implementation(libs.androidx.activity.compose)
+  implementation(libs.filekit.dialogs.compose)
 
   implementation(libs.napier)
 

@@ -1,6 +1,7 @@
 package ldv.shuuen.navigation
 
 import ldv.shuuen.ui.navigation.AppRoute
+import ldv.shuuen.ui.navigation.result.ContextRecipient
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -11,10 +12,10 @@ class AppRouteTest {
     val routes: List<AppRoute> = listOf(
       AppRoute.MelodiesSetup,
       AppRoute.MelodiesPlay,
-      AppRoute.Context,
+      AppRoute.Context(ContextRecipient.MelodiesSetup),
       AppRoute.SinglesLevelSelect,
       AppRoute.MelodiesLevelSelect,
-      AppRoute.SinglesLevelComplete,
+      AppRoute.SinglesLevelComplete("test-id"),
       AppRoute.MelodiesLevelComplete,
     )
 

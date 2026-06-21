@@ -40,7 +40,15 @@ class KStoreSettingsRepository(
     }
   }
 
+  override suspend fun setMelodyOriginalVolumeBoost(value: Int) {
+    store.update { it?.copy(melodyOriginalVolumeBoost = value.coerceIn(0, MidiValueMax)) }
+  }
+
   override suspend fun setSoundFontPath(path: String?) {
     store.update { it?.copy(soundFontPath = path) }
+  }
+
+  private companion object {
+    const val MidiValueMax = 127
   }
 }

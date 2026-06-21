@@ -24,12 +24,12 @@ class BassMidiEngine(
 
     return runCatching {
       Bass.load()
-      Bass.setConfig(Bass.BASS_CONFIG_DEV_PERIOD, 10)
-      Bass.setConfig(Bass.BASS_CONFIG_DEV_BUFFER, 30)
+      Bass.setConfig(Bass.BASS_CONFIG_DEV_PERIOD, DeviceUpdatePeriodMs)
+      Bass.setConfig(Bass.BASS_CONFIG_DEV_BUFFER, DeviceBufferMs)
       require(Bass.init()) { "Unable to initialize BASS: ${Bass.errorCode()}." }
 
-      Bass.setConfig(Bass.BASS_CONFIG_UPDATEPERIOD, 10)
-      Bass.setConfig(Bass.BASS_CONFIG_BUFFER, 30)
+      Bass.setConfig(Bass.BASS_CONFIG_UPDATEPERIOD, StreamUpdatePeriodMs)
+      Bass.setConfig(Bass.BASS_CONFIG_BUFFER, LiveStreamBufferMs)
       Bass.setConfig(Bass.BASS_CONFIG_MIDI_VOICES, 128)
 
       midiStreamHandle = Bass.createLiveMidiStream(channels = 128)
@@ -44,6 +44,12 @@ class BassMidiEngine(
       require(Bass.setStreamSoundFont(midiStreamHandle, soundFontHandle)) {
         "Unable to attach soundfont to stream: ${Bass.errorCode()}."
       }
+      require(BassMidiFxDefaults.applyToStream(midiStreamHandle)) {
+        "Unable to apply MIDI effect defaults: ${Bass.errorCode()}."
+      }
+      // Also set it as the default soundfont (handle 0) so separately-created MIDI file streams
+      // (the melodies file player) inherit it without re-loading the soundfont.
+      Bass.setStreamSoundFont(0, soundFontHandle)
 
       MidiChannel.entries.forEach { channel ->
         setPreset(channel, settings.presets.forChannel(channel))
@@ -131,5 +137,12 @@ class BassMidiEngine(
     Bass.freePlugins()
     Bass.free()
     initialized = false
+  }
+
+  private companion object {
+    const val DeviceUpdatePeriodMs = 10
+    const val DeviceBufferMs = 40
+    const val StreamUpdatePeriodMs = 10
+    const val LiveStreamBufferMs = 30
   }
 }
