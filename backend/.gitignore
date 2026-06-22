@@ -1,0 +1,9 @@
+.env
+.env.local
+data/
+storage/
+tmp/
+dist/
+coverage.out
+*.exe
+*.test
