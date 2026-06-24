@@ -1,7 +1,6 @@
 package ldv.shuuen.core.music
 
 import kotlinx.serialization.Serializable
-import ldv.shuuen.core.music.ContextSource
 import kotlin.time.Duration
 
 @Serializable
@@ -12,13 +11,23 @@ data class DegreeContext(
     val name: String? = null,
 )
 
+enum class SetupMelodyRepeat {
+  // Once at the start / once every key change
+  Once,
+  // Every time this node comes (if the duration allows it to repeat the sequence within the same
+  // key)
+  EveryTime,
+}
+
+@Serializable data class SetupMelody(val melody: RelativeMelody, val repeat: SetupMelodyRepeat)
+
 @Serializable
 data class DegreeContextNode(
     val firstDegree: DegreeWithOctave,
     val extraDegrees: List<Degree>,
     val sustain: Sustain,
     val duration: ContextDuration,
-    val setupMelody: RelativeMelody?,
+    val setupMelody: SetupMelody?,
 )
 
 fun DegreeContextNode.toChord(root: Pitch): Chord {
@@ -72,17 +81,21 @@ val defaultContext =
                     sustain = Sustain.Endless,
                     duration = ContextDuration.Endless,
                     setupMelody =
-                        RelativeMelody(
-                            firstDegree = DegreeWithOctave(Degree.D1, 4),
-                            extraDegrees =
-                                listOf(
-                                    DirectedDegree(Degree.D3, DegreeDirection.Up),
-                                    DirectedDegree(Degree.D5, DegreeDirection.Up),
-                                    DirectedDegree(
-                                        Degree.D1,
-                                        DegreeDirection.Up,
-                                    ),
+                        SetupMelody(
+                            melody =
+                                RelativeMelody(
+                                    firstDegree = DegreeWithOctave(Degree.D1, 4),
+                                    extraDegrees =
+                                        listOf(
+                                            DirectedDegree(Degree.D3, DegreeDirection.Up),
+                                            DirectedDegree(Degree.D5, DegreeDirection.Up),
+                                            DirectedDegree(
+                                                Degree.D1,
+                                                DegreeDirection.Up,
+                                            ),
+                                        ),
                                 ),
+                            repeat = SetupMelodyRepeat.Once,
                         ),
                 )
             ),

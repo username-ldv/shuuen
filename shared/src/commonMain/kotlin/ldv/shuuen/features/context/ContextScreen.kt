@@ -46,6 +46,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import ldv.shuuen.core.music.ContextDuration
+import ldv.shuuen.core.music.ContextSource
 import ldv.shuuen.core.music.Degree
 import ldv.shuuen.core.music.DegreeContext
 import ldv.shuuen.core.music.DegreeContextNode
@@ -53,9 +54,11 @@ import ldv.shuuen.core.music.DegreeDirection
 import ldv.shuuen.core.music.DegreeWithOctave
 import ldv.shuuen.core.music.DirectedDegree
 import ldv.shuuen.core.music.RelativeMelody
+import ldv.shuuen.core.music.SetupMelody
+import ldv.shuuen.core.music.SetupMelodyRepeat
 import ldv.shuuen.core.music.Sustain
+import ldv.shuuen.core.music.Timing
 import ldv.shuuen.core.music.stepLabels
-import ldv.shuuen.core.music.ContextSource
 import ldv.shuuen.core.ui.components.CompactDropdownMenu
 import ldv.shuuen.core.ui.components.DashedAddButton
 import ldv.shuuen.core.ui.components.FlatSection
@@ -75,21 +78,14 @@ import ldv.shuuen.core.ui.components.music.OctaveStepper
 
 private val TimedSustain = Sustain.Finite(1.seconds)
 
+private const val standardTempo = 90
+
 private fun sequenceNode(
     firstDegree: DegreeWithOctave = DegreeWithOctave(Degree.D1, 3),
-    extraDegrees: List<Degree> = listOf(Degree.D3, Degree.D5),
+    extraDegrees: List<Degree> = listOf(),
     sustain: Sustain = Sustain.Endless,
-    duration: ContextDuration = ContextDuration.Finite(4),
-    setupMelody: RelativeMelody? =
-        RelativeMelody(
-            firstDegree = DegreeWithOctave(Degree.D1, 3),
-            extraDegrees =
-                listOf(
-                    DirectedDegree(Degree.D3, DegreeDirection.Up),
-                    DirectedDegree(Degree.D5, DegreeDirection.Up),
-                    DirectedDegree(Degree.D1, DegreeDirection.Up),
-                ),
-        ),
+    duration: ContextDuration = ContextDuration.SameAsScaleRotation,
+    setupMelody: SetupMelody? = null,
 ) =
     DegreeContextNode(
         firstDegree = firstDegree,
@@ -111,6 +107,20 @@ private val sequencePresets =
                         firstDegree = DegreeWithOctave(Degree.D1, 2),
                         extraDegrees = emptyList(),
                         sustain = Sustain.Endless,
+                        setupMelody =
+                            SetupMelody(
+                                melody =
+                                    RelativeMelody(
+                                        firstDegree = DegreeWithOctave(Degree.D1, 3),
+                                        extraDegrees =
+                                            listOf(
+                                                DirectedDegree(Degree.D3, DegreeDirection.Up),
+                                                DirectedDegree(Degree.D5, DegreeDirection.Up),
+                                                DirectedDegree(Degree.D1, DegreeDirection.Up),
+                                            ),
+                                    ),
+                                repeat = SetupMelodyRepeat.Once,
+                            ),
                     ),
                 ),
         ),
@@ -121,17 +131,26 @@ private val sequencePresets =
                     sequenceNode(
                         DegreeWithOctave(Degree.D1, 3),
                         listOf(Degree.D3, Degree.D5),
-                        TimedSustain,
+                        Sustain.Finite(Timing(standardTempo).quarter()),
+                        duration = ContextDuration.Immediate,
                     ),
                     sequenceNode(
                         DegreeWithOctave(Degree.D4, 3),
                         listOf(Degree.D6, Degree.D1),
-                        TimedSustain,
+                        Sustain.Finite(Timing(standardTempo).quarter()),
+                        duration = ContextDuration.Immediate,
                     ),
                     sequenceNode(
                         DegreeWithOctave(Degree.D5, 3),
                         listOf(Degree.D7, Degree.D2),
-                        TimedSustain,
+                        Sustain.Finite(Timing(standardTempo).quarter()),
+                        duration = ContextDuration.Immediate,
+                    ),
+                    sequenceNode(
+                        DegreeWithOctave(Degree.D1, 3),
+                        listOf(Degree.D3, Degree.D5),
+                        Sustain.Finite(Timing(standardTempo).half()),
+                        duration = ContextDuration.SameAsScaleRotation,
                     ),
                 ),
         ),
@@ -142,17 +161,20 @@ private val sequencePresets =
                     sequenceNode(
                         DegreeWithOctave(Degree.D2, 3),
                         listOf(Degree.D4, Degree.D6),
-                        TimedSustain,
+                        Sustain.Finite(Timing(standardTempo).quarter()),
+                        duration = ContextDuration.Immediate,
                     ),
                     sequenceNode(
                         DegreeWithOctave(Degree.D5, 3),
                         listOf(Degree.D7, Degree.D2),
-                        TimedSustain,
+                        Sustain.Finite(Timing(standardTempo).quarter()),
+                        duration = ContextDuration.Immediate,
                     ),
                     sequenceNode(
                         DegreeWithOctave(Degree.D1, 3),
                         listOf(Degree.D3, Degree.D5),
-                        TimedSustain,
+                        Sustain.Finite(Timing(standardTempo).half()),
+                        duration = ContextDuration.SameAsScaleRotation,
                     ),
                 ),
         ),
@@ -168,7 +190,7 @@ private fun editableContext(nodes: List<DegreeContextNode>): DegreeContext =
 
 @Composable
 fun ContextScreen(onNavigateBack: () -> Unit, onContextChosen: (DegreeContext) -> Unit) {
-  var context by remember { mutableStateOf(editableContext(sequencePresets[1].nodes)) }
+  var context by remember { mutableStateOf(editableContext(sequencePresets[0].nodes)) }
   val nodes = context.nodes
 
   StaticScreenFrame(
@@ -339,8 +361,17 @@ private fun SequenceNodeCard(
               },
           )
           SetupMelodyRow(
-              melody = node.setupMelody,
-              onChange = { onNodeChange(node.copy(setupMelody = it)) },
+              melody = node.setupMelody?.melody,
+              onChange = {
+                onNodeChange(
+                    node.copy(
+                        setupMelody =
+                            if (it != null)
+                                SetupMelody(melody = it, repeat = SetupMelodyRepeat.Once)
+                            else null
+                    )
+                )
+              },
           )
           NodePreviewRow()
           SetupMelodyPreviewRow()

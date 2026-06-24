@@ -267,7 +267,7 @@ private fun ContextDetails(context: DegreeContext) {
           )
           DegreeSequenceChips(
               labels =
-                  listOf(melody.firstDegree.toString()) + melody.extraDegrees.map { it.toString() }
+                  listOf(melody.melody.firstDegree.toString()) + melody.melody.extraDegrees.map { it.toString() }
           )
         }
       }

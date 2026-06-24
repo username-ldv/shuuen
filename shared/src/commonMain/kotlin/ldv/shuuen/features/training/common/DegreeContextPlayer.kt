@@ -19,7 +19,8 @@ import ldv.shuuen.core.music.ContextDuration
 import ldv.shuuen.core.music.DegreeContext
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.Pitch
-import ldv.shuuen.core.music.RelativeMelody
+import ldv.shuuen.core.music.SetupMelody
+import ldv.shuuen.core.music.SetupMelodyRepeat
 import ldv.shuuen.core.music.Sustain
 import ldv.shuuen.core.music.constructAscSetupMelodyFlow
 import ldv.shuuen.core.music.toChord
@@ -34,12 +35,13 @@ private data class CurrentlyPlayingNode(
 private data class QuestionEvent(val currentQuestion: Int = 1, val newRoot: Pitch? = null)
 
 class DegreeContextPlayer(
-    val midiEngine: MidiEngine,
-    val context: DegreeContext,
-    startingRoot: Pitch,
-    val endlessPreMelody: Duration = 2.seconds,
-    val finitePreMelody: Duration = 1.seconds,
-    val afterSetupMelody: Duration = 1.5.seconds,
+  val midiEngine: MidiEngine,
+  val context: DegreeContext,
+  startingRoot: Pitch,
+  val endlessPreMelody: Duration = 2.seconds,
+  val finitePreMelody: Duration = 1.seconds,
+  val endlessAfterMelody: Duration = 1.5.seconds,
+  val afterFinite: Duration = 1.seconds,
 ) {
   private val questionEvent = MutableStateFlow(QuestionEvent())
   private val currentRoot = MutableStateFlow(startingRoot)
@@ -47,7 +49,8 @@ class DegreeContextPlayer(
   val ready = _ready.asStateFlow()
   private val _setupMelodyNotes = MutableStateFlow<Note?>(null)
   val setupMelodyNotes = _setupMelodyNotes.asStateFlow()
-  private var setupMelody: RelativeMelody? = null
+  private var setupMelody: SetupMelody? = null
+  private var playedSetupMelody: Boolean = false
   private var currentlyPlaying: CurrentlyPlayingNode? = null
   var currentNodeCount: Int = 0
     private set
@@ -108,7 +111,8 @@ class DegreeContextPlayer(
   fun isChangingNode(currentQuestion: Int, isNewRoot: Boolean): Boolean {
     return currentlyPlaying?.let { playing ->
       when (val d = playing.duration) {
-        is ContextDuration.Finite -> currentQuestion - playing.startQuestionNumber >= d.durationInQuestions
+        is ContextDuration.Finite ->
+            currentQuestion - playing.startQuestionNumber >= d.durationInQuestions
         is ContextDuration.SameAsScaleRotation -> isNewRoot
         else -> false
       }
@@ -118,11 +122,13 @@ class DegreeContextPlayer(
   suspend fun playSetupMelody() {
     val m = setupMelody ?: return
     var currentlyPlaying: Note? = null
+    if (m.repeat == SetupMelodyRepeat.Once && playedSetupMelody) return
     // todo: actually handle
     constructAscSetupMelodyFlow(
             currentRoot.value,
             m.let { melody ->
-              listOf(melody.firstDegree.degree) + melody.extraDegrees.map { it.degree }
+              listOf(melody.melody.firstDegree.degree) +
+                  melody.melody.extraDegrees.map { it.degree }
             },
         )
         .onEach { note ->
@@ -135,13 +141,13 @@ class DegreeContextPlayer(
             currentlyPlaying?.let { midiEngine.stopNote(it) }
           }
           _setupMelodyNotes.value = null
+          playedSetupMelody = true
         }
         .collect { note ->
           midiEngine.playNote(note, MidiChannel.Notes)
           currentlyPlaying = note
           _setupMelodyNotes.value = note
         }
-    delay(afterSetupMelody)
   }
 
   private fun stopCurrent(advance: Boolean) {
@@ -178,10 +184,11 @@ class DegreeContextPlayer(
     when (val sustain = node.sustain) {
       is Sustain.Endless -> {
         Napier.v { "Endless sustain node" }
-        delay(endlessPreMelody)
         if (node.setupMelody != null) {
+          delay(endlessPreMelody)
           setupMelody = node.setupMelody
           playSetupMelody()
+          delay(endlessAfterMelody)
         }
         _ready.value = true
         return
@@ -191,8 +198,8 @@ class DegreeContextPlayer(
         Napier.v { "Finite sustain node..." }
         delay(sustain.duration)
         stopCurrent(true)
-        delay(finitePreMelody)
         if (node.setupMelody != null) {
+          delay(finitePreMelody)
           setupMelody = node.setupMelody
           playSetupMelody()
         }
@@ -200,6 +207,7 @@ class DegreeContextPlayer(
           Napier.v { "continuing next..." }
           playNode(c, questionEvent)
         }
+        delay(afterFinite)
         _ready.value = true
         return
       }
