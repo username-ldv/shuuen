@@ -15,7 +15,7 @@ fun App() {
   KoinApplication(configuration = koinConfiguration {
     modules(listOf(commonModule, platformModule))
   }) {
-    ldv.shuuen.core.ui.theme.ShuuenTheme(modifier = Modifier.fillMaxSize()) {
+    ShuuenTheme(modifier = Modifier.fillMaxSize()) {
       NavigationRoot()
     }
   }
