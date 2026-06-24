@@ -18,11 +18,12 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.annotation.KoinExperimentalAPI
 import org.koin.dsl.module
 import org.koin.dsl.navigation3.navigation
+import org.koin.plugin.module.dsl.single
 import org.koin.plugin.module.dsl.viewModel
 
 @OptIn(KoinExperimentalAPI::class)
 val melodiesTrainingNavigationModule = module {
-  single { MelodiesSession() }
+  single<MelodiesSession>()
   viewModel<MelodiesSetupScreenViewModel>()
   viewModel<MelodiesPlayScreenViewModel>()
 
