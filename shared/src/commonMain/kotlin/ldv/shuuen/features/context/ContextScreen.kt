@@ -42,9 +42,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.aakira.napier.Napier
-import kotlin.time.Duration.Companion.seconds
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 import ldv.shuuen.core.music.ContextDuration
 import ldv.shuuen.core.music.ContextSource
 import ldv.shuuen.core.music.Degree
@@ -75,6 +72,9 @@ import ldv.shuuen.core.ui.components.music.DegreePalette
 import ldv.shuuen.core.ui.components.music.DegreeSequenceChips
 import ldv.shuuen.core.ui.components.music.DirectedDegreeSequenceEditor
 import ldv.shuuen.core.ui.components.music.OctaveStepper
+import kotlin.time.Duration.Companion.seconds
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 private val TimedSustain = Sustain.Finite(1.seconds)
 
@@ -357,7 +357,13 @@ private fun SequenceNodeCard(
           SustainRow(
               sustain = node.sustain is Sustain.Endless,
               onChange = {
-                onNodeChange(node.copy(sustain = if (it) Sustain.Endless else TimedSustain))
+                onNodeChange(
+                    node.copy(
+                        sustain =
+                            if (it) Sustain.Endless
+                            else Sustain.Finite(Timing(standardTempo).quarter())
+                    )
+                )
               },
           )
           SetupMelodyRow(
