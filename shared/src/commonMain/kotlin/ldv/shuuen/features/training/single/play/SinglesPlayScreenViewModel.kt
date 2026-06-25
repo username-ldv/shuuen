@@ -194,7 +194,7 @@ class SinglesPlayScreenViewModel(
     val previous = playMelodyJob
     playMelodyJob = viewModelScope.launch {
       previous?.cancelAndJoin()
-      degreeContextPlayer?.playSetupMelody()
+      degreeContextPlayer?.playSetupMelody(true)
     }
   }
 

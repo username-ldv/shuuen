@@ -122,10 +122,11 @@ class DegreeContextPlayer(
     } ?: false
   }
 
-  suspend fun playSetupMelody() {
+  suspend fun playSetupMelody(manual: Boolean = false) {
+    Napier.v { "setup melody $setupMelody" }
     val m = setupMelody ?: return
     var currentlyPlaying: Note? = null
-    if (m.repeat == SetupMelodyRepeat.Once && playedSetupMelody) return
+    if (m.repeat == SetupMelodyRepeat.Once && playedSetupMelody && !manual) return
     // todo: actually handle
     constructAscSetupMelodyFlow(
             currentRoot.value,
