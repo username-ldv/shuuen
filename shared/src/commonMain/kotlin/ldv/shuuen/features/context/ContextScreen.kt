@@ -319,6 +319,8 @@ private fun SequenceNodeCard(
     onNodeChange: (DegreeContextNode) -> Unit,
     onDelete: (() -> Unit)?,
 ) {
+  val sustainEnabled = node.sustain is Sustain.Endless
+
   SurfaceCard {
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
       Row(
@@ -363,13 +365,21 @@ private fun SequenceNodeCard(
         NodeDegreesEditor(node = node, onNodeChange = onNodeChange)
         Spacer(modifier = Modifier.height(spacing))
         SustainRow(
-          sustain = node.sustain is Sustain.Endless,
-          onChange = {
+          sustain = sustainEnabled,
+          onChange = { enabled ->
+            val updatedDuration =
+                if (enabled && node.duration == ContextDuration.Immediate) {
+                  ContextDuration.SameAsScaleRotation
+                } else {
+                  node.duration
+                }
+
             onNodeChange(
               node.copy(
                 sustain =
-                  if (it) Sustain.Endless
-                  else Sustain.Finite(Timing(standardTempo).quarter())
+                  if (enabled) Sustain.Endless
+                  else Sustain.Finite(Timing(standardTempo).quarter()),
+                duration = updatedDuration,
               )
             )
           },
@@ -393,6 +403,7 @@ private fun SequenceNodeCard(
         Spacer(modifier = Modifier.height(spacing))
         DurationPicker(
             duration = node.duration,
+            immediateVisible = !sustainEnabled,
             onDurationChange = { onNodeChange(node.copy(duration = it)) },
         )
         AnimatedVisibility(
@@ -430,9 +441,17 @@ private fun ContextDuration.sameModeAs(other: ContextDuration): Boolean =
 @Composable
 private fun DurationPicker(
     duration: ContextDuration,
+    immediateVisible: Boolean,
     onDurationChange: (ContextDuration) -> Unit,
 ) {
   val finiteDuration = duration as? ContextDuration.Finite ?: ContextDuration.Finite(4)
+  val topDurations =
+      if (immediateVisible) {
+        listOf(ContextDuration.Immediate, finiteDuration)
+      } else {
+        listOf(finiteDuration)
+      }
+
   Column(
       modifier =
           Modifier.fillMaxWidth()
@@ -440,7 +459,7 @@ private fun DurationPicker(
               .background(Color.White.copy(alpha = 0.05f)),
   ) {
     DurationRow(
-        durations = listOf(ContextDuration.Immediate, finiteDuration),
+        durations = topDurations,
         selectedDuration = duration,
         onDurationChange = onDurationChange,
     )
