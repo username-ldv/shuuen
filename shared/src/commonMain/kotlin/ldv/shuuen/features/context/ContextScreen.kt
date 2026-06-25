@@ -88,7 +88,7 @@ private val TimedSustain = Sustain.Finite(1.seconds)
 private const val standardTempo = 90
 
 private fun sequenceNode(
-    firstDegree: DegreeWithOctave = DegreeWithOctave(Degree.D1, 3),
+    firstDegree: DegreeWithOctave = DegreeWithOctave(Degree.D1, 2),
     extraDegrees: List<Degree> = listOf(),
     sustain: Sustain = Sustain.Endless,
     duration: ContextDuration = ContextDuration.SameAsScaleRotation,
