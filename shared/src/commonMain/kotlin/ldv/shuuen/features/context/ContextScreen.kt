@@ -386,17 +386,8 @@ private fun SequenceNodeCard(
         )
         Spacer(modifier = Modifier.height(spacing))
         SetupMelodyRow(
-          melody = node.setupMelody?.melody,
-          onChange = {
-            onNodeChange(
-              node.copy(
-                setupMelody =
-                  if (it != null)
-                    SetupMelody(melody = it, repeat = SetupMelodyRepeat.Once)
-                  else null
-              )
-            )
-          },
+          setupMelody = node.setupMelody,
+          onChange = { onNodeChange(node.copy(setupMelody = it)) },
         )
         Spacer(modifier = Modifier.height(spacing))
         NodePreviewRow()
@@ -603,10 +594,11 @@ private fun SustainRow(
 
 @Composable
 private fun SetupMelodyRow(
-    melody: RelativeMelody?,
-    onChange: (RelativeMelody?) -> Unit,
+    setupMelody: SetupMelody?,
+    onChange: (SetupMelody?) -> Unit,
 ) {
   var editing by rememberSaveable { mutableStateOf(false) }
+  val melody = setupMelody?.melody
 
   Column {
     SoftControl(
@@ -647,22 +639,102 @@ private fun SetupMelodyRow(
           modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
           verticalArrangement = Arrangement.spacedBy(10.dp),
       ) {
-        melody?.let { melody ->
+        setupMelody?.let { setupMelody ->
+          val melody = setupMelody.melody
+
           GroupLabel("FIRST DEGREE OCTAVE")
           OctaveStepper(
               melody.firstDegree.octave,
-              { onChange(melody.copy(firstDegree = melody.firstDegree.copy(octave = it))) },
+              {
+                onChange(
+                    setupMelody.copy(
+                        melody = melody.copy(firstDegree = melody.firstDegree.copy(octave = it))
+                    )
+                )
+              },
           )
         }
 
         DirectedDegreeSequenceEditor(
             steps = melody,
-            onChange = onChange,
+            onChange = { updatedMelody ->
+              onChange(
+                  updatedMelody?.let {
+                    SetupMelody(melody = it, repeat = setupMelody?.repeat ?: SetupMelodyRepeat.Once)
+                  }
+              )
+            },
             modifier = Modifier.padding(top = 2.dp),
         )
+        setupMelody?.let { setupMelody ->
+          GroupLabel("REPEAT")
+          SetupMelodyRepeatPicker(
+              repeat = setupMelody.repeat,
+              onRepeatChange = { onChange(setupMelody.copy(repeat = it)) },
+          )
+        }
         SetupMelodyPreviewRow()
       }
     }
+  }
+}
+
+private val SetupMelodyRepeat.repeatLabel: String
+  get() =
+      when (this) {
+        SetupMelodyRepeat.Once -> "Once"
+        SetupMelodyRepeat.EveryTime -> "Every time"
+      }
+
+@Composable
+private fun SetupMelodyRepeatPicker(
+    repeat: SetupMelodyRepeat,
+    onRepeatChange: (SetupMelodyRepeat) -> Unit,
+) {
+  Row(
+      modifier =
+          Modifier.fillMaxWidth()
+              .height(42.dp)
+              .clip(ShuuenUi.ControlShape)
+              .background(Color.White.copy(alpha = 0.05f)),
+  ) {
+    SetupMelodyRepeat.entries.forEachIndexed { index, option ->
+      SetupMelodyRepeatSegment(
+          repeat = option,
+          selected = option == repeat,
+          onClick = { onRepeatChange(option) },
+          modifier = Modifier.weight(1f),
+      )
+      if (index < SetupMelodyRepeat.entries.lastIndex) {
+        Box(modifier = Modifier.width(1.dp).fillMaxHeight().background(ShuuenUi.Hairline))
+      }
+    }
+  }
+}
+
+@Composable
+private fun SetupMelodyRepeatSegment(
+    repeat: SetupMelodyRepeat,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+  Box(
+      modifier =
+          modifier
+              .fillMaxHeight()
+              .background(if (selected) ShuuenUi.Inverse else Color.Transparent)
+              .clickable(onClick = onClick)
+              .padding(horizontal = 10.dp),
+      contentAlignment = Alignment.Center,
+  ) {
+    Text(
+        text = repeat.repeatLabel,
+        color = if (selected) ShuuenUi.OnInverse else ShuuenUi.Muted,
+        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
   }
 }
 

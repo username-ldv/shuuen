@@ -30,10 +30,12 @@ private data class CurrentlyPlayingNode(
     val channel: MidiChannel,
     val startQuestionNumber: Int,
     val duration: ContextDuration,
+  val sustain: Sustain
 )
 
 private data class QuestionEvent(val currentQuestion: Int = 1, val newRoot: Pitch? = null)
 
+// todo: improve logic. The logic is kind of all over the place.
 class DegreeContextPlayer(
   val midiEngine: MidiEngine,
   val context: DegreeContext,
@@ -79,7 +81,8 @@ class DegreeContextPlayer(
               }
           Napier.v { "Need rotation: $needRotation" }
           if (needRotation) {
-            stopCurrent(true)
+            val advance = playing.sustain == Sustain.Endless
+            stopCurrent(advance)
             _ready.value = false
           } else {
             // else continue collecting current
@@ -179,7 +182,7 @@ class DegreeContextPlayer(
     //            is ContextDuration.SameAsScaleRotation -> TODO("Not implemented yet.")
     //          }
     currentlyPlaying =
-        CurrentlyPlayingNode(chord, channel, questionEvent.currentQuestion, node.duration)
+        CurrentlyPlayingNode(chord, channel, questionEvent.currentQuestion, node.duration, node.sustain)
 
     when (val sustain = node.sustain) {
       is Sustain.Endless -> {
@@ -206,6 +209,7 @@ class DegreeContextPlayer(
         if (node.duration == ContextDuration.Immediate) {
           Napier.v { "continuing next..." }
           playNode(c, questionEvent)
+          return
         }
         delay(afterFinite)
         _ready.value = true
