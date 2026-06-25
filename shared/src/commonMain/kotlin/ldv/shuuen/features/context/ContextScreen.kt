@@ -1,6 +1,10 @@
 package ldv.shuuen.features.context
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -489,7 +493,7 @@ private fun SetupMelodyRow(
 ) {
   var editing by rememberSaveable { mutableStateOf(false) }
 
-  Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+  Column {
     SoftControl(
         modifier = Modifier.fillMaxWidth(),
         onClick = { editing = !editing },
@@ -519,8 +523,15 @@ private fun SetupMelodyRow(
           modifier = Modifier.size(22.dp),
       )
     }
-    AnimatedVisibility(visible = editing) {
-      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    AnimatedVisibility(
+        visible = editing,
+        enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+        exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
+    ) {
+      Column(
+          modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+          verticalArrangement = Arrangement.spacedBy(10.dp),
+      ) {
         melody?.let { melody ->
           GroupLabel("FIRST DEGREE OCTAVE")
           OctaveStepper(
