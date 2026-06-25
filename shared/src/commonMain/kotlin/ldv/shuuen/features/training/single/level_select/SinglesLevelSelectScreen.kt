@@ -35,6 +35,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.core.music.ContextDuration
 import ldv.shuuen.core.music.DegreeContext
+import ldv.shuuen.core.music.SetupMelodyRepeat
 import ldv.shuuen.core.music.Sustain
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.LevelSource
@@ -258,16 +259,17 @@ private fun ContextDetails(context: DegreeContext) {
         val labels = listOf(node.firstDegree.toString()) + node.extraDegrees.map { it.label }
         DegreeSequenceChips(labels = labels)
       }
-      node.setupMelody?.let { melody ->
+      node.setupMelody?.let { setupMelody ->
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
           Text(
-              text = "Node ${index + 1} · Setup melody",
+              text = "Node ${index + 1} · Setup melody · ${repeatLabel(setupMelody.repeat)}",
               color = ShuuenUi.Dim,
               style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.2.sp),
           )
           DegreeSequenceChips(
               labels =
-                  listOf(melody.melody.firstDegree.toString()) + melody.melody.extraDegrees.map { it.toString() }
+                  listOf(setupMelody.melody.firstDegree.toString()) +
+                      setupMelody.melody.extraDegrees.map { it.toString() }
           )
         }
       }
@@ -318,4 +320,10 @@ private fun sustainLabel(sustain: Sustain): String =
     when (sustain) {
       is Sustain.Endless -> "Sustained"
       is Sustain.Finite -> "Timed"
+    }
+
+private fun repeatLabel(repeat: SetupMelodyRepeat): String =
+    when (repeat) {
+      SetupMelodyRepeat.Once -> "Once"
+      SetupMelodyRepeat.EveryTime -> "Every time"
     }
