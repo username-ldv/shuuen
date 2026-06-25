@@ -13,11 +13,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -45,6 +47,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.room3.util.TableInfo
 import io.github.aakira.napier.Napier
 import ldv.shuuen.core.music.ContextDuration
 import ldv.shuuen.core.music.ContextSource
@@ -317,90 +320,183 @@ private fun SequenceNodeCard(
     onDelete: (() -> Unit)?,
 ) {
   SurfaceCard {
-    Box(modifier = Modifier.fillMaxWidth()) {
-      if (onDelete != null) {
-        Icon(
-            imageVector = Icons.Rounded.Delete,
-            contentDescription = "Delete node",
-            tint = ShuuenUi.Dim,
-            modifier =
-                Modifier.align(Alignment.TopEnd)
-                    .size(24.dp)
-                    .clip(ShuuenUi.ControlShape)
-                    .clickable(onClick = onDelete),
-        )
-      }
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
       Row(
           modifier = Modifier.fillMaxWidth().padding(end = 30.dp),
           verticalAlignment = Alignment.Top,
           horizontalArrangement = Arrangement.spacedBy(14.dp),
       ) {
         NodeNumber(number = number)
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-          Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = "NODE $number",
-                color = ShuuenUi.Text,
-                style =
-                    MaterialTheme.typography.titleMedium.copy(
-                        letterSpacing = ShuuenUi.titlesSpacing,
-                        fontWeight = FontWeight.SemiBold,
-                    ),
-            )
-            Text(
-                text = if (isLast) "Plays before restart" else "Plays before Node ${number + 1}",
-                color = ShuuenUi.Muted,
-                style = MaterialTheme.typography.bodyMedium,
-            )
-          }
-
-          NodeDegreesEditor(node = node, onNodeChange = onNodeChange)
-          SustainRow(
-              sustain = node.sustain is Sustain.Endless,
-              onChange = {
-                onNodeChange(
-                    node.copy(
-                        sustain =
-                            if (it) Sustain.Endless
-                            else Sustain.Finite(Timing(standardTempo).quarter())
-                    )
-                )
-              },
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+          Text(
+            text = "NODE $number",
+            color = ShuuenUi.Text,
+            style =
+              MaterialTheme.typography.titleMedium.copy(
+                letterSpacing = ShuuenUi.titlesSpacing,
+                fontWeight = FontWeight.SemiBold,
+              ),
           )
-          SetupMelodyRow(
-              melody = node.setupMelody?.melody,
-              onChange = {
-                onNodeChange(
-                    node.copy(
-                        setupMelody =
-                            if (it != null)
-                                SetupMelody(melody = it, repeat = SetupMelodyRepeat.Once)
-                            else null
-                    )
-                )
-              },
+          Text(
+            text = if (isLast) "Plays before restart" else "Plays before Node ${number + 1}",
+            color = ShuuenUi.Muted,
+            style = MaterialTheme.typography.bodyMedium,
           )
-          NodePreviewRow()
-          // todo: make it be 4 choices:
-          // 1) Finite (has some amount of questions before going to the next node or to the start,
-          // from 1 to some number)
-          // 2) Immediate (to make Cadence-like Context's from Nodes, like a certain chord
-          // progression playing Nodes immediately one after each other, like in FET currently)
-          // 3) Endless (this node will continue/idle indefinitely to the end of the Quiz level,
-          // removing/ignoring all next nodes if they exist)
-          // 4) Rotate (go next node) exactly when the scale will rotate the root (when you've
-          // chosen multiple or Random scale in the level setup screen)
-          InlineCounter(
-              label = if (isLast) "QUESTIONS BEFORE RESTART" else "QUESTIONS BEFORE NEXT",
-              value = (node.duration as? ContextDuration.Finite)?.durationInQuestions ?: 1,
-              onChange = { onNodeChange(node.copy(duration = ContextDuration.Finite(it))) },
+        }
+        if (onDelete != null) {
+          Icon(
+            imageVector = Icons.Rounded.Delete,
+            contentDescription = "Delete node",
+            tint = ShuuenUi.Dim,
+            modifier =
+              Modifier
+                .size(24.dp)
+                .clip(ShuuenUi.ControlShape)
+                .clickable(onClick = onDelete),
           )
         }
       }
+      val spacing = 14.dp
+      Column(
+//        verticalArrangement = Arrangement.spacedBy(14.dp),
+      ) {
+        NodeDegreesEditor(node = node, onNodeChange = onNodeChange)
+        Spacer(modifier = Modifier.height(spacing))
+        SustainRow(
+          sustain = node.sustain is Sustain.Endless,
+          onChange = {
+            onNodeChange(
+              node.copy(
+                sustain =
+                  if (it) Sustain.Endless
+                  else Sustain.Finite(Timing(standardTempo).quarter())
+              )
+            )
+          },
+        )
+        Spacer(modifier = Modifier.height(spacing))
+        SetupMelodyRow(
+          melody = node.setupMelody?.melody,
+          onChange = {
+            onNodeChange(
+              node.copy(
+                setupMelody =
+                  if (it != null)
+                    SetupMelody(melody = it, repeat = SetupMelodyRepeat.Once)
+                  else null
+              )
+            )
+          },
+        )
+        Spacer(modifier = Modifier.height(spacing))
+        NodePreviewRow()
+        Spacer(modifier = Modifier.height(spacing))
+        DurationPicker(
+            duration = node.duration,
+            onDurationChange = { onNodeChange(node.copy(duration = it)) },
+        )
+        AnimatedVisibility(
+            visible = node.duration is ContextDuration.Finite,
+        ) {
+          Column {
+            Spacer(modifier = Modifier.height(spacing))
+            InlineCounter(
+              label = if (isLast) "QUESTIONS BEFORE RESTART" else "QUESTIONS BEFORE NEXT",
+              value = (node.duration as? ContextDuration.Finite)?.durationInQuestions ?: 4,
+              onChange = { onNodeChange(node.copy(duration = ContextDuration.Finite(it))) },
+            )
+          }
+        }
+      }
     }
+  }
+}
+
+private val ContextDuration.durationLabel: String
+  get() =
+      when (this) {
+        is ContextDuration.Finite -> "Finite"
+        ContextDuration.Immediate -> "Immediate"
+        ContextDuration.Endless -> "Endless"
+        ContextDuration.SameAsScaleRotation -> "Rotate"
+      }
+
+private fun ContextDuration.sameModeAs(other: ContextDuration): Boolean =
+    when {
+      this is ContextDuration.Finite && other is ContextDuration.Finite -> true
+      else -> this == other
+    }
+
+@Composable
+private fun DurationPicker(
+    duration: ContextDuration,
+    onDurationChange: (ContextDuration) -> Unit,
+) {
+  val finiteDuration = duration as? ContextDuration.Finite ?: ContextDuration.Finite(4)
+  Column(
+      modifier =
+          Modifier.fillMaxWidth()
+              .clip(ShuuenUi.ControlShape)
+              .background(Color.White.copy(alpha = 0.05f)),
+  ) {
+    DurationRow(
+        durations = listOf(ContextDuration.Immediate, finiteDuration),
+        selectedDuration = duration,
+        onDurationChange = onDurationChange,
+    )
+    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(ShuuenUi.Hairline))
+    DurationRow(
+        durations = listOf(ContextDuration.SameAsScaleRotation, ContextDuration.Endless),
+        selectedDuration = duration,
+        onDurationChange = onDurationChange,
+    )
+  }
+}
+
+@Composable
+private fun DurationRow(
+    durations: List<ContextDuration>,
+    selectedDuration: ContextDuration,
+    onDurationChange: (ContextDuration) -> Unit,
+) {
+  Row(modifier = Modifier.fillMaxWidth().height(42.dp)) {
+    durations.forEachIndexed { index, duration ->
+      DurationSegment(
+          duration = duration,
+          selected = duration.sameModeAs(selectedDuration),
+          onClick = { onDurationChange(duration) },
+          modifier = Modifier.weight(1f),
+      )
+      if (index < durations.lastIndex) {
+        Box(modifier = Modifier.width(1.dp).fillMaxHeight().background(ShuuenUi.Hairline))
+      }
+    }
+  }
+}
+
+@Composable
+private fun DurationSegment(
+    duration: ContextDuration,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+  Box(
+      modifier =
+          modifier
+              .fillMaxHeight()
+              .background(if (selected) ShuuenUi.Inverse else Color.Transparent)
+              .clickable(onClick = onClick)
+              .padding(horizontal = 10.dp),
+      contentAlignment = Alignment.Center,
+  ) {
+    Text(
+        text = duration.durationLabel,
+        color = if (selected) ShuuenUi.OnInverse else ShuuenUi.Muted,
+        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
   }
 }
 
