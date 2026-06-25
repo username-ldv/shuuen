@@ -380,7 +380,6 @@ private fun SequenceNodeCard(
               },
           )
           NodePreviewRow()
-          SetupMelodyPreviewRow()
           // todo: make it be 4 choices:
           // 1) Finite (has some amount of questions before going to the next node or to the start,
           // from 1 to some number)
@@ -535,6 +534,7 @@ private fun SetupMelodyRow(
             onChange = onChange,
             modifier = Modifier.padding(top = 2.dp),
         )
+        SetupMelodyPreviewRow()
       }
     }
   }
