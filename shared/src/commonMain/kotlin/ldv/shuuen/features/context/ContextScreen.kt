@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
@@ -47,7 +48,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.room3.util.TableInfo
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.aakira.napier.Napier
 import ldv.shuuen.core.music.ContextDuration
 import ldv.shuuen.core.music.ContextSource
@@ -79,6 +80,7 @@ import ldv.shuuen.core.ui.components.music.DegreePalette
 import ldv.shuuen.core.ui.components.music.DegreeSequenceChips
 import ldv.shuuen.core.ui.components.music.DirectedDegreeSequenceEditor
 import ldv.shuuen.core.ui.components.music.OctaveStepper
+import org.koin.compose.viewmodel.koinViewModel
 import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -196,7 +198,11 @@ private fun editableContext(nodes: List<DegreeContextNode>): DegreeContext =
     )
 
 @Composable
-fun ContextScreen(onNavigateBack: () -> Unit, onContextChosen: (DegreeContext) -> Unit) {
+fun ContextScreen(
+  onNavigateBack: () -> Unit,
+  onContextChosen: (DegreeContext) -> Unit,
+  viewModel: ContextViewModel,
+) {
   var context by remember { mutableStateOf(editableContext(sequencePresets[0].nodes)) }
   val nodes = context.nodes
 
@@ -240,6 +246,7 @@ fun ContextScreen(onNavigateBack: () -> Unit, onContextChosen: (DegreeContext) -
                         context.copy(nodes = nodes.toMutableList().also { it.removeAt(index) })
                   }
                 } else null,
+            onPreviewSetupMelody = viewModel::previewSetupMelody,
         )
       }
       DashedAddButton(
@@ -318,6 +325,7 @@ private fun SequenceNodeCard(
     node: DegreeContextNode,
     onNodeChange: (DegreeContextNode) -> Unit,
     onDelete: (() -> Unit)?,
+    onPreviewSetupMelody: (RelativeMelody) -> Unit,
 ) {
   val sustainEnabled = node.sustain is Sustain.Endless
 
@@ -388,6 +396,7 @@ private fun SequenceNodeCard(
         SetupMelodyRow(
           setupMelody = node.setupMelody,
           onChange = { onNodeChange(node.copy(setupMelody = it)) },
+          onPreview = onPreviewSetupMelody,
         )
         Spacer(modifier = Modifier.height(spacing))
         NodePreviewRow()
@@ -596,6 +605,7 @@ private fun SustainRow(
 private fun SetupMelodyRow(
     setupMelody: SetupMelody?,
     onChange: (SetupMelody?) -> Unit,
+    onPreview: (RelativeMelody) -> Unit,
 ) {
   var editing by rememberSaveable { mutableStateOf(false) }
   val melody = setupMelody?.melody
@@ -673,7 +683,9 @@ private fun SetupMelodyRow(
               onRepeatChange = { onChange(setupMelody.copy(repeat = it)) },
           )
         }
-        SetupMelodyPreviewRow()
+        SetupMelodyPreviewRow(
+            onPreview = setupMelody?.let { { onPreview(it.melody) } },
+        )
       }
     }
   }
@@ -755,9 +767,11 @@ private fun NodePreviewRow() {
 }
 
 @Composable
-private fun SetupMelodyPreviewRow() {
-  SoftControl(modifier = Modifier.fillMaxWidth()) {
-    PlayBubble()
+// todo: maybe not inject the viewmodel here xd
+private fun SetupMelodyPreviewRow(onPreview: (() -> Unit)?, viewModel: ContextViewModel = koinViewModel()) {
+  val playing by viewModel.playingMelody.collectAsStateWithLifecycle()
+  SoftControl(modifier = Modifier.fillMaxWidth(), onClick = onPreview) {
+    PlayBubble(playing)
     Text(
         text = "Preview setup melody",
         color = ShuuenUi.Text,
@@ -919,13 +933,13 @@ private fun SmallPill(
 }
 
 @Composable
-private fun PlayBubble() {
+private fun PlayBubble(playing: Boolean = false) {
   Box(
       modifier = Modifier.size(34.dp).clip(CircleShape).background(ShuuenUi.Inverse),
       contentAlignment = Alignment.Center,
   ) {
     Icon(
-        imageVector = Icons.Rounded.PlayArrow,
+        imageVector = if (!playing) Icons.Rounded.PlayArrow else Icons.AutoMirrored.Rounded.ArrowBack,
         contentDescription = null,
         tint = ShuuenUi.OnInverse,
         modifier = Modifier.size(22.dp),
