@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -356,7 +357,7 @@ private fun SequenceNodeCard(
   SurfaceCard {
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
       Row(
-          modifier = Modifier.fillMaxWidth().padding(end = 30.dp),
+          modifier = Modifier.fillMaxWidth(),
           verticalAlignment = Alignment.Top,
           horizontalArrangement = Arrangement.spacedBy(14.dp),
       ) {
@@ -378,16 +379,18 @@ private fun SequenceNodeCard(
           )
         }
         if (onDelete != null) {
-          Icon(
-            imageVector = Icons.Rounded.Delete,
-            contentDescription = "Delete node",
-            tint = ShuuenUi.Dim,
-            modifier =
-              Modifier
-                .size(24.dp)
-                .clip(ShuuenUi.ControlShape)
-                .clickable(onClick = onDelete),
-          )
+          Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+            Icon(
+              imageVector = Icons.Rounded.Delete,
+              contentDescription = "Delete node",
+              tint = ShuuenUi.Dim,
+              modifier =
+                Modifier
+                  .size(28.dp)
+                  .clip(ShuuenUi.ControlShape)
+                  .clickable(onClick = onDelete),
+            )
+          }
         }
       }
       val spacing = 14.dp
