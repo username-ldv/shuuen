@@ -22,13 +22,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -80,7 +80,6 @@ import ldv.shuuen.core.ui.components.music.DegreePalette
 import ldv.shuuen.core.ui.components.music.DegreeSequenceChips
 import ldv.shuuen.core.ui.components.music.DirectedDegreeSequenceEditor
 import ldv.shuuen.core.ui.components.music.OctaveStepper
-import org.koin.compose.viewmodel.koinViewModel
 import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -205,6 +204,8 @@ fun ContextScreen(
 ) {
   var context by remember { mutableStateOf(editableContext(sequencePresets[0].nodes)) }
   val nodes = context.nodes
+  val playingNodeNumber by viewModel.playingNodeNumber.collectAsStateWithLifecycle()
+  val playingMelody by viewModel.playingMelody.collectAsStateWithLifecycle()
 
   StaticScreenFrame(
       verticalSpacing = 18.dp,
@@ -229,7 +230,12 @@ fun ContextScreen(
           )
         },
     ) {
-      PresetRow(onApply = { context = context.copy(nodes = it) })
+      PresetRow(
+          onApply = {
+            viewModel.stopNodePreview()
+            context = context.copy(nodes = it)
+          },
+      )
       PreviewFullSequence()
       nodes.forEachIndexed { index, node ->
         SequenceNodeCard(
@@ -242,10 +248,14 @@ fun ContextScreen(
             onDelete =
                 if (nodes.size > 1) {
                   {
+                    viewModel.stopNodePreview()
                     context =
                         context.copy(nodes = nodes.toMutableList().also { it.removeAt(index) })
                   }
                 } else null,
+            nodePlaying = playingNodeNumber == index + 1,
+            setupMelodyPlaying = playingMelody,
+            onPreviewNode = { viewModel.toggleNodePreview(index + 1, node) },
             onPreviewSetupMelody = viewModel::previewSetupMelody,
         )
       }
@@ -325,6 +335,9 @@ private fun SequenceNodeCard(
     node: DegreeContextNode,
     onNodeChange: (DegreeContextNode) -> Unit,
     onDelete: (() -> Unit)?,
+    nodePlaying: Boolean,
+    setupMelodyPlaying: Boolean,
+    onPreviewNode: () -> Unit,
     onPreviewSetupMelody: (RelativeMelody) -> Unit,
 ) {
   val sustainEnabled = node.sustain is Sustain.Endless
@@ -396,10 +409,11 @@ private fun SequenceNodeCard(
         SetupMelodyRow(
           setupMelody = node.setupMelody,
           onChange = { onNodeChange(node.copy(setupMelody = it)) },
+          playing = setupMelodyPlaying,
           onPreview = onPreviewSetupMelody,
         )
         Spacer(modifier = Modifier.height(spacing))
-        NodePreviewRow()
+        NodePreviewRow(playing = nodePlaying, onPreview = onPreviewNode)
         Spacer(modifier = Modifier.height(spacing))
         DurationPicker(
             duration = node.duration,
@@ -605,6 +619,7 @@ private fun SustainRow(
 private fun SetupMelodyRow(
     setupMelody: SetupMelody?,
     onChange: (SetupMelody?) -> Unit,
+    playing: Boolean,
     onPreview: (RelativeMelody) -> Unit,
 ) {
   var editing by rememberSaveable { mutableStateOf(false) }
@@ -685,6 +700,7 @@ private fun SetupMelodyRow(
         }
         SetupMelodyPreviewRow(
             onPreview = setupMelody?.let { { onPreview(it.melody) } },
+            playing = playing,
         )
       }
     }
@@ -751,9 +767,12 @@ private fun SetupMelodyRepeatSegment(
 }
 
 @Composable
-private fun NodePreviewRow() {
-  SoftControl(modifier = Modifier.fillMaxWidth()) {
-    PlayBubble()
+private fun NodePreviewRow(
+    playing: Boolean,
+    onPreview: () -> Unit,
+) {
+  SoftControl(modifier = Modifier.fillMaxWidth(), onClick = onPreview) {
+    PlayBubble(playing)
     Text(
         text = "Preview node",
         color = ShuuenUi.Text,
@@ -767,9 +786,10 @@ private fun NodePreviewRow() {
 }
 
 @Composable
-// todo: maybe not inject the viewmodel here xd
-private fun SetupMelodyPreviewRow(onPreview: (() -> Unit)?, viewModel: ContextViewModel = koinViewModel()) {
-  val playing by viewModel.playingMelody.collectAsStateWithLifecycle()
+private fun SetupMelodyPreviewRow(
+    onPreview: (() -> Unit)?,
+    playing: Boolean,
+) {
   SoftControl(modifier = Modifier.fillMaxWidth(), onClick = onPreview) {
     PlayBubble(playing)
     Text(
@@ -939,7 +959,7 @@ private fun PlayBubble(playing: Boolean = false) {
       contentAlignment = Alignment.Center,
   ) {
     Icon(
-        imageVector = if (!playing) Icons.Rounded.PlayArrow else Icons.AutoMirrored.Rounded.ArrowBack,
+        imageVector = if (!playing) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
         contentDescription = null,
         tint = ShuuenUi.OnInverse,
         modifier = Modifier.size(22.dp),
