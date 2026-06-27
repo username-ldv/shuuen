@@ -22,7 +22,7 @@ import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.SetupMelody
 import ldv.shuuen.core.music.SetupMelodyRepeat
 import ldv.shuuen.core.music.Sustain
-import ldv.shuuen.core.music.constructAscSetupMelodyFlow
+import ldv.shuuen.core.music.constructSetupMelodyFlow
 import ldv.shuuen.core.music.toChord
 
 private data class CurrentlyPlayingNode(
@@ -127,14 +127,7 @@ class DegreeContextPlayer(
     val m = setupMelody ?: return
     var currentlyPlaying: Note? = null
     if (m.repeat == SetupMelodyRepeat.Once && playedSetupMelody && !manual) return
-    // todo: actually handle
-    constructAscSetupMelodyFlow(
-            currentRoot.value,
-            m.let { melody ->
-              listOf(melody.melody.firstDegree.degree) +
-                  melody.melody.extraDegrees.map { it.degree }
-            },
-        )
+    constructSetupMelodyFlow(currentRoot.value, m.melody)
         .onEach { note ->
           withContext(NonCancellable) {
             currentlyPlaying?.let { midiEngine.stopNote(it) }

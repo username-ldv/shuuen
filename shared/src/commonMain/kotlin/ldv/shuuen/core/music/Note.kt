@@ -47,8 +47,19 @@ data class Note(val midiIndex: Int) {
     (midiIndex until until.midiIndex).map(::Note)
 
   fun next(pitch: Pitch): Note {
-    val semitonesUp = (pitch.ordinal - this.pitch.ordinal).mod(12).let { distance -> if (distance == 0) 12 else distance }
+    val semitonesUp =
+      (pitch.ordinal - this.pitch.ordinal).mod(12).let { distance ->
+        if (distance == 0) 12 else distance
+      }
     return this + semitonesUp
+  }
+
+  fun previous(pitch: Pitch): Note {
+    val semitonesDown =
+      (this.pitch.ordinal - pitch.ordinal).mod(12).let { distance ->
+        if (distance == 0) 12 else distance
+      }
+    return this - semitonesDown
   }
 
   override fun toString(): String = name
