@@ -206,6 +206,7 @@ fun ContextScreen(
   val nodes = context.nodes
   val playingNodeNumber by viewModel.playingNodeNumber.collectAsStateWithLifecycle()
   val playingMelody by viewModel.playingMelody.collectAsStateWithLifecycle()
+  val playingFullSequence by viewModel.playingFullSequence.collectAsStateWithLifecycle()
 
   StaticScreenFrame(
       verticalSpacing = 18.dp,
@@ -232,23 +233,27 @@ fun ContextScreen(
     ) {
       PresetRow(
           onApply = {
-            viewModel.stopNodePreview()
+            viewModel.stopPreviewsUsingSequenceNodes()
             context = context.copy(nodes = it)
           },
       )
-      PreviewFullSequence()
+      PreviewFullSequence(
+          playing = playingFullSequence,
+          onPreview = { viewModel.toggleFullSequencePreview(nodes) },
+      )
       nodes.forEachIndexed { index, node ->
         SequenceNodeCard(
             number = index + 1,
             isLast = index == nodes.lastIndex,
             node = node,
             onNodeChange = { updated ->
+              viewModel.stopFullSequencePreview()
               context = context.copy(nodes = nodes.toMutableList().also { it[index] = updated })
             },
             onDelete =
                 if (nodes.size > 1) {
                   {
-                    viewModel.stopNodePreview()
+                    viewModel.stopPreviewsUsingSequenceNodes()
                     context =
                         context.copy(nodes = nodes.toMutableList().also { it.removeAt(index) })
                   }
@@ -261,7 +266,10 @@ fun ContextScreen(
       }
       DashedAddButton(
           text = "ADD NODE",
-          onClick = { context = context.copy(nodes = nodes + sequenceNode()) },
+          onClick = {
+            viewModel.stopFullSequencePreview()
+            context = context.copy(nodes = nodes + sequenceNode())
+          },
       )
     }
 
@@ -307,9 +315,12 @@ private fun PresetRow(onApply: (List<DegreeContextNode>) -> Unit) {
 }
 
 @Composable
-private fun PreviewFullSequence() {
-  SoftControl(modifier = Modifier.fillMaxWidth()) {
-    PlayBubble()
+private fun PreviewFullSequence(
+    playing: Boolean,
+    onPreview: () -> Unit,
+) {
+  SoftControl(modifier = Modifier.fillMaxWidth(), onClick = onPreview) {
+    PlayBubble(playing)
     Text(
         text = "Preview full sequence",
         color = ShuuenUi.Text,
