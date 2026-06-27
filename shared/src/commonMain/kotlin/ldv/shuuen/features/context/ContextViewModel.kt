@@ -23,8 +23,8 @@ class ContextViewModel(
 ) : ViewModel() {
   private var audioReady = false
   private var previewJob: Job? = null
-  private var _playing = MutableStateFlow(false)
-  val playingMelody = _playing.asStateFlow()
+  private var _playingMelody = MutableStateFlow(false)
+  val playingMelody = _playingMelody.asStateFlow()
 
   init {
     viewModelScope.launch {
@@ -41,7 +41,7 @@ class ContextViewModel(
         midiEngine.stopAll(MidiChannel.Notes)
         var currentNote: Note? = null
         try {
-          _playing.value = true
+          _playingMelody.value = true
           constructSetupMelodyFlow(Pitch.random(), melody, PreviewTempo).collect { note ->
             currentNote?.let { midiEngine.stopNote(it, MidiChannel.Notes) }
             currentNote = note
@@ -50,7 +50,7 @@ class ContextViewModel(
         } finally {
           withContext(NonCancellable) {
             currentNote?.let { midiEngine.stopNote(it, MidiChannel.Notes) }
-            _playing.value = false
+            _playingMelody.value = false
           }
         }
       }
