@@ -75,6 +75,17 @@ class SinglesSetupScreenViewModel(val levelRepository: SinglesLocalLevelReposito
     }
   }
 
+  fun changeRotateEveryQuestions(v: Int?) {
+    _singlesLevelState.update {
+      val levelConfig =
+          when (val config = it.levelConfig) {
+            is LevelConfig.Singles.Absolute -> config.copy(rotateEveryQuestions = v)
+            is LevelConfig.Singles.Relative -> config.copy(rotateEveryQuestions = v)
+          }
+      it.copy(levelConfig = levelConfig)
+    }
+  }
+
   suspend fun upsertLevel() {
     val level = screenState.value
     // todo: what should be the default name?

@@ -54,8 +54,9 @@ fun SinglesSetupScreen(
         )
       },
   ) {
+    val levelConfig = saveableScreenState.levelConfig
     val config =
-        when (val levelConfig = saveableScreenState.levelConfig) {
+        when (levelConfig) {
           is LevelConfig.Singles.Relative -> levelConfig.scaleConfig
           is LevelConfig.Singles.Absolute -> levelConfig.scales.first()
         }
@@ -64,6 +65,22 @@ fun SinglesSetupScreen(
         scaleConfig = config,
         onScaleChosen = viewModel::changeScale,
     )
+
+    // Scale rotation only applies to a random (relative) scale — a fixed
+    // tonic has nothing to rotate.
+    if (levelConfig is LevelConfig.Singles.Relative) {
+      FlatSection(
+          label = "SCALE ROTATION",
+          supporting = "Pick a new random tonic every N questions.",
+      ) {
+        SegmentedPlusMinus(
+            value = levelConfig.rotateEveryQuestions,
+            onChange = viewModel::changeRotateEveryQuestions,
+            delta = 1,
+            minimalNumber = 1,
+        )
+      }
+    }
 
     Hairline()
 
