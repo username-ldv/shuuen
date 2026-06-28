@@ -67,18 +67,15 @@ fun SinglesSetupScreen(
     )
 
     // Scale rotation only applies to a random (relative) scale — a fixed
-    // tonic has nothing to rotate.
+    // tonic has nothing to rotate. Stepping the control below 5 turns it off.
     if (levelConfig is LevelConfig.Singles.Relative) {
       FlatSection(
           label = "SCALE ROTATION",
-          supporting = "Pick a new random tonic every N questions.",
+          supporting = "Off, or move to a new random tonic every few questions.",
       ) {
-        SegmentedPlusMinus(
-            value = levelConfig.rotateEveryQuestions,
-            onChange = viewModel::changeRotateEveryQuestions,
-            delta = 1,
-            minimalNumber = 1,
-        )
+        SegmentedPlusMinus(value = levelConfig.rotateEveryQuestions, onChange = viewModel::changeRotateEveryQuestions, delta = 5, nullCondition = {
+          (it.toIntOrNull() ?: 0) <= 0
+        }, nullLabel = "Off")
       }
     }
 

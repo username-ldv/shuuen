@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -25,6 +24,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.aakira.napier.Napier
+import ldv.shuuen.core.ui.theme.ShuuenTheme
 
 @Composable
 fun SegmentedPlusMinus(
@@ -32,27 +33,34 @@ fun SegmentedPlusMinus(
   modifier: Modifier = Modifier,
   onChange: (Int?) -> Unit = {},
   delta: Int = 5,
-  minimalNumber: Int = 0
+  minimalNumber: Int = 0,
+  nullCondition: ((String) -> Boolean)? = null,
+  nullLabel: String? = null
 ) {
   Row(
-    modifier = Modifier.fillMaxWidth().height(54.dp).clip(ldv.shuuen.core.ui.components.ShuuenUi.PillShape)
+    modifier = Modifier.height(34.dp).clip(ShuuenUi.PillShape)
       .background(Color.White.copy(alpha = 0.05f)).then(modifier),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     SegmentedPart("—", onClick = {
-      onChange(value?.let {
+      onChange((value ?: minimalNumber).let {
         val v = it - delta
+        val considerNull = nullCondition?.invoke((v.toString())) ?: false
+        if (considerNull) return@let null
         if (v < minimalNumber) minimalNumber else v
       })
     })
-    VerticalDivider(color = ldv.shuuen.core.ui.components.ShuuenUi.Hairline)
+    VerticalDivider(color = ShuuenUi.Hairline)
     Box(
       modifier = Modifier.fillMaxHeight().weight(1f), contentAlignment = Alignment.Center
     ) {
+      val considerNull = value == null || nullCondition?.invoke(value.toString()) ?: false
       BasicTextField(
-        value = value?.toString() ?: "",
+        value = if (!considerNull) value.toString() else nullLabel ?: "",
         onValueChange = { v ->
-          val newValue = v.toUIntOrNull() ?: return@BasicTextField onChange(null)
+          val considerNull = nullCondition?.invoke(v) ?: false
+          Napier.v { "onChange v: $v, considerNull: $considerNull" }
+          val newValue = if (!considerNull) v.toUIntOrNull() ?: return@BasicTextField onChange(null) else return@BasicTextField onChange(null)
           onChange(newValue.toInt())
         },
         textStyle = MaterialTheme.typography.headlineMedium.copy(
@@ -63,9 +71,9 @@ fun SegmentedPlusMinus(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
       )
     }
-    VerticalDivider(color = ldv.shuuen.core.ui.components.ShuuenUi.Hairline)
+    VerticalDivider(color = ShuuenUi.Hairline)
     SegmentedPart("+", onClick = {
-      onChange(value?.let { it + delta })
+      onChange((value ?: minimalNumber) + delta)
     })
   }
 }
@@ -78,7 +86,7 @@ private fun RowScope.SegmentedPart(text: String, onClick: () -> Unit) {
   ) {
     Text(
       text = text,
-      color = ldv.shuuen.core.ui.components.ShuuenUi.Muted,
+      color = ShuuenUi.Muted,
       style = MaterialTheme.typography.headlineMedium.copy(fontSize = 26.sp),
     )
   }
@@ -87,7 +95,7 @@ private fun RowScope.SegmentedPart(text: String, onClick: () -> Unit) {
 @Preview
 @Composable
 fun SegmentedPlusMinusPreview() {
-  ldv.shuuen.core.ui.theme.ShuuenTheme {
-    ldv.shuuen.core.ui.components.SegmentedPlusMinus(15)
+  ShuuenTheme {
+    SegmentedPlusMinus(15)
   }
 }

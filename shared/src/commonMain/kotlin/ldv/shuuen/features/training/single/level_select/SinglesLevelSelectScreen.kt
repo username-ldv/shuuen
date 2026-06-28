@@ -217,9 +217,8 @@ private fun LevelDetails(level: SinglesLevel) {
 
     DetailRow("SOURCE", sourceLabel(level.source))
 
-    level.levelConfig.rotateEveryQuestions?.let {
-      DetailRow("SCALE ROTATION", "Every $it questions")
-    }
+    val rotationLabel = level.levelConfig.rotateEveryQuestions?.let {"Every $it questions"} ?: "Off"
+    DetailRow("SCALE ROTATION", rotationLabel)
 
     val context = level.context
     val hasContext = context != null

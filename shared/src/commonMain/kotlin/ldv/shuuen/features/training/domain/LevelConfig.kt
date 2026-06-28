@@ -18,7 +18,7 @@ sealed interface LevelConfig {
 
     @Serializable
     data class Relative(
-      val scaleConfig: ScaleConfig.RelativeScaleConfig, override val rotateEveryQuestions: Int? = 5
+      val scaleConfig: ScaleConfig.RelativeScaleConfig, override val rotateEveryQuestions: Int? = 10
     ) : Singles
   }
 }
