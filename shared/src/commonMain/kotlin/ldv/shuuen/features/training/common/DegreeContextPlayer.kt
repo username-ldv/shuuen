@@ -106,6 +106,7 @@ class DegreeContextPlayer(
     questionEvent.update {
       val q = it.currentQuestion + 1
       Napier.v { "Question in the player advanced to $q" }
+      if (root != null) playedSetupMelody = false
       it.copy(currentQuestion = q, newRoot = root)
     }
     _ready.first { it }

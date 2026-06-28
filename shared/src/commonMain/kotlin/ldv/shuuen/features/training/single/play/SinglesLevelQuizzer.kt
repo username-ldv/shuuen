@@ -25,7 +25,13 @@ data class QuizState(
 )
 
 class SinglesLevelQuizzer(val level: SinglesLevel) {
-  private val generator: NoteGenerator
+  // Scale rotation re-randomizes the tonic every N questions. Only a relative
+  // (random-tonic) level rotates; an absolute level keeps its fixed root.
+  // (for now)
+  private val relativeConfig = level.levelConfig as? LevelConfig.Singles.Relative
+  private val rotateEveryQuestions = relativeConfig?.rotateEveryQuestions
+
+  private var generator: NoteGenerator
   private val _quizState: MutableStateFlow<QuizState>
   val quizState: StateFlow<QuizState>
 
@@ -34,10 +40,7 @@ class SinglesLevelQuizzer(val level: SinglesLevel) {
     when (val c = level.levelConfig) {
       is LevelConfig.Singles.Relative -> {
         root = Pitch.random()
-        generator = NaiveRandomDegreeNoteGenerator(
-          root = root,
-          range = level.range,
-          allowedDegrees = c.scaleConfig.degreeStates.filter { it.active }.map { it.degree })
+        generator = relativeGenerator(root)
       }
 
       is LevelConfig.Singles.Absolute -> {
@@ -63,12 +66,18 @@ class SinglesLevelQuizzer(val level: SinglesLevel) {
   fun check(pitch: Pitch): Boolean {
     val correctNow = quizState.value.currentNote.pitch == pitch
     if (correctNow) {
+      val current = quizState.value
+      val nextQuestionNumber = current.currentQuestionNumber + 1
+      val nextRoot = rootForQuestion(current.root, nextQuestionNumber)
+      // currently only for relative
+      if (nextRoot != current.root) generator = relativeGenerator(nextRoot)
       _quizState.update { quizState ->
         val count =
           if (quizState.incorrectAnswers.any { it.questionNumber == quizState.currentQuestionNumber }) 0 else 1
         quizState.copy(
+          root = nextRoot,
           correctAnswers = quizState.correctAnswers + count,
-          currentQuestionNumber = quizState.currentQuestionNumber + 1,
+          currentQuestionNumber = nextQuestionNumber,
           currentNote = generator.next(),
         )
       }
@@ -87,5 +96,25 @@ class SinglesLevelQuizzer(val level: SinglesLevel) {
       }
     }
     return correctNow
+  }
+
+  /** Tonic for [questionNumber]: a fresh random root when rotation is due, else [currentRoot]. */
+  private fun rootForQuestion(currentRoot: Pitch, questionNumber: Int): Pitch {
+    val rotate = rotateEveryQuestions?.takeIf { it >= 1 } ?: return currentRoot
+    val dueForRotation = questionNumber > 1 && (questionNumber - 1) % rotate == 0
+    if (!dueForRotation) return currentRoot
+    // Force a different tonic so the scale actually moves and the context replays.
+    var newRoot = Pitch.random()
+    while (newRoot == currentRoot) newRoot = Pitch.random()
+    return newRoot
+  }
+
+  private fun relativeGenerator(root: Pitch): NoteGenerator {
+    val config = relativeConfig ?: error("relative generator requested for a non-relative level")
+    return NaiveRandomDegreeNoteGenerator(
+      root = root,
+      range = level.range,
+      allowedDegrees = config.scaleConfig.degreeStates.filter { it.active }.map { it.degree },
+    )
   }
 }
