@@ -8,22 +8,20 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Replay
-import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,14 +32,20 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.core.music.Pitch
+import ldv.shuuen.core.settings.InputComponent
+import ldv.shuuen.core.settings.InputMethod
+import ldv.shuuen.core.settings.InputMode
 import ldv.shuuen.core.ui.components.LinearTrainingProgress
 import ldv.shuuen.core.ui.components.ShuuenTopAppBar
 import ldv.shuuen.core.ui.components.ShuuenTopAppBarType
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.SoftControl
 import ldv.shuuen.core.ui.components.StaticScreenFrame
+import ldv.shuuen.core.ui.components.music.inputs.FifthsCircle
+import ldv.shuuen.core.ui.components.music.inputs.FifthsCircleDefalts
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboard
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
+import ldv.shuuen.core.ui.components.music.inputs.rememberFifthsCircleState
 import ldv.shuuen.core.ui.components.music.inputs.rememberPianoKeyboardState
 
 @Composable
@@ -51,7 +55,7 @@ fun SinglesPlayScreen(
     viewModel: SinglesPlayScreenViewModel,
 ) {
   val screenState by viewModel.state.collectAsStateWithLifecycle()
-  var useCircleInput by rememberSaveable { mutableStateOf(false) }
+  val inputMethod by viewModel.inputMethod.collectAsStateWithLifecycle()
   val title =
       when (val level = screenState.levelData) {
         is ResponseState.Loading -> "Loading..."
@@ -69,12 +73,13 @@ fun SinglesPlayScreen(
 
   StaticScreenFrame(
       scrollable = false,
+      // The circle input is full-bleed (it must reach the screen edges to stay tappable there), so
+      // the frame adds no horizontal padding; each child below applies its own where needed.
+      horizontalPadding = 0.dp,
       topBar = {
         ShuuenTopAppBar(
             title = title,
             onBack = onNavigateBack,
-            trailingIcon = Icons.Rounded.Tune,
-            onTrailingClick = { useCircleInput = !useCircleInput },
             type = ShuuenTopAppBarType.Simple,
         )
       },
@@ -85,51 +90,127 @@ fun SinglesPlayScreen(
           it.correctAnswers,
           it.incorrectAnswers.size,
           it.questionsNumber,
+          modifier = Modifier.padding(horizontal = ScreenHorizontalPadding),
       )
     }
 
-    Spacer(Modifier.weight(1f))
-
     val keyboardState = rememberPianoKeyboardState()
+    val circleState = rememberFifthsCircleState()
 
-    LaunchedEffect(keyboardState) {
+    // The setup-melody flow emits absolute pitches; the index meaning depends on the active input
+    // method, and the relative mapping needs the current root. Track both without restarting the
+    // collector each time they change.
+    val currentInputMethod by rememberUpdatedState(inputMethod)
+    val currentRoot by rememberUpdatedState(screenState.quizState?.root)
+
+    LaunchedEffect(Unit) {
       viewModel.setupMelodyFlashes.collect { req ->
-        keyboardState.flash(
-            req.index,
-            req.color,
-            holdMillis = 520,
-            attackMillis = 80,
-            releaseMillis = 300,
-        )
+        val method = currentInputMethod
+        val index = pitchToItemIndex(req.pitch, method.mode, currentRoot)
+        when (method.component) {
+          InputComponent.Piano ->
+              keyboardState.flash(index, req.color, holdMillis = 520, attackMillis = 80, releaseMillis = 300)
+          InputComponent.Circle ->
+              circleState.flash(index, req.color, holdMillis = 520, attackMillis = 80, releaseMillis = 300)
+        }
       }
     }
 
-    // pressedKeyColors stays at its neutral default (plain touch feedback); all color comes from
-    // flashes.
-    PianoKeyboard(
-        modifier = Modifier.fillMaxWidth().aspectRatio(PianoKeyboardDefaults.aspectRatio(12)),
-        keyCount = 12,
-        state = keyboardState,
-        onKeyPressedChange = { offset, pressed ->
-          if (screenState.phase != QuizPhase.AwaitingAnswer) return@PianoKeyboard
-          if (!pressed) {
-            val pitch = Pitch.fromOrdinal(offset)
-            viewModel.userGuessed(pitch)?.let { correct ->
-              val color = if (correct) AnswerColors.Correct.color else AnswerColors.Incorrect.color
-              keyboardState.flash(offset, color)
-            }
-          }
-        },
-    )
+    // Both components reduce a tapped item to a guess via userGuessed(index, mode); the flash uses
+    // the tapped index directly, so no extra mapping is needed for feedback.
+    fun handleGuess(index: Int, flashOn: (Int, Color) -> Unit) {
+      if (screenState.phase != QuizPhase.AwaitingAnswer) return
+      viewModel.userGuessed(index, inputMethod.mode)?.let { correct ->
+        val color = if (correct) AnswerColors.Correct.color else AnswerColors.Incorrect.color
+        flashOn(index, color)
+      }
+    }
 
-    Spacer(Modifier.weight(0.34f))
+    when (inputMethod.component) {
+      InputComponent.Piano -> {
+        Spacer(Modifier.weight(1f))
+        // pressedKeyColors stays at its neutral default (plain touch feedback); all color comes
+        // from flashes.
+        PianoKeyboard(
+            modifier = Modifier
+                .padding(horizontal = ScreenHorizontalPadding)
+                .fillMaxWidth()
+                .aspectRatio(PianoKeyboardDefaults.aspectRatio(12)),
+            keyCount = 12,
+            state = keyboardState,
+            onKeyPressedChange = { index, pressed ->
+              if (!pressed) handleGuess(index) { i, c -> keyboardState.flash(i, c) }
+            },
+        )
+        Spacer(Modifier.weight(0.34f))
+      }
+
+      // The circle is full-bleed: it fills the whole flexible region (full width to the screen
+      // edges, all remaining height) so the empty space around the ring — above, below, and to the
+      // sides — is part of the touch surface. Items sit at the edge (dotEdgePadding = 0) yet stay
+      // hittable right up to the screen edge.
+      InputComponent.Circle ->
+          FifthsCircle(
+              modifier = Modifier.fillMaxWidth().weight(1f),
+              itemNames = circleItemNames(inputMethod.mode),
+              rotateItemToTop = circleTopItem(inputMethod, screenState.quizState?.root),
+              state = circleState,
+              onItemPressedChange = { index, pressed ->
+                if (!pressed) handleGuess(index) { i, c -> circleState.flash(i, c) }
+              },
+              dotEdgePadding = 16.dp,
+          )
+    }
 
     BottomActionBar(
         onRepeatNote = { viewModel.repeatNote() },
         onRepeatMelody = { viewModel.playSetupMelody() },
+        modifier = Modifier.padding(horizontal = ScreenHorizontalPadding),
     )
   }
 }
+
+/**
+ * Horizontal inset applied to the non-circle children. The frame itself adds no horizontal padding
+ * so the circle can be full-bleed; padded children re-apply this to keep their usual margins.
+ */
+private val ScreenHorizontalPadding = 20.dp
+
+/**
+ * Maps an absolute [pitch] to the item index of the active input component. In [InputMode.Absolute]
+ * the index is the chromatic pitch ordinal; in [InputMode.Relative] it is the chromatic degree
+ * offset from [root] (falling back to the ordinal until a root is known).
+ */
+private fun pitchToItemIndex(pitch: Pitch, mode: InputMode, root: Pitch?): Int =
+    when (mode) {
+      InputMode.Absolute -> pitch.ordinal
+      InputMode.Relative -> root?.asRoot(pitch)?.offset ?: pitch.ordinal
+    }
+
+/**
+ * Labels for the FifthsCircle items, indexed to match [pitchToItemIndex]: degree names for relative
+ * input, chromatic pitch names for absolute input.
+ */
+private fun circleItemNames(mode: InputMode): List<String> =
+    when (mode) {
+      InputMode.Relative -> FifthsCircleDefalts.Names
+      InputMode.Absolute -> Pitch.entries.map { it.toString() }
+    }
+
+/**
+ * The item the circle should rotate to its top slot, or null to keep the default top (C for
+ * absolute, the tonic "1" for relative). Only Circle + Absolute with
+ * [InputMethod.circleAbsoluteRootAtTop] pins the current [root] to the top; the circle animates the
+ * spin itself whenever this changes (e.g. when a random-scale level rotates its root).
+ */
+private fun circleTopItem(method: InputMethod, root: Pitch?): Int? =
+    if (method.component == InputComponent.Circle &&
+        method.mode == InputMode.Absolute &&
+        method.circleAbsoluteRootAtTop) {
+      root?.ordinal
+    } else {
+      null
+    }
 
 @Composable
 private fun TrainingStatus(
@@ -137,9 +218,10 @@ private fun TrainingStatus(
     correct: Int = 0,
     incorrect: Int = 0,
     questionsAmount: Int? = null,
+    modifier: Modifier = Modifier,
 ) {
   Column(
-      modifier = Modifier.fillMaxWidth(),
+      modifier = modifier.fillMaxWidth(),
       verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Row(
@@ -178,28 +260,36 @@ private fun ScoreCount(
 }
 
 @Composable
-private fun BottomActionBar(onRepeatNote: () -> Unit, onRepeatMelody: () -> Unit) {
+private fun BottomActionBar(
+    onRepeatNote: () -> Unit,
+    onRepeatMelody: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
   Row(
-      modifier = Modifier.fillMaxWidth(),
+      modifier = modifier.fillMaxWidth(),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
-    BottomRepeatButton(Modifier.weight(1.8f).clickable { onRepeatNote() })
+    BottomRepeatButton(Modifier.weight(1.8f), onClick = onRepeatNote)
     BottomIconButton(
         icon = Icons.Rounded.MusicNote,
-        modifier = Modifier.width(80.dp).clickable { onRepeatMelody() },
+        modifier = Modifier.width(80.dp),
+      onClick = onRepeatMelody
     )
     Spacer(Modifier.weight(0.34f))
     BottomIconButton(
         icon = Icons.Rounded.Flag,
         modifier = Modifier.width(64.dp),
+      onClick = {
+        // todo
+      }
     )
   }
 }
 
 @Composable
-private fun BottomRepeatButton(modifier: Modifier = Modifier) {
-  SoftControl(modifier = modifier.height(60.dp)) {
+private fun BottomRepeatButton(modifier: Modifier = Modifier, onClick: () ->Unit) {
+  SoftControl(modifier = modifier.height(60.dp), onClick = onClick) {
     Icon(
         imageVector = Icons.Rounded.Replay,
         contentDescription = null,
@@ -221,8 +311,9 @@ private fun BottomRepeatButton(modifier: Modifier = Modifier) {
 private fun BottomIconButton(
     icon: ImageVector,
     modifier: Modifier = Modifier,
+    onClick: () -> Unit
 ) {
-  SoftControl(modifier = modifier.height(60.dp)) {
+  SoftControl(modifier = modifier.height(60.dp), onClick = onClick) {
     Icon(icon, contentDescription = null, tint = ShuuenUi.Muted, modifier = Modifier.size(24.dp))
   }
 }

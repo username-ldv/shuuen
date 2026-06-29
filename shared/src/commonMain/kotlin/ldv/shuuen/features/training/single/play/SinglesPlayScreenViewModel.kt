@@ -12,9 +12,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ldv.shuuen.core.result.ResponseState
@@ -25,6 +29,9 @@ import ldv.shuuen.core.music.Degree
 import ldv.shuuen.core.music.DegreeContext
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.Pitch
+import ldv.shuuen.core.settings.InputMethod
+import ldv.shuuen.core.settings.InputMode
+import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.features.training.single.domain.SinglesLocalLevelRepository
 import ldv.shuuen.features.training.single.domain.SinglesLevel
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
@@ -37,8 +44,12 @@ enum class AnswerColors(val color: Color) {
 /** Monotone flash used for setup-melody key highlights (colorful palette is a future option). */
 // val SetupMelodyFlashColor = Color(0xFFD9D9DE)
 
-/** A request from the VM for the screen to flash a key (used for setup-melody highlights). */
-data class KeyFlashRequest(val index: Int, val color: Color)
+/**
+ * A request from the VM for the screen to flash an input item (used for setup-melody highlights).
+ * Carries the absolute [pitch]; the screen maps it to the active input component's item index
+ * (absolute = pitch ordinal, relative = degree offset from the current root).
+ */
+data class KeyFlashRequest(val pitch: Pitch, val color: Color)
 
 sealed interface QuizPhase {
   object LoadingContext : QuizPhase
@@ -60,9 +71,16 @@ class SinglesPlayScreenViewModel(
     levelId: String,
     levelRepository: SinglesLocalLevelRepository,
     val midiEngine: MidiEngine,
+    settingsRepository: SettingsRepository,
 ) : ViewModel() {
   private val _state = MutableStateFlow(SinglesPlayScreenState())
   val state = _state.asStateFlow()
+
+  /** The input component + interpretation mode chosen in settings. */
+  val inputMethod: StateFlow<InputMethod> =
+      settingsRepository.settings
+          .map { it.inputMethod }
+          .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InputMethod())
 
   private var degreeContextPlayer: DegreeContextPlayer? = null
 
@@ -153,6 +171,25 @@ class SinglesPlayScreenViewModel(
   }
 
   /**
+   * Interprets a tapped input item into a guessed pitch and checks it.
+   *
+   * [index] is the item's own index in the active input component (a piano key or a circle item).
+   * [mode] decides how it becomes a pitch: [InputMode.Absolute] reads it as a chromatic pitch
+   * ordinal; [InputMode.Relative] reads it as a chromatic degree offset from the current root.
+   *
+   * Returns whether the guess was correct, or null if no quiz is active (caller should not flash).
+   */
+  fun userGuessed(index: Int, mode: InputMode): Boolean? {
+    val quizzer = quizzer ?: return null
+    val pitch =
+        when (mode) {
+          InputMode.Absolute -> Pitch.fromOrdinal(index)
+          InputMode.Relative -> Degree.fromOffset(index).pitch(quizzer.quizState.value.root)
+        }
+    return userGuessed(pitch)
+  }
+
+  /**
    * Returns whether the guess was correct, or null if no quiz is active (caller should not flash).
    */
   fun userGuessed(pitch: Pitch): Boolean? {
@@ -163,8 +200,6 @@ class SinglesPlayScreenViewModel(
     quizzer.check(pitch)
     return isCorrect
   }
-
-  fun userGuessed(degree: Degree) {}
 
   fun repeatNote() {
     val note = quizzer?.quizState?.value?.currentNote ?: return
@@ -221,7 +256,7 @@ class SinglesPlayScreenViewModel(
         Napier.v { "got setup melody note $note" }
         if (note != null) {
           _setupMelodyFlashes.emit(
-              KeyFlashRequest(note.pitch.ordinal, PianoKeyboardDefaults.MonochromePressedColor)
+              KeyFlashRequest(note.pitch, PianoKeyboardDefaults.MonochromePressedColor)
           )
         }
       }

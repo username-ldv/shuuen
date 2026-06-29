@@ -1,5 +1,8 @@
 package ldv.shuuen.core.ui.components.music.inputs
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
@@ -15,16 +18,18 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,6 +49,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ldv.shuuen.core.ui.components.music.Palette
@@ -53,6 +59,7 @@ import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
+import kotlin.time.Duration.Companion.milliseconds
 
 @Immutable
 data class FifthsCircleIndication(
@@ -62,7 +69,76 @@ data class FifthsCircleIndication(
    * non-null = pulse for this many milliseconds.
    */
   val durationMillis: Long? = null,
+  /**
+   * Color to render on the item while this indication is active. Overrides [itemColors] for the
+   * affected item. null = fall back to [itemColors].
+   */
+  val color: Color? = null,
 )
+
+/**
+ * Internal bookkeeping for timed indications: how many overlapping timers are active for an item,
+ * plus the color to render while they are. The color is captured here when the timer starts so the
+ * pulse survives its full [FifthsCircleIndication.durationMillis] even after the indication has
+ * already left programmaticIndications.
+ */
+private data class TimedCircleIndication(val count: Int, val color: Color?)
+
+/**
+ * A single transient "flash" on a circle item: a colored highlight that animates in quickly, holds
+ * briefly, then fades out. Each flash carries its own identity and [Animatable] progress, so
+ * overlapping flashes — even on the same item — are fully independent. Mirrors the piano's KeyFlash.
+ */
+@Stable
+class CircleFlash internal constructor(
+  val id: Long,
+  val index: Int,
+  val color: Color,
+) {
+  val progress = Animatable(0f)
+}
+
+/**
+ * Hoisted state for [FifthsCircle]. Owns transient tap-feedback flashes so callers don't manage
+ * indication ids or removal timers themselves. Obtain one via [rememberFifthsCircleState] and call
+ * [flash] on item release. Independent of touch presses and of any persistent
+ * [FifthsCircleIndication]s. Mirrors [PianoKeyboardState].
+ */
+@Stable
+class FifthsCircleState(private val scope: CoroutineScope) {
+  internal val flashes = mutableStateListOf<CircleFlash>()
+  private var nextId = 0L
+
+  /**
+   * Fire a one-shot colored flash on [index]: a fast attack, a brief hold, then a smooth fade-out.
+   * Safe to call rapidly and repeatedly; each call is animated on its own coroutine and cleaned up.
+   */
+  fun flash(
+    index: Int,
+    color: Color,
+    holdMillis: Long = 200L,
+    attackMillis: Int = 90,
+    releaseMillis: Int = 300,
+  ) {
+    val flash = CircleFlash(nextId++, index, color)
+    flashes.add(flash)
+    scope.launch {
+      try {
+        flash.progress.animateTo(1f, tween(attackMillis, easing = FastOutSlowInEasing))
+        delay(holdMillis)
+        flash.progress.animateTo(0f, tween(releaseMillis, easing = FastOutSlowInEasing))
+      } finally {
+        flashes.remove(flash)
+      }
+    }
+  }
+}
+
+@Composable
+fun rememberFifthsCircleState(): FifthsCircleState {
+  val scope = rememberCoroutineScope()
+  return remember { FifthsCircleState(scope) }
+}
 
 object FifthsCircleDefalts {
   val Names = listOf(
@@ -112,12 +188,25 @@ fun FifthsCircle(
   visualOrder: List<Int> = FifthsCircleDefalts.circleOfFifthsVisualOrder(itemNames.size),
 
   /**
+   * When non-null, the whole ring is rotated so this item index ends up at the top slot, animating
+   * along the shortest path whenever it changes. null keeps [visualOrder]'s own top item at the top
+   * (no rotation). Item indices are unaffected, so taps and indications still address the same items.
+   */
+  rotateItemToTop: Int? = null,
+  rotationAnimationSpec: AnimationSpec<Float> = tween(durationMillis = 550, easing = FastOutSlowInEasing),
+
+  /**
    * External, declarative visual indications.
    *
    * NoteDegreeIndication(index = 0, durationMillis = null) stays active until removed.
    * NoteDegreeIndication(index = 0, durationMillis = 450) pulses for 450ms.
    */
   programmaticIndications: List<FifthsCircleIndication> = emptyList(),
+
+  /**
+   * Optional hoisted state for transient tap-feedback flashes. See [rememberFifthsCircleState].
+   */
+  state: FifthsCircleState? = null,
 
   onItemClick: (index: Int) -> Unit = {},
   onItemPressedChange: (index: Int, pressed: Boolean) -> Unit = { _, _ -> },
@@ -164,11 +253,27 @@ fun FifthsCircle(
   val itemCount = itemNames.size
   val textMeasurer = rememberTextMeasurer()
 
+  // Whole-ring rotation (radians) used to bring [rotateItemToTop] to the top slot. Animated along
+  // the shortest path so a changing root spins the closest way round instead of unwinding fully.
+  val rotation = remember { Animatable(0f) }
+  val targetRotation = run {
+    val slot = rotateItemToTop?.let { visualOrder.indexOf(it) } ?: -1
+    if (slot >= 0) -(2f * PI.toFloat() * slot / itemCount) else 0f
+  }
+  LaunchedEffect(targetRotation) {
+    val twoPi = 2f * PI.toFloat()
+    val current = rotation.value
+    var delta = (targetRotation - current) % twoPi
+    if (delta > PI) delta -= twoPi
+    if (delta < -PI) delta += twoPi
+    rotation.animateTo(current + delta, animationSpec = rotationAnimationSpec)
+  }
+
   val latestOnItemClick by rememberUpdatedState(onItemClick)
   val latestOnItemPressedChange by rememberUpdatedState(onItemPressedChange)
 
   val touchPointers = remember { mutableStateMapOf<PointerId, Int>() }
-  val timedProgrammaticCounts = remember { mutableStateMapOf<Int, Int>() }
+  val timedProgrammatic = remember { mutableStateMapOf<Int, TimedCircleIndication>() }
 
   val timedIndications = remember(programmaticIndications) {
     programmaticIndications.filter { it.durationMillis != null }
@@ -183,16 +288,21 @@ fun FifthsCircle(
       if (!enabledItems[index]) return@forEach
 
       launch {
-        timedProgrammaticCounts[index] = (timedProgrammaticCounts[index] ?: 0) + 1
+        val existing = timedProgrammatic[index]
+        timedProgrammatic[index] = TimedCircleIndication(
+          count = (existing?.count ?: 0) + 1,
+          color = indication.color ?: existing?.color,
+        )
 
         try {
-          delay(duration.coerceAtLeast(1L))
+          delay(duration.coerceAtLeast(1L).milliseconds)
         } finally {
-          val next = (timedProgrammaticCounts[index] ?: 1) - 1
+          val current = timedProgrammatic[index]
+          val next = (current?.count ?: 1) - 1
           if (next <= 0) {
-            timedProgrammaticCounts.remove(index)
+            timedProgrammatic.remove(index)
           } else {
-            timedProgrammaticCounts[index] = next
+            timedProgrammatic[index] = current?.copy(count = next) ?: TimedCircleIndication(next, null)
           }
         }
       }
@@ -203,9 +313,19 @@ fun FifthsCircle(
     programmaticIndications.asSequence().filter { it.durationMillis == null }.map { it.index }
       .filter { it in 0 until itemCount && enabledItems[it] }.toSet()
 
+  val persistentIndicationColors =
+    programmaticIndications.asSequence()
+      .filter { it.durationMillis == null && it.color != null }
+      .filter { it.index in 0 until itemCount && enabledItems[it.index] }
+      .associate { it.index to it.color!! }
+
   val activeItems =
-    (touchPointers.values.toSet() + persistentProgrammaticItems + timedProgrammaticCounts.keys).filter { it in 0 until itemCount && enabledItems[it] }
+    (touchPointers.values.toSet() + persistentProgrammaticItems + timedProgrammatic.keys).filter { it in 0 until itemCount && enabledItems[it] }
       .toSet()
+
+  // Effective active color for an item: an active indication's color wins over itemColors.
+  fun effectiveColor(index: Int): Color =
+    persistentIndicationColors[index] ?: timedProgrammatic[index]?.color ?: itemColors[index]
 
   val pressProgress = List(itemCount) { index ->
     animateFloatAsState(
@@ -229,9 +349,12 @@ fun FifthsCircle(
     label = "note-degree-pulse-value",
   )
 
+  // No internal aspectRatio: the circle is drawn centered and sized to the min dimension, so the
+  // caller controls the shape. Giving a non-square (e.g. taller) area makes the surrounding region
+  // part of the touch surface — items near the edge stay hittable even where their touch radius
+  // spills past the ring. Callers that want a square should pass Modifier.aspectRatio(1f).
   Box(
     modifier = modifier
-      .aspectRatio(1f)
       .background(backgroundColor),
     contentAlignment = Alignment.Center,
   ) {
@@ -256,7 +379,8 @@ fun FifthsCircle(
               dotRadiusPx = inactiveDotRadius.toPx(),
               dotEdgePaddingPx = dotEdgePadding?.toPx(),
             )
-            return pointOnCircle(center, radius, slot, itemCount)
+            // Read the live rotation so taps land on items where they currently are mid-spin.
+            return pointOnCircle(center, radius, slot, itemCount, rotation.value)
           }
 
           fun hitTest(position: Offset): Int? {
@@ -398,8 +522,8 @@ fun FifthsCircle(
         val progress = pressProgress[itemIndex]
         if (progress <= 0.01f || !enabledItems[itemIndex]) return@forEachIndexed
 
-        val itemCenter = pointOnCircle(center, ringRadius, slot, itemCount)
-        val color = itemColors[itemIndex]
+        val itemCenter = pointOnCircle(center, ringRadius, slot, itemCount, rotation.value)
+        val color = effectiveColor(itemIndex)
 
         val breathing = 0.94f + 0.12f * pulse
         val haloRadius = lerpFloat(activeDotRadiusPx, haloRadiusPx * breathing, progress)
@@ -438,13 +562,13 @@ fun FifthsCircle(
         val enabled = enabledItems[itemIndex]
         val progress = pressProgress[itemIndex]
 
-        val dotCenter = pointOnCircle(center, ringRadius, slot, itemCount)
-        val labelCenter = pointOnCircle(center, labelRadius, slot, itemCount)
+        val dotCenter = pointOnCircle(center, ringRadius, slot, itemCount, rotation.value)
+        val labelCenter = pointOnCircle(center, labelRadius, slot, itemCount, rotation.value)
 
         val dotColor = when {
           !enabled -> disabledDotColor
 //          else -> lerp(inactiveDotColor, itemColors[itemIndex], progress)
-          else -> itemColors[itemIndex]
+          else -> effectiveColor(itemIndex)
         }
 
         val dotRadius = when {
@@ -477,6 +601,32 @@ fun FifthsCircle(
           ),
         )
       }
+
+      // Transient tap-feedback flashes, drawn on top so correct/incorrect colors read clearly over
+      // the resting dots. Reading flashes + each progress here keeps the animation in the draw phase.
+      val flashesByIndex = state?.flashes?.groupBy { it.index } ?: emptyMap()
+      flashesByIndex.forEach { (itemIndex, flashes) ->
+        if (itemIndex !in 0 until itemCount || !enabledItems[itemIndex]) return@forEach
+        val slot = visualOrder.indexOf(itemIndex)
+        if (slot < 0) return@forEach
+        val flashCenter = pointOnCircle(center, ringRadius, slot, itemCount, rotation.value)
+
+        flashes.forEach { flash ->
+          val p = flash.progress.value
+          if (p <= 0.001f) return@forEach
+
+          drawCircle(
+            color = flash.color.copy(alpha = 0.32f * p),
+            radius = haloRadiusPx,
+            center = flashCenter,
+          )
+          drawCircle(
+            color = flash.color.copy(alpha = 0.9f * p),
+            radius = activeDotRadiusPx,
+            center = flashCenter,
+          )
+        }
+      }
     }
 
     if (centerContent != null || onCenterClick != null) {
@@ -506,8 +656,9 @@ private fun pointOnCircle(
   radius: Float,
   slot: Int,
   count: Int,
+  rotationRadians: Float = 0f,
 ): Offset {
-  val angle = -PI / 2.0 + 2.0 * PI * slot.toDouble() / count.toDouble()
+  val angle = -PI / 2.0 + 2.0 * PI * slot.toDouble() / count.toDouble() + rotationRadians
 
   return Offset(
     x = center.x + cos(angle).toFloat() * radius,

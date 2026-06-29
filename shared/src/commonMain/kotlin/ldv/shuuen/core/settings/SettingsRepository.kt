@@ -18,6 +18,8 @@ interface SettingsRepository {
   suspend fun setVolume(channel: MidiChannel, value: Int)
 
   suspend fun setMelodyOriginalVolumeBoost(value: Int)
+
+  suspend fun setInputMethod(inputMethod: InputMethod)
 }
 
 @Serializable
@@ -27,4 +29,5 @@ data class AppSettings(
   val volumes: ChannelVolumes = ChannelVolumes(),
   @SerialName("melodyOriginalVelocityBoost")
   val melodyOriginalVolumeBoost: Int = 0,
+  val inputMethod: InputMethod = InputMethod(),
 )

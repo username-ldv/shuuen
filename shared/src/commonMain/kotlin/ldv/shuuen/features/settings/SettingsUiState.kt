@@ -4,6 +4,7 @@ import ldv.shuuen.core.audio.midi.ChannelPresets
 import ldv.shuuen.core.audio.midi.ChannelVolumes
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
+import ldv.shuuen.core.settings.InputMethod
 
 /** A MIDI bank paired with the presets it contains. */
 data class Soundbank(
@@ -21,6 +22,7 @@ data class SettingsUiState(
   val selectedPresets: ChannelPresets = ChannelPresets(),
   val selectedVolumes: ChannelVolumes = ChannelVolumes(),
   val melodyOriginalVolumeBoost: Int = 0,
+  val inputMethod: InputMethod = InputMethod(),
   /** The category whose picker sheet is currently open, or null when closed. */
   val openPickerChannel: MidiChannel? = null,
 ) {
@@ -35,6 +37,8 @@ data class SettingsUiState(
 }
 
 sealed interface SettingsAction {
+  data class SelectInputMethod(val inputMethod: InputMethod) : SettingsAction
+
   data class OpenPicker(val channel: MidiChannel) : SettingsAction
   data object ClosePicker : SettingsAction
   data class SelectPreset(val channel: MidiChannel, val preset: Preset) : SettingsAction

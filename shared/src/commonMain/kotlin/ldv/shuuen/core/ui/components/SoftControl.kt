@@ -19,16 +19,16 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 fun SoftControl(
-  modifier: Modifier = Modifier.Companion,
+  modifier: Modifier = Modifier,
   selected: Boolean = false,
   onClick: (() -> Unit)? = null,
   content: @Composable RowScope.() -> Unit,
 ) {
-  val shape = ldv.shuuen.core.ui.components.ShuuenUi.ControlShape
+  val shape = ShuuenUi.ControlShape
   Row(
     modifier = modifier.clip(shape)
       .background(if (selected) Color.White.copy(alpha = 0.13f) else Color.White.copy(alpha = 0.05f))
-      .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier.Companion)
+      .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
       .padding(horizontal = 10.dp, vertical = 9.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(

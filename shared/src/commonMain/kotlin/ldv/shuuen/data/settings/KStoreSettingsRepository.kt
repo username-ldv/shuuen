@@ -7,6 +7,7 @@ import kotlinx.io.files.Path
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.settings.AppSettings
+import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.SettingsRepository
 import org.koin.core.annotation.Named
 
@@ -42,6 +43,10 @@ class KStoreSettingsRepository(
 
   override suspend fun setMelodyOriginalVolumeBoost(value: Int) {
     store.update { it?.copy(melodyOriginalVolumeBoost = value.coerceIn(0, MidiValueMax)) }
+  }
+
+  override suspend fun setInputMethod(inputMethod: InputMethod) {
+    store.update { it?.copy(inputMethod = inputMethod) }
   }
 
   override suspend fun setSoundFontPath(path: String?) {

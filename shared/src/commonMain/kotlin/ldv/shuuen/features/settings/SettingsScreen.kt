@@ -1,5 +1,6 @@
 package ldv.shuuen.features.settings
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -52,8 +54,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.room3.util.TableInfo
 import kotlin.math.roundToInt
 import ldv.shuuen.core.audio.midi.MidiChannel
+import ldv.shuuen.core.settings.InputComponent
+import ldv.shuuen.core.settings.InputMethod
+import ldv.shuuen.core.settings.InputMode
 import ldv.shuuen.core.ui.components.FlatSection
 import ldv.shuuen.core.ui.components.Hairline
 import ldv.shuuen.core.ui.components.IconBubble
@@ -93,9 +99,12 @@ fun SettingsScreen(
         ) {
           Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(26.dp),
+            verticalArrangement = Arrangement.spacedBy(13.dp),
           ) {
-            InputMethodSection()
+            InputMethodSection(
+              selected = state.inputMethod,
+              onSelect = { viewModel.onAction(SettingsAction.SelectInputMethod(it)) },
+            )
             Hairline()
             GeneralSection()
           }
@@ -109,9 +118,12 @@ fun SettingsScreen(
       } else {
         Column(
           modifier = Modifier.fillMaxWidth(),
-          verticalArrangement = Arrangement.spacedBy(26.dp),
+          verticalArrangement = Arrangement.spacedBy(13.dp),
         ) {
-          InputMethodSection()
+          InputMethodSection(
+            selected = state.inputMethod,
+            onSelect = { viewModel.onAction(SettingsAction.SelectInputMethod(it)) },
+          )
           Hairline()
           SoundfontSection(state = state, onAction = viewModel::onAction)
           Hairline()
@@ -145,55 +157,82 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun InputMethodSection() {
+private fun Card(
+  component: InputComponent,
+  mode: InputMode,
+  icon: ImageVector,
+  selected: InputMethod,
+  compact: Boolean,
+  onSelect: (InputMethod) -> Unit,
+  modifier: Modifier,
+) {
+  InputMethodCard(
+    title = if (component == InputComponent.Piano) "Piano" else "Circle",
+    mode = if (mode == InputMode.Absolute) "Absolute" else "Relative",
+    icon = icon,
+    selected = selected.component == component && selected.mode == mode,
+    compact = compact,
+    // Keep the circle orientation choice when switching methods.
+    onClick = { onSelect(selected.copy(component = component, mode = mode)) },
+    modifier = modifier,
+  )
+}
+
+@Composable
+private fun InputMethodSection(
+  selected: InputMethod,
+  onSelect: (InputMethod) -> Unit,
+) {
   FlatSection(
     label = "INPUT METHOD",
     supporting = "Choose how answers are entered and interpreted.",
   ) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
       val compact = maxWidth < 390.dp
-      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+
+      val spacing = 10.dp
+      Column {
         Row(
           horizontalArrangement = Arrangement.spacedBy(10.dp),
           modifier = Modifier.fillMaxWidth()
         ) {
-          InputMethodCard(
-            "Piano",
-            "Absolute",
-            Icons.Rounded.Keyboard,
-            true,
-            compact,
-            Modifier.weight(1f)
-          )
-          InputMethodCard(
-            "Piano",
-            "Relative",
-            Icons.Rounded.Keyboard,
-            false,
-            compact,
-            Modifier.weight(1f)
-          )
+          Card(InputComponent.Piano, InputMode.Absolute, Icons.Rounded.Keyboard, selected, compact, onSelect, Modifier.weight(1f))
+          Card(InputComponent.Piano, InputMode.Relative, Icons.Rounded.Keyboard, selected, compact, onSelect, Modifier.weight(1f))
         }
+        Spacer(modifier = Modifier.height(spacing))
         Row(
           horizontalArrangement = Arrangement.spacedBy(10.dp),
           modifier = Modifier.fillMaxWidth()
         ) {
-          InputMethodCard(
-            "Circle",
-            "Absolute",
-            Icons.Rounded.GraphicEq,
-            false,
-            compact,
-            Modifier.weight(1f)
-          )
-          InputMethodCard(
-            "Circle",
-            "Relative",
-            Icons.Rounded.GraphicEq,
-            false,
-            compact,
-            Modifier.weight(1f)
-          )
+          Card(InputComponent.Circle, InputMode.Absolute, Icons.Rounded.GraphicEq, selected, compact, onSelect, Modifier.weight(1f))
+          Card(InputComponent.Circle, InputMode.Relative, Icons.Rounded.GraphicEq, selected, compact, onSelect, Modifier.weight(1f))
+        }
+
+        // Circle + Absolute has a sub-choice: keep the fixed C-at-top layout, or rotate so the
+        // level's root sits at the top.
+        AnimatedVisibility (selected.component == InputComponent.Circle && selected.mode == InputMode.Absolute) {
+          Column {
+            Spacer(modifier = Modifier.height(spacing))
+            Row(
+              horizontalArrangement = Arrangement.spacedBy(10.dp),
+              modifier = Modifier.fillMaxWidth()
+            ) {
+              PillControl(
+                text = "C at the top",
+                selected = !selected.circleAbsoluteRootAtTop,
+                trailingCheck = true,
+                onClick = { onSelect(selected.copy(circleAbsoluteRootAtTop = false)) },
+                modifier = Modifier.weight(1f),
+              )
+              PillControl(
+                text = "Root at the top",
+                selected = selected.circleAbsoluteRootAtTop,
+                trailingCheck = true,
+                onClick = { onSelect(selected.copy(circleAbsoluteRootAtTop = true)) },
+                modifier = Modifier.weight(1f),
+              )
+            }
+          }
         }
       }
     }
@@ -221,7 +260,7 @@ private fun SoundfontSection(
               modifier = Modifier.size(22.dp)
             )
             Text(
-              "Arachno.sf2",
+              "GeneralUser-GS",
               color = ShuuenUi.Text,
               style = MaterialTheme.typography.titleSmall,
               modifier = Modifier.weight(1f),
@@ -250,7 +289,7 @@ private fun SoundfontSection(
             modifier = Modifier.size(24.dp)
           )
           Text(
-            "Arachno.sf2",
+            "GeneralUser-GS",
             color = ShuuenUi.Text,
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.weight(1f),
@@ -339,10 +378,13 @@ private fun InputMethodCard(
   icon: ImageVector,
   selected: Boolean,
   compact: Boolean,
+  onClick: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   SoftControl(
-    modifier = modifier.heightIn(min = if (compact) 92.dp else 86.dp),
+    modifier = modifier
+      .heightIn(min = if (compact) 92.dp else 86.dp),
+        onClick = onClick,
     selected = selected,
   ) {
     Column(

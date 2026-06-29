@@ -36,6 +36,7 @@ class SettingsViewModel(
             selectedPresets = settings.presets,
             selectedVolumes = settings.volumes,
             melodyOriginalVolumeBoost = settings.melodyOriginalVolumeBoost,
+            inputMethod = settings.inputMethod,
           )
         }
       }
@@ -69,6 +70,10 @@ class SettingsViewModel(
 
   fun onAction(action: SettingsAction) {
     when (action) {
+      is SettingsAction.SelectInputMethod -> {
+        viewModelScope.launch { settingsRepository.setInputMethod(action.inputMethod) }
+      }
+
       is SettingsAction.OpenPicker ->
           mutableState.update { it.copy(openPickerChannel = action.channel) }
 
