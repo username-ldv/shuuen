@@ -170,11 +170,32 @@ fun SettingsScreen(
           LabelEditor.Notes -> state.musicLabels.noteNames
           LabelEditor.Degrees -> state.musicLabels.degreeNames
         },
+      savedCustomLabels =
+        when (editor) {
+          LabelEditor.Notes -> state.musicLabels.customNoteNamesPreset
+          LabelEditor.Degrees -> state.musicLabels.customDegreeNamesPreset
+        },
       onLabelChange = { index, value ->
         viewModel.onAction(
           when (editor) {
             LabelEditor.Notes -> SettingsAction.SetNoteName(index, value)
             LabelEditor.Degrees -> SettingsAction.SetDegreeName(index, value)
+          },
+        )
+      },
+      onLabelsChange = { values ->
+        viewModel.onAction(
+          when (editor) {
+            LabelEditor.Notes -> SettingsAction.SetNoteNames(values)
+            LabelEditor.Degrees -> SettingsAction.SetDegreeNames(values)
+          },
+        )
+      },
+      onSaveCustom = { values ->
+        viewModel.onAction(
+          when (editor) {
+            LabelEditor.Notes -> SettingsAction.SaveCustomNoteNamesPreset(values)
+            LabelEditor.Degrees -> SettingsAction.SaveCustomDegreeNamesPreset(values)
           },
         )
       },

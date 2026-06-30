@@ -91,6 +91,22 @@ class SettingsViewModel(
 
       is SettingsAction.SetDegreeName -> setDegreeName(action.index, action.value)
 
+      is SettingsAction.SetNoteNames ->
+        viewModelScope.launch { settingsRepository.setNoteNames(action.values.toSizedLabels(MusicLabelDefaults.NoteNames)) }
+
+      is SettingsAction.SetDegreeNames ->
+        viewModelScope.launch { settingsRepository.setDegreeNames(action.values.toSizedLabels(MusicLabelDefaults.DegreeNames)) }
+
+      is SettingsAction.SaveCustomNoteNamesPreset ->
+        viewModelScope.launch {
+          settingsRepository.setCustomNoteNamesPreset(action.values.toSizedLabels(MusicLabelDefaults.NoteNames))
+        }
+
+      is SettingsAction.SaveCustomDegreeNamesPreset ->
+        viewModelScope.launch {
+          settingsRepository.setCustomDegreeNamesPreset(action.values.toSizedLabels(MusicLabelDefaults.DegreeNames))
+        }
+
       is SettingsAction.OpenPicker ->
           mutableState.update { it.copy(openPickerChannel = action.channel) }
 
@@ -198,3 +214,6 @@ private fun List<String>.withLabel(
     }
   }
 }
+
+private fun List<String>.toSizedLabels(defaults: List<String>): List<String> =
+  List(defaults.size) { index -> getOrNull(index) ?: defaults[index] }

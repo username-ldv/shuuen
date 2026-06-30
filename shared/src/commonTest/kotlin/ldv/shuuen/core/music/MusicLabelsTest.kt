@@ -36,4 +36,21 @@ class MusicLabelsTest {
       effectiveDegreeNames(custom),
     )
   }
+
+  @Test
+  fun builtInPresetsHaveExpectedLabels() {
+    assertEquals(
+      listOf(
+        "Do", "Re", "Mi", "Fa", "So", "La", "Ti",
+        "Di", "Ri", "Mya", "Fi", "Si", "Li", "Tya",
+        "Du", "Ra", "Me", "Fe", "Se", "Le", "Te",
+      ),
+      MusicLabelPresets.NotePresets.first { it.name == "Hybrid solfege" }.labels,
+    )
+
+    assertEquals(
+      listOf("Yo", "Yu", "Ya", "Nu", "Na", "Sa", "Sha", "Ka", "Vu", "Va", "Ye", "Yi"),
+      MusicLabelPresets.DegreePresets.first { it.name == "Yoda" }.labels,
+    )
+  }
 }

@@ -26,12 +26,18 @@ interface SettingsRepository {
   suspend fun setNoteNames(names: List<String>)
 
   suspend fun setDegreeNames(names: List<String>)
+
+  suspend fun setCustomNoteNamesPreset(names: List<String>)
+
+  suspend fun setCustomDegreeNamesPreset(names: List<String>)
 }
 
 @Serializable
 data class MusicLabelSettings(
   val noteNames: List<String> = emptyList(),
   val degreeNames: List<String> = emptyList(),
+  val customNoteNamesPreset: List<String> = emptyList(),
+  val customDegreeNamesPreset: List<String> = emptyList(),
 )
 
 @Serializable

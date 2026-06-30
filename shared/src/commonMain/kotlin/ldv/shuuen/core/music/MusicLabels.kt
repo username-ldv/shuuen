@@ -15,6 +15,35 @@ object MusicLabelDefaults {
   val DegreeNames: List<String> = Degree.chromaticOrder.map { it.label }
 }
 
+data class MusicLabelPreset(
+  val name: String,
+  val labels: List<String>,
+)
+
+object MusicLabelPresets {
+  val NotePresets: List<MusicLabelPreset> =
+    listOf(
+      MusicLabelPreset("Default", MusicLabelDefaults.NoteNames),
+      MusicLabelPreset(
+        "Hybrid solfege",
+        listOf(
+          "Do", "Re", "Mi", "Fa", "So", "La", "Ti",
+          "Di", "Ri", "Mya", "Fi", "Si", "Li", "Tya",
+          "Du", "Ra", "Me", "Fe", "Se", "Le", "Te",
+        ),
+      ),
+    )
+
+  val DegreePresets: List<MusicLabelPreset> =
+    listOf(
+      MusicLabelPreset("Default", MusicLabelDefaults.DegreeNames),
+      MusicLabelPreset(
+        "Yoda",
+        listOf("Yo", "Yu", "Ya", "Nu", "Na", "Sa", "Sha", "Ka", "Vu", "Va", "Ye", "Yi"),
+      ),
+    )
+}
+
 fun effectiveNoteNames(customNames: List<String>): List<String> =
   effectiveMusicLabels(customNames, MusicLabelDefaults.NoteNames)
 

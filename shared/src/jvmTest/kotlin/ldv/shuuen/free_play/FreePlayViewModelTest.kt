@@ -87,6 +87,10 @@ private class FakeSettingsRepository : SettingsRepository {
   override suspend fun setNoteNames(names: List<String>) = Unit
 
   override suspend fun setDegreeNames(names: List<String>) = Unit
+
+  override suspend fun setCustomNoteNamesPreset(names: List<String>) = Unit
+
+  override suspend fun setCustomDegreeNamesPreset(names: List<String>) = Unit
 }
 
 private class FakeMidiEngine : MidiEngine {

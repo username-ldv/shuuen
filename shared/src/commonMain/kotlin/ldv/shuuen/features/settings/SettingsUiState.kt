@@ -54,6 +54,10 @@ sealed interface SettingsAction {
   data object CloseLabelEditor : SettingsAction
   data class SetNoteName(val index: Int, val value: String) : SettingsAction
   data class SetDegreeName(val index: Int, val value: String) : SettingsAction
+  data class SetNoteNames(val values: List<String>) : SettingsAction
+  data class SetDegreeNames(val values: List<String>) : SettingsAction
+  data class SaveCustomNoteNamesPreset(val values: List<String>) : SettingsAction
+  data class SaveCustomDegreeNamesPreset(val values: List<String>) : SettingsAction
 
   data class OpenPicker(val channel: MidiChannel) : SettingsAction
   data object ClosePicker : SettingsAction

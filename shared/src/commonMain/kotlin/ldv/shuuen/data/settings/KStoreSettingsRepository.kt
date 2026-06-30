@@ -65,6 +65,18 @@ class KStoreSettingsRepository(
     }
   }
 
+  override suspend fun setCustomNoteNamesPreset(names: List<String>) {
+    store.update { settings ->
+      settings?.copy(musicLabels = settings.musicLabels.copy(customNoteNamesPreset = names))
+    }
+  }
+
+  override suspend fun setCustomDegreeNamesPreset(names: List<String>) {
+    store.update { settings ->
+      settings?.copy(musicLabels = settings.musicLabels.copy(customDegreeNamesPreset = names))
+    }
+  }
+
   override suspend fun setSoundFontPath(path: String?) {
     store.update { it?.copy(soundFontPath = path) }
   }
