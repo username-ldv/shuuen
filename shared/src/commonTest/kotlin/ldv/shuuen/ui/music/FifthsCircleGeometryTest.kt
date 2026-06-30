@@ -232,9 +232,9 @@ class FifthsCircleGeometryTest {
 
   @Test
   fun accidentalPrefixLeftDiagonalRadiusNudgeOnlyIncludesFlatSpellings() {
-    assertEquals(4f, accidentalPrefixLeftDiagonalRadiusNudgePx("♭", 8f))
-    assertEquals(4f, accidentalPrefixLeftDiagonalRadiusNudgePx("b", 8f))
-    assertEquals(4f, accidentalPrefixLeftDiagonalRadiusNudgePx("B", 8f))
+    assertEquals(5.6f, accidentalPrefixLeftDiagonalRadiusNudgePx("♭", 8f))
+    assertEquals(5.6f, accidentalPrefixLeftDiagonalRadiusNudgePx("b", 8f))
+    assertEquals(5.6f, accidentalPrefixLeftDiagonalRadiusNudgePx("B", 8f))
     assertEquals(0f, accidentalPrefixLeftDiagonalRadiusNudgePx("♯", 8f))
     assertEquals(0f, accidentalPrefixLeftDiagonalRadiusNudgePx("#", 8f))
     assertEquals(0f, accidentalPrefixLeftDiagonalRadiusNudgePx("x", 8f))
