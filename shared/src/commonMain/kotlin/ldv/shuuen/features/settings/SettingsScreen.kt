@@ -106,7 +106,12 @@ fun SettingsScreen(
               onSelect = { viewModel.onAction(SettingsAction.SelectInputMethod(it)) },
             )
             Hairline()
-            GeneralSection()
+            GeneralSection(
+              allowSevenAccidentalKeys = state.allowSevenAccidentalKeys,
+              onAllowSevenAccidentalKeysChange = {
+                viewModel.onAction(SettingsAction.SetAllowSevenAccidentalKeys(it))
+              },
+            )
           }
           Column(
             modifier = Modifier.weight(1f),
@@ -127,7 +132,12 @@ fun SettingsScreen(
           Hairline()
           SoundfontSection(state = state, onAction = viewModel::onAction)
           Hairline()
-          GeneralSection()
+          GeneralSection(
+            allowSevenAccidentalKeys = state.allowSevenAccidentalKeys,
+            onAllowSevenAccidentalKeysChange = {
+              viewModel.onAction(SettingsAction.SetAllowSevenAccidentalKeys(it))
+            },
+          )
         }
       }
     }
@@ -339,13 +349,24 @@ private fun SoundfontSection(
 }
 
 @Composable
-private fun GeneralSection() {
+private fun GeneralSection(
+  allowSevenAccidentalKeys: Boolean,
+  onAllowSevenAccidentalKeysChange: (Boolean) -> Unit,
+) {
   FlatSection(label = "GENERAL") {
     SettingsRow(Icons.Rounded.Language, "Language", trailing = "English")
     Hairline()
     SettingsRow(Icons.Rounded.TextFields, "Note names", subtitle = "C, D, E...")
     Hairline()
     SettingsRow(Icons.Rounded.TextFields, "Degree names", subtitle = "1, 2, 3...")
+    Hairline()
+    SwitchRow(
+      icon = Icons.Rounded.MusicNote,
+      title = "Allow 7♯/7♭ keys",
+      subtitle = "Let C♯/C♭-type keys appear in note naming.",
+      checked = allowSevenAccidentalKeys,
+      onCheckedChange = onAllowSevenAccidentalKeysChange,
+    )
     Hairline()
     Row(
       modifier = Modifier
@@ -368,6 +389,32 @@ private fun GeneralSection() {
       )
       ShuuenSwitch(checked = true)
     }
+  }
+}
+
+@Composable
+private fun SwitchRow(
+  icon: ImageVector,
+  title: String,
+  subtitle: String? = null,
+  checked: Boolean,
+  onCheckedChange: (Boolean) -> Unit,
+) {
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .padding(vertical = 6.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(14.dp),
+  ) {
+    Icon(icon, contentDescription = null, tint = ShuuenUi.Muted, modifier = Modifier.size(22.dp))
+    Column(modifier = Modifier.weight(1f)) {
+      Text(text = title, color = ShuuenUi.Text, style = MaterialTheme.typography.titleMedium)
+      if (subtitle != null) {
+        Text(text = subtitle, color = ShuuenUi.Dim, style = MaterialTheme.typography.bodySmall)
+      }
+    }
+    ShuuenSwitch(checked = checked, onCheckedChange = onCheckedChange)
   }
 }
 

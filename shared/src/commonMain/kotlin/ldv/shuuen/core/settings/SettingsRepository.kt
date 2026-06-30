@@ -20,6 +20,8 @@ interface SettingsRepository {
   suspend fun setMelodyOriginalVolumeBoost(value: Int)
 
   suspend fun setInputMethod(inputMethod: InputMethod)
+
+  suspend fun setAllowSevenAccidentalKeys(value: Boolean)
 }
 
 @Serializable
@@ -30,4 +32,10 @@ data class AppSettings(
   @SerialName("melodyOriginalVelocityBoost")
   val melodyOriginalVolumeBoost: Int = 0,
   val inputMethod: InputMethod = InputMethod(),
+  /**
+   * When true, the 7-sharp/7-flat key spellings (C♯, C♭ and their minor relatives) may be chosen
+   * for the otherwise-ambiguous keys; when false they are excluded, so those keys resolve to their
+   * 5-accidental enharmonic.
+   */
+  val allowSevenAccidentalKeys: Boolean = false,
 )

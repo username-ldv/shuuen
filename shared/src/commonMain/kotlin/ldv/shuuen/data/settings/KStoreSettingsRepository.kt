@@ -49,6 +49,10 @@ class KStoreSettingsRepository(
     store.update { it?.copy(inputMethod = inputMethod) }
   }
 
+  override suspend fun setAllowSevenAccidentalKeys(value: Boolean) {
+    store.update { it?.copy(allowSevenAccidentalKeys = value) }
+  }
+
   override suspend fun setSoundFontPath(path: String?) {
     store.update { it?.copy(soundFontPath = path) }
   }

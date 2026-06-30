@@ -37,6 +37,7 @@ class SettingsViewModel(
             selectedVolumes = settings.volumes,
             melodyOriginalVolumeBoost = settings.melodyOriginalVolumeBoost,
             inputMethod = settings.inputMethod,
+            allowSevenAccidentalKeys = settings.allowSevenAccidentalKeys,
           )
         }
       }
@@ -72,6 +73,10 @@ class SettingsViewModel(
     when (action) {
       is SettingsAction.SelectInputMethod -> {
         viewModelScope.launch { settingsRepository.setInputMethod(action.inputMethod) }
+      }
+
+      is SettingsAction.SetAllowSevenAccidentalKeys -> {
+        viewModelScope.launch { settingsRepository.setAllowSevenAccidentalKeys(action.value) }
       }
 
       is SettingsAction.OpenPicker ->

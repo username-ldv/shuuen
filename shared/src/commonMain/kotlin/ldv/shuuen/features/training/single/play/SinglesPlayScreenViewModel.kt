@@ -123,7 +123,8 @@ class SinglesPlayScreenViewModel(
         if (responseState !is ResponseState.Success) return@collect
         level = responseState.result
       }
-      quizzer = SinglesLevelQuizzer(level)
+      val allowSevenAccidentalKeys = settingsRepository.settings.map { it.allowSevenAccidentalKeys }.first()
+      quizzer = SinglesLevelQuizzer(level, allowSevenAccidentalKeys)
 
       val c = level.context
 

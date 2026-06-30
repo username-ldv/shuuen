@@ -23,6 +23,7 @@ data class SettingsUiState(
   val selectedVolumes: ChannelVolumes = ChannelVolumes(),
   val melodyOriginalVolumeBoost: Int = 0,
   val inputMethod: InputMethod = InputMethod(),
+  val allowSevenAccidentalKeys: Boolean = false,
   /** The category whose picker sheet is currently open, or null when closed. */
   val openPickerChannel: MidiChannel? = null,
 ) {
@@ -38,6 +39,8 @@ data class SettingsUiState(
 
 sealed interface SettingsAction {
   data class SelectInputMethod(val inputMethod: InputMethod) : SettingsAction
+
+  data class SetAllowSevenAccidentalKeys(val value: Boolean) : SettingsAction
 
   data class OpenPicker(val channel: MidiChannel) : SettingsAction
   data object ClosePicker : SettingsAction

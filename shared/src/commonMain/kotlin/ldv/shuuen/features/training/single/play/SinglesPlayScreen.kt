@@ -32,6 +32,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.core.music.Pitch
+import ldv.shuuen.core.music.ScaleAccidentalType
+import ldv.shuuen.core.music.chromaticSpellingByOrdinal
+import ldv.shuuen.core.music.defaultLabel
 import ldv.shuuen.core.settings.InputComponent
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.InputMode
@@ -152,7 +155,12 @@ fun SinglesPlayScreen(
       InputComponent.Circle ->
           FifthsCircle(
               modifier = Modifier.fillMaxWidth().weight(1f),
-              itemNames = circleItemNames(inputMethod.mode),
+              itemNames =
+                  circleItemNames(
+                      inputMethod.mode,
+                      screenState.quizState?.root,
+                      screenState.quizState?.accidentalType,
+                  ),
               rotateItemToTop = circleTopItem(inputMethod, screenState.quizState?.root),
               state = circleState,
               onItemPressedChange = { index, pressed ->
@@ -188,13 +196,23 @@ private fun pitchToItemIndex(pitch: Pitch, mode: InputMode, root: Pitch?): Int =
     }
 
 /**
- * Labels for the FifthsCircle items, indexed to match [pitchToItemIndex]: degree names for relative
- * input, chromatic pitch names for absolute input.
+ * Labels for the FifthsCircle items, indexed by item index (= pitch ordinal for absolute). Relative
+ * uses fixed degree names; absolute uses key-aware spelling for the current [root]/[accidentalType]
+ * (sharps vs flats, proper letters), falling back to C-major sharps before a quiz state exists.
  */
-private fun circleItemNames(mode: InputMode): List<String> =
+private fun circleItemNames(
+    mode: InputMode,
+    root: Pitch?,
+    accidentalType: ScaleAccidentalType?,
+): List<String> =
     when (mode) {
       InputMode.Relative -> FifthsCircleDefalts.Names
-      InputMode.Absolute -> Pitch.entries.map { it.toString() }
+      InputMode.Absolute ->
+          chromaticSpellingByOrdinal(
+                  rootOrdinal = root?.ordinal ?: 0,
+                  accidentalType = accidentalType ?: ScaleAccidentalType.Sharps,
+              )
+              .map { it.defaultLabel() }
     }
 
 /**
