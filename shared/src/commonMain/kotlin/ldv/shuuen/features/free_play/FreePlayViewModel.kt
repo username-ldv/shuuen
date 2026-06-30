@@ -3,7 +3,10 @@ package ldv.shuuen.features.free_play
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ldv.shuuen.core.audio.engine.MidiEngine
@@ -11,13 +14,20 @@ import ldv.shuuen.core.audio.engine.MidiEngineStatus
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.Pitch
+import ldv.shuuen.core.settings.MusicLabelSettings
+import ldv.shuuen.core.settings.SettingsRepository
 
 class FreePlayViewModel(
   private val midiEngine: MidiEngine,
+  settingsRepository: SettingsRepository,
   initialTonic: Pitch = Pitch.random(),
 ) : ViewModel() {
   private val mutableState = MutableStateFlow(FreePlayState.initial(initialTonic))
   val state: StateFlow<FreePlayState> = mutableState
+  val musicLabels: StateFlow<MusicLabelSettings> =
+    settingsRepository.settings
+      .map { it.musicLabels }
+      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MusicLabelSettings())
 
   private val droneOctave = 2
 

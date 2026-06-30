@@ -22,7 +22,17 @@ interface SettingsRepository {
   suspend fun setInputMethod(inputMethod: InputMethod)
 
   suspend fun setAllowSevenAccidentalKeys(value: Boolean)
+
+  suspend fun setNoteNames(names: List<String>)
+
+  suspend fun setDegreeNames(names: List<String>)
 }
+
+@Serializable
+data class MusicLabelSettings(
+  val noteNames: List<String> = emptyList(),
+  val degreeNames: List<String> = emptyList(),
+)
 
 @Serializable
 data class AppSettings(
@@ -32,6 +42,7 @@ data class AppSettings(
   @SerialName("melodyOriginalVelocityBoost")
   val melodyOriginalVolumeBoost: Int = 0,
   val inputMethod: InputMethod = InputMethod(),
+  val musicLabels: MusicLabelSettings = MusicLabelSettings(),
   /**
    * When true, the 7-sharp/7-flat key spellings (C♯, C♭ and their minor relatives) may be chosen
    * for the otherwise-ambiguous keys; when false they are excluded, so those keys resolve to their

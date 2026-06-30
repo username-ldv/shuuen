@@ -54,9 +54,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.room3.util.TableInfo
 import kotlin.math.roundToInt
 import ldv.shuuen.core.audio.midi.MidiChannel
+import ldv.shuuen.core.music.effectiveDegreeNames
+import ldv.shuuen.core.music.effectiveNoteNames
 import ldv.shuuen.core.settings.InputComponent
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.InputMode
@@ -107,10 +108,8 @@ fun SettingsScreen(
             )
             Hairline()
             GeneralSection(
-              allowSevenAccidentalKeys = state.allowSevenAccidentalKeys,
-              onAllowSevenAccidentalKeysChange = {
-                viewModel.onAction(SettingsAction.SetAllowSevenAccidentalKeys(it))
-              },
+              state = state,
+              onAction = viewModel::onAction,
             )
           }
           Column(
@@ -133,10 +132,8 @@ fun SettingsScreen(
           SoundfontSection(state = state, onAction = viewModel::onAction)
           Hairline()
           GeneralSection(
-            allowSevenAccidentalKeys = state.allowSevenAccidentalKeys,
-            onAllowSevenAccidentalKeysChange = {
-              viewModel.onAction(SettingsAction.SetAllowSevenAccidentalKeys(it))
-            },
+            state = state,
+            onAction = viewModel::onAction,
           )
         }
       }
@@ -162,6 +159,26 @@ fun SettingsScreen(
       onSelectPreset = { viewModel.onAction(SettingsAction.SelectPreset(channel, it)) },
       onPreview = { viewModel.onAction(SettingsAction.Preview(channel)) },
       onDismiss = { viewModel.onAction(SettingsAction.ClosePicker) },
+    )
+  }
+
+  state.openLabelEditor?.let { editor ->
+    LabelEditorSheet(
+      editor = editor,
+      labels =
+        when (editor) {
+          LabelEditor.Notes -> state.musicLabels.noteNames
+          LabelEditor.Degrees -> state.musicLabels.degreeNames
+        },
+      onLabelChange = { index, value ->
+        viewModel.onAction(
+          when (editor) {
+            LabelEditor.Notes -> SettingsAction.SetNoteName(index, value)
+            LabelEditor.Degrees -> SettingsAction.SetDegreeName(index, value)
+          },
+        )
+      },
+      onDismiss = { viewModel.onAction(SettingsAction.CloseLabelEditor) },
     )
   }
 }
@@ -350,22 +367,32 @@ private fun SoundfontSection(
 
 @Composable
 private fun GeneralSection(
-  allowSevenAccidentalKeys: Boolean,
-  onAllowSevenAccidentalKeysChange: (Boolean) -> Unit,
+  state: SettingsUiState,
+  onAction: (SettingsAction) -> Unit,
 ) {
   FlatSection(label = "GENERAL") {
     SettingsRow(Icons.Rounded.Language, "Language", trailing = "English")
     Hairline()
-    SettingsRow(Icons.Rounded.TextFields, "Note names", subtitle = "C, D, E...")
+    SettingsRow(
+      Icons.Rounded.TextFields,
+      "Note names",
+      subtitle = labelPreview(effectiveNoteNames(state.musicLabels.noteNames), PreviewNaturalCount),
+      onClick = { onAction(SettingsAction.OpenLabelEditor(LabelEditor.Notes)) },
+    )
     Hairline()
-    SettingsRow(Icons.Rounded.TextFields, "Degree names", subtitle = "1, 2, 3...")
+    SettingsRow(
+      Icons.Rounded.TextFields,
+      "Degree names",
+      subtitle = labelPreview(effectiveDegreeNames(state.musicLabels.degreeNames), PreviewDegreeCount),
+      onClick = { onAction(SettingsAction.OpenLabelEditor(LabelEditor.Degrees)) },
+    )
     Hairline()
     SwitchRow(
       icon = Icons.Rounded.MusicNote,
       title = "Allow 7♯/7♭ keys",
       subtitle = "Let C♯/C♭-type keys appear in note naming.",
-      checked = allowSevenAccidentalKeys,
-      onCheckedChange = onAllowSevenAccidentalKeysChange,
+      checked = state.allowSevenAccidentalKeys,
+      onCheckedChange = { onAction(SettingsAction.SetAllowSevenAccidentalKeys(it)) },
     )
     Hairline()
     Row(
@@ -390,6 +417,15 @@ private fun GeneralSection(
       ShuuenSwitch(checked = true)
     }
   }
+}
+
+private const val PreviewNaturalCount = 5
+private const val PreviewDegreeCount = 5
+
+private fun labelPreview(labels: List<String>, visibleCount: Int): String {
+  val visibleLabels = labels.take(visibleCount)
+  val suffix = if (labels.size > visibleLabels.size) "..." else ""
+  return visibleLabels.joinToString(", ") + suffix
 }
 
 @Composable
@@ -692,10 +728,18 @@ private fun SettingsRow(
   title: String,
   subtitle: String? = null,
   trailing: String? = null,
+  onClick: (() -> Unit)? = null,
 ) {
   Row(
     modifier = Modifier
       .fillMaxWidth()
+      .then(
+        if (onClick != null) {
+          Modifier.clip(ShuuenUi.ControlShape).clickable(onClick = onClick)
+        } else {
+          Modifier
+        }
+      )
       .padding(vertical = 6.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(14.dp),

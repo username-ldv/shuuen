@@ -31,6 +31,7 @@ import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.InputMode
+import ldv.shuuen.core.settings.MusicLabelSettings
 import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.features.training.single.domain.SinglesLocalLevelRepository
 import ldv.shuuen.features.training.single.domain.SinglesLevel
@@ -81,6 +82,11 @@ class SinglesPlayScreenViewModel(
       settingsRepository.settings
           .map { it.inputMethod }
           .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InputMethod())
+
+  val musicLabels: StateFlow<MusicLabelSettings> =
+      settingsRepository.settings
+          .map { it.musicLabels }
+          .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MusicLabelSettings())
 
   private var degreeContextPlayer: DegreeContextPlayer? = null
 

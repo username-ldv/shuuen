@@ -14,6 +14,7 @@ import ldv.shuuen.core.audio.engine.MidiEngineStatus
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.music.Chord
+import ldv.shuuen.core.music.MusicLabelDefaults
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.settings.SettingsRepository
@@ -38,6 +39,7 @@ class SettingsViewModel(
             melodyOriginalVolumeBoost = settings.melodyOriginalVolumeBoost,
             inputMethod = settings.inputMethod,
             allowSevenAccidentalKeys = settings.allowSevenAccidentalKeys,
+            musicLabels = settings.musicLabels,
           )
         }
       }
@@ -79,6 +81,16 @@ class SettingsViewModel(
         viewModelScope.launch { settingsRepository.setAllowSevenAccidentalKeys(action.value) }
       }
 
+      is SettingsAction.OpenLabelEditor ->
+        mutableState.update { it.copy(openLabelEditor = action.editor) }
+
+      SettingsAction.CloseLabelEditor ->
+        mutableState.update { it.copy(openLabelEditor = null) }
+
+      is SettingsAction.SetNoteName -> setNoteName(action.index, action.value)
+
+      is SettingsAction.SetDegreeName -> setDegreeName(action.index, action.value)
+
       is SettingsAction.OpenPicker ->
           mutableState.update { it.copy(openPickerChannel = action.channel) }
 
@@ -98,6 +110,28 @@ class SettingsViewModel(
       is SettingsAction.CommitMelodyOriginalVolumeBoost ->
         commitMelodyOriginalVolumeBoost(action.value)
     }
+  }
+
+  private fun setNoteName(index: Int, value: String) {
+    val next =
+      mutableState.value.musicLabels.noteNames.withLabel(
+        index = index,
+        value = value,
+        defaults = MusicLabelDefaults.NoteNames,
+      ) ?: return
+
+    viewModelScope.launch { settingsRepository.setNoteNames(next) }
+  }
+
+  private fun setDegreeName(index: Int, value: String) {
+    val next =
+      mutableState.value.musicLabels.degreeNames.withLabel(
+        index = index,
+        value = value,
+        defaults = MusicLabelDefaults.DegreeNames,
+      ) ?: return
+
+    viewModelScope.launch { settingsRepository.setDegreeNames(next) }
   }
 
   private fun selectPreset(channel: MidiChannel, preset: Preset) {
@@ -148,5 +182,19 @@ class SettingsViewModel(
 
   override fun onCleared() {
     midiEngine.stopAll()
+  }
+}
+
+private fun List<String>.withLabel(
+  index: Int,
+  value: String,
+  defaults: List<String>,
+): List<String>? {
+  if (index !in defaults.indices) return null
+  return List(defaults.size) { itemIndex ->
+    when (itemIndex) {
+      index -> value
+      else -> getOrNull(itemIndex) ?: defaults[itemIndex]
+    }
   }
 }

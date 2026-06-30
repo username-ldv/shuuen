@@ -5,6 +5,7 @@ import ldv.shuuen.core.audio.midi.ChannelVolumes
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.settings.InputMethod
+import ldv.shuuen.core.settings.MusicLabelSettings
 
 /** A MIDI bank paired with the presets it contains. */
 data class Soundbank(
@@ -24,8 +25,10 @@ data class SettingsUiState(
   val melodyOriginalVolumeBoost: Int = 0,
   val inputMethod: InputMethod = InputMethod(),
   val allowSevenAccidentalKeys: Boolean = false,
+  val musicLabels: MusicLabelSettings = MusicLabelSettings(),
   /** The category whose picker sheet is currently open, or null when closed. */
   val openPickerChannel: MidiChannel? = null,
+  val openLabelEditor: LabelEditor? = null,
 ) {
   /**
    * Persisted presets carry no name (only bank/id), so resolve against the
@@ -37,10 +40,20 @@ data class SettingsUiState(
       ?: preset
 }
 
+enum class LabelEditor {
+  Notes,
+  Degrees,
+}
+
 sealed interface SettingsAction {
   data class SelectInputMethod(val inputMethod: InputMethod) : SettingsAction
 
   data class SetAllowSevenAccidentalKeys(val value: Boolean) : SettingsAction
+
+  data class OpenLabelEditor(val editor: LabelEditor) : SettingsAction
+  data object CloseLabelEditor : SettingsAction
+  data class SetNoteName(val index: Int, val value: String) : SettingsAction
+  data class SetDegreeName(val index: Int, val value: String) : SettingsAction
 
   data class OpenPicker(val channel: MidiChannel) : SettingsAction
   data object ClosePicker : SettingsAction

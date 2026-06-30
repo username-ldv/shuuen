@@ -53,6 +53,18 @@ class KStoreSettingsRepository(
     store.update { it?.copy(allowSevenAccidentalKeys = value) }
   }
 
+  override suspend fun setNoteNames(names: List<String>) {
+    store.update { settings ->
+      settings?.copy(musicLabels = settings.musicLabels.copy(noteNames = names))
+    }
+  }
+
+  override suspend fun setDegreeNames(names: List<String>) {
+    store.update { settings ->
+      settings?.copy(musicLabels = settings.musicLabels.copy(degreeNames = names))
+    }
+  }
+
   override suspend fun setSoundFontPath(path: String?) {
     store.update { it?.copy(soundFontPath = path) }
   }

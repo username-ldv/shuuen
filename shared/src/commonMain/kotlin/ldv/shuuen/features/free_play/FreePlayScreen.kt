@@ -14,7 +14,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import ldv.shuuen.core.music.Degree
+import ldv.shuuen.core.music.ScaleAccidentalType
+import ldv.shuuen.core.music.chromaticSpellingByOrdinal
+import ldv.shuuen.core.music.customLabel
+import ldv.shuuen.core.music.effectiveDegreeNames
+import ldv.shuuen.core.settings.MusicLabelSettings
 import ldv.shuuen.core.ui.components.ShuuenTopAppBar
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.StaticScreenFrame
@@ -30,6 +34,7 @@ fun FreePlayScreen(
   onNavigateBack: () -> Unit,
 ) {
   val state by viewModel.state.collectAsState()
+  val musicLabels by viewModel.musicLabels.collectAsState()
 
   DisposableEffect(viewModel) {
     onDispose {
@@ -81,7 +86,7 @@ fun FreePlayScreen(
           modifier = Modifier
             .width(circleWidth)
             .aspectRatio(1f),
-          itemNames = circleLabels(state),
+          itemNames = circleLabels(state, musicLabels),
           onItemPressedChange = { index, pressed ->
             if (pressed) viewModel.onAction(FreePlayAction.ToggleDrone(index))
           },
@@ -123,8 +128,20 @@ fun FreePlayScreen(
   }
 }
 
-private fun circleLabels(state: FreePlayState): List<String> =
+private fun circleLabels(
+  state: FreePlayState,
+  musicLabels: MusicLabelSettings,
+): List<String> =
   when (state.displayMode) {
-    FreePlayDisplayMode.Degrees -> Degree.chromaticOrder.map { it.toString() }
-    FreePlayDisplayMode.Notes -> Degree.chromaticOrder.map { it.pitch(state.tonic).toString() }
+    FreePlayDisplayMode.Degrees -> effectiveDegreeNames(musicLabels.degreeNames)
+    FreePlayDisplayMode.Notes -> {
+      val byOrdinal =
+        chromaticSpellingByOrdinal(
+          rootOrdinal = state.tonic.ordinal,
+          accidentalType = ScaleAccidentalType.Sharps,
+        )
+      List(12) { offset ->
+        byOrdinal[(state.tonic.ordinal + offset).mod(12)].customLabel(musicLabels.noteNames)
+      }
+    }
   }

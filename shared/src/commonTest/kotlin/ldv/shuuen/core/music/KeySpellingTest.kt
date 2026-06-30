@@ -13,7 +13,7 @@ class KeySpellingTest {
   @Test
   fun bMajorIsAllSharpsWithRaisedFourth() {
     assertEquals(
-      listOf("B", "C", "C#", "D", "D#", "E", "E#", "F#", "G", "G#", "A", "A#"),
+      listOf("B", "C", "C♯", "D", "D♯", "E", "E♯", "F♯", "G", "G♯", "A", "A♯"),
       spellFromRoot(11, ScaleAccidentalType.Sharps),
     )
   }
@@ -29,7 +29,7 @@ class KeySpellingTest {
   @Test
   fun fSharpKeyStaysSingleAccidental() {
     assertEquals(
-      listOf("F#", "G", "G#", "A", "A#", "B", "B#", "C#", "D", "D#", "E", "E#"),
+      listOf("F♯", "G", "G♯", "A", "A♯", "B", "B♯", "C♯", "D", "D♯", "E", "E♯"),
       spellFromRoot(6, ScaleAccidentalType.Sharps),
     )
   }
@@ -45,7 +45,7 @@ class KeySpellingTest {
   @Test
   fun cSharpKeyHasESharpAndBSharp() {
     assertEquals(
-      listOf("C#", "D", "D#", "E", "E#", "F#", "G", "G#", "A", "A#", "B", "B#"),
+      listOf("C♯", "D", "D♯", "E", "E♯", "F♯", "G", "G♯", "A", "A♯", "B", "B♯"),
       spellFromRoot(1, ScaleAccidentalType.Sharps),
     )
   }

@@ -12,3 +12,5 @@ inline fun <T> List<T>.updateBy(
     toMutableList().also { it[index] = by(it[index]) }
   }
 }
+
+val flatSharpRegex = Regex("[${Constants.LabelFlat}${Constants.LabelSharp}]")

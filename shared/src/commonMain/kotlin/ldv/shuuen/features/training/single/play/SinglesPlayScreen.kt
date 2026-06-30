@@ -34,10 +34,12 @@ import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.ScaleAccidentalType
 import ldv.shuuen.core.music.chromaticSpellingByOrdinal
-import ldv.shuuen.core.music.defaultLabel
+import ldv.shuuen.core.music.customLabel
+import ldv.shuuen.core.music.effectiveDegreeNames
 import ldv.shuuen.core.settings.InputComponent
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.InputMode
+import ldv.shuuen.core.settings.MusicLabelSettings
 import ldv.shuuen.core.ui.components.LinearTrainingProgress
 import ldv.shuuen.core.ui.components.ShuuenTopAppBar
 import ldv.shuuen.core.ui.components.ShuuenTopAppBarType
@@ -45,7 +47,6 @@ import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.SoftControl
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.music.inputs.FifthsCircle
-import ldv.shuuen.core.ui.components.music.inputs.FifthsCircleDefalts
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboard
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
 import ldv.shuuen.core.ui.components.music.inputs.rememberFifthsCircleState
@@ -59,6 +60,7 @@ fun SinglesPlayScreen(
 ) {
   val screenState by viewModel.state.collectAsStateWithLifecycle()
   val inputMethod by viewModel.inputMethod.collectAsStateWithLifecycle()
+  val musicLabels by viewModel.musicLabels.collectAsStateWithLifecycle()
   val title =
       when (val level = screenState.levelData) {
         is ResponseState.Loading -> "Loading..."
@@ -160,6 +162,7 @@ fun SinglesPlayScreen(
                       inputMethod.mode,
                       screenState.quizState?.root,
                       screenState.quizState?.accidentalType,
+                      musicLabels,
                   ),
               rotateItemToTop = circleTopItem(inputMethod, screenState.quizState?.root),
               state = circleState,
@@ -197,22 +200,24 @@ private fun pitchToItemIndex(pitch: Pitch, mode: InputMode, root: Pitch?): Int =
 
 /**
  * Labels for the FifthsCircle items, indexed by item index (= pitch ordinal for absolute). Relative
- * uses fixed degree names; absolute uses key-aware spelling for the current [root]/[accidentalType]
- * (sharps vs flats, proper letters), falling back to C-major sharps before a quiz state exists.
+ * uses configurable degree names; absolute uses key-aware spelling for the current
+ * [root]/[accidentalType] (sharps vs flats, proper letters), falling back to C-major sharps before a
+ * quiz state exists.
  */
 private fun circleItemNames(
     mode: InputMode,
     root: Pitch?,
     accidentalType: ScaleAccidentalType?,
+    musicLabels: MusicLabelSettings,
 ): List<String> =
     when (mode) {
-      InputMode.Relative -> FifthsCircleDefalts.Names
+      InputMode.Relative -> effectiveDegreeNames(musicLabels.degreeNames)
       InputMode.Absolute ->
           chromaticSpellingByOrdinal(
                   rootOrdinal = root?.ordinal ?: 0,
                   accidentalType = accidentalType ?: ScaleAccidentalType.Sharps,
               )
-              .map { it.defaultLabel() }
+              .map { it.customLabel(musicLabels.noteNames) }
     }
 
 /**
