@@ -3,6 +3,7 @@ package ldv.shuuen.ui.music
 import kotlin.math.PI
 import kotlin.math.abs
 import ldv.shuuen.core.ui.components.music.inputs.accidentalPrefixLeftCardinalNudgePx
+import ldv.shuuen.core.ui.components.music.inputs.accidentalPrefixLeftDiagonalRadiusNudgePx
 import ldv.shuuen.core.ui.components.music.inputs.accidentalPrefixParts
 import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixRightCardinalNudgePx
 import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixParts
@@ -10,6 +11,7 @@ import ldv.shuuen.core.ui.components.music.inputs.cardinalAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.fifthsCircleRingRadiusPx
 import ldv.shuuen.core.ui.components.music.inputs.fifthsCircleLabelRadiusPx
 import ldv.shuuen.core.ui.components.music.inputs.leftCardinalAxisFactor
+import ldv.shuuen.core.ui.components.music.inputs.leftDiagonalAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.radialHalfExtentPx
 import ldv.shuuen.core.ui.components.music.inputs.rightCardinalAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.verticalCardinalAxisFactor
@@ -220,6 +222,26 @@ class FifthsCircleGeometryTest {
     assertTrue(abs(nudge * leftCardinalAxisFactor(0.0)) < 0.001f)
     assertTrue(abs(nudge * leftCardinalAxisFactor(PI / 2.0)) < 0.001f)
     assertTrue(abs(nudge * leftCardinalAxisFactor(5.0 * PI / 6.0)) < 0.001f)
+  }
+
+  @Test
+  fun accidentalPrefixLeftDiagonalRadiusNudgeOnlyIncludesFlatSpellings() {
+    assertEquals(4f, accidentalPrefixLeftDiagonalRadiusNudgePx("♭", 8f))
+    assertEquals(4f, accidentalPrefixLeftDiagonalRadiusNudgePx("b", 8f))
+    assertEquals(4f, accidentalPrefixLeftDiagonalRadiusNudgePx("B", 8f))
+    assertEquals(0f, accidentalPrefixLeftDiagonalRadiusNudgePx("♯", 8f))
+    assertEquals(0f, accidentalPrefixLeftDiagonalRadiusNudgePx("#", 8f))
+    assertEquals(0f, accidentalPrefixLeftDiagonalRadiusNudgePx("x", 8f))
+  }
+
+  @Test
+  fun leftDiagonalFactorOnlyAppliesToTwoLeftDiagonalSlots() {
+    assertEquals(1f, leftDiagonalAxisFactor(5.0 * PI / 6.0))
+    assertEquals(1f, leftDiagonalAxisFactor(7.0 * PI / 6.0))
+    assertEquals(0f, leftDiagonalAxisFactor(PI))
+    assertEquals(0f, leftDiagonalAxisFactor(2.0 * PI / 3.0))
+    assertEquals(0f, leftDiagonalAxisFactor(4.0 * PI / 3.0))
+    assertEquals(0f, leftDiagonalAxisFactor(0.0))
   }
 
   @Test

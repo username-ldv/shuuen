@@ -612,7 +612,7 @@ fun FifthsCircle(
           dotRadiusPx = max(inactiveDotRadiusPx, activeDotRadiusPx),
           dotGapPx = labelRingGapPx,
           cardinalTuckPx = cardinalLabelTuckPx,
-        )
+        ) + labelLayout.leftDiagonalRadiusNudgePx * leftDiagonalAxisFactor(angle)
         val labelCenter = pointOnCircle(center, labelRadius, slot, itemCount, rotation.value)
         drawFifthsCircleLabel(
           label = labelLayout,
@@ -703,6 +703,9 @@ private const val AccidentalVerticalCenterNudgeFraction = 0.45f
 private const val SharpHorizontalEdgeNudgeFraction = 0.5f
 private const val FlatHorizontalEdgeNudgeFraction = 0.5f
 private const val PrefixAccidentalHorizontalEdgeNudgeFraction = 1f
+private const val PrefixFlatDiagonalRadiusNudgeFraction = 0.5f
+private val LeftDiagonalOffsetRadians = PI / 6.0
+private val LeftDiagonalFalloffRadians = PI / 12.0
 
 private data class MeasuredFifthsCircleLabel(
   val first: TextLayoutResult,
@@ -712,6 +715,7 @@ private data class MeasuredFifthsCircleLabel(
   val verticalCardinalCenterNudgeX: Float = 0f,
   val rightCardinalCenterNudgeX: Float = 0f,
   val leftCardinalCenterNudgeX: Float = 0f,
+  val leftDiagonalRadiusNudgePx: Float = 0f,
 )
 
 private fun measureFifthsCircleLabel(
@@ -747,6 +751,8 @@ private fun measureFifthsCircleLabel(
       verticalCardinalCenterNudgeX = -accidentalTuckPx * AccidentalVerticalCenterNudgeFraction,
       rightCardinalCenterNudgeX = 0f,
       leftCardinalCenterNudgeX = accidentalPrefixLeftCardinalNudgePx(accidental, accidentalTuckPx),
+      leftDiagonalRadiusNudgePx =
+        accidentalPrefixLeftDiagonalRadiusNudgePx(accidental, accidentalTuckPx),
     )
   }
 
@@ -763,6 +769,7 @@ private fun measureTuckedLabel(
   verticalCardinalCenterNudgeX: Float,
   rightCardinalCenterNudgeX: Float,
   leftCardinalCenterNudgeX: Float,
+  leftDiagonalRadiusNudgePx: Float = 0f,
 ): MeasuredFifthsCircleLabel {
   val firstInk = textInkBounds(first)
   val secondInk = textInkBounds(second)
@@ -781,6 +788,7 @@ private fun measureTuckedLabel(
     verticalCardinalCenterNudgeX = verticalCardinalCenterNudgeX,
     rightCardinalCenterNudgeX = rightCardinalCenterNudgeX,
     leftCardinalCenterNudgeX = leftCardinalCenterNudgeX,
+    leftDiagonalRadiusNudgePx = leftDiagonalRadiusNudgePx,
   )
 }
 
@@ -824,6 +832,16 @@ internal fun accidentalPrefixLeftCardinalNudgePx(
     "♭", "♯", "#", "b", "B" ->
       -accidentalTuckPx * PrefixAccidentalHorizontalEdgeNudgeFraction
     else -> 0f
+  }
+
+internal fun accidentalPrefixLeftDiagonalRadiusNudgePx(
+  accidental: String,
+  accidentalTuckPx: Float,
+): Float =
+  if (accidental.isFlatAccidental()) {
+    accidentalTuckPx * PrefixFlatDiagonalRadiusNudgeFraction
+  } else {
+    0f
   }
 
 internal fun accidentalSuffixRightCardinalNudgePx(
@@ -908,8 +926,25 @@ internal fun rightCardinalAxisFactor(angleRadians: Double): Float =
 internal fun leftCardinalAxisFactor(angleRadians: Double): Float =
   axisProximityFactor(-cos(angleRadians).toFloat())
 
+internal fun leftDiagonalAxisFactor(angleRadians: Double): Float {
+  val distanceFromLeft = angularDistanceRadians(angleRadians, PI)
+  val distanceFromTarget = abs(distanceFromLeft - LeftDiagonalOffsetRadians)
+  return (1.0 - distanceFromTarget / LeftDiagonalFalloffRadians).coerceIn(0.0, 1.0).toFloat()
+}
+
 private fun axisProximityFactor(axisComponent: Float): Float =
   ((axisComponent - CardinalFalloffStart) / (1f - CardinalFalloffStart)).coerceIn(0f, 1f)
+
+private fun angularDistanceRadians(
+  first: Double,
+  second: Double,
+): Double {
+  val twoPi = 2.0 * PI
+  var delta = (first - second) % twoPi
+  if (delta > PI) delta -= twoPi
+  if (delta < -PI) delta += twoPi
+  return abs(delta)
+}
 
 private fun String.isSharpAccidental(): Boolean = this == "♯" || this == "#"
 
