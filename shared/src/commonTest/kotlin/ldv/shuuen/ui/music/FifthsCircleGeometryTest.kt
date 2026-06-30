@@ -6,6 +6,7 @@ import ldv.shuuen.core.ui.components.music.inputs.accidentalPrefixLeftCardinalNu
 import ldv.shuuen.core.ui.components.music.inputs.accidentalPrefixLeftDiagonalRadiusNudgePx
 import ldv.shuuen.core.ui.components.music.inputs.accidentalPrefixParts
 import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixRightCardinalNudgePx
+import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixRightDiagonalRadiusNudgePx
 import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixRightSideRadiusNudgePx
 import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixParts
 import ldv.shuuen.core.ui.components.music.inputs.cardinalAxisFactor
@@ -15,6 +16,7 @@ import ldv.shuuen.core.ui.components.music.inputs.leftCardinalAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.leftDiagonalAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.radialHalfExtentPx
 import ldv.shuuen.core.ui.components.music.inputs.rightCardinalAxisFactor
+import ldv.shuuen.core.ui.components.music.inputs.rightDiagonalAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.rightSideAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.verticalCardinalAxisFactor
 import kotlin.test.Test
@@ -284,6 +286,26 @@ class FifthsCircleGeometryTest {
     assertTrue(abs(rightSideAxisFactor(PI / 2.0)) < 0.001f)
     assertTrue(abs(rightSideAxisFactor(-PI / 2.0)) < 0.001f)
     assertTrue(abs(rightSideAxisFactor(PI)) < 0.001f)
+  }
+
+  @Test
+  fun accidentalSuffixRightDiagonalRadiusNudgeIncludesFlatsAndSharps() {
+    assertEquals(4f, accidentalSuffixRightDiagonalRadiusNudgePx("♭", 8f))
+    assertEquals(4f, accidentalSuffixRightDiagonalRadiusNudgePx("b", 8f))
+    assertEquals(4f, accidentalSuffixRightDiagonalRadiusNudgePx("B", 8f))
+    assertEquals(4f, accidentalSuffixRightDiagonalRadiusNudgePx("♯", 8f))
+    assertEquals(4f, accidentalSuffixRightDiagonalRadiusNudgePx("#", 8f))
+    assertEquals(0f, accidentalSuffixRightDiagonalRadiusNudgePx("x", 8f))
+  }
+
+  @Test
+  fun rightDiagonalFactorOnlyAppliesToTwoRightDiagonalSlots() {
+    assertEquals(1f, rightDiagonalAxisFactor(PI / 6.0))
+    assertEquals(1f, rightDiagonalAxisFactor(-PI / 6.0))
+    assertEquals(0f, rightDiagonalAxisFactor(0.0))
+    assertEquals(0f, rightDiagonalAxisFactor(PI / 3.0))
+    assertEquals(0f, rightDiagonalAxisFactor(-PI / 3.0))
+    assertEquals(0f, rightDiagonalAxisFactor(PI))
   }
 
   @Test
