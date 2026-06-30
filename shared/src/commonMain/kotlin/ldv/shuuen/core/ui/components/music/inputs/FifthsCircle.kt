@@ -234,7 +234,7 @@ fun FifthsCircle(
   activeDotRadius: Dp = 10.dp,
   activeHaloRadius: Dp = 28.dp,
   labelInset: Dp = 24.dp,
-  labelRingGap: Dp = 8.dp,
+  labelRingGap: Dp = 0.dp,
   accidentalTuck: Dp = 5.dp,
   labelStyle: TextStyle = TextStyle(
     fontSize = 24.sp, fontWeight = FontWeight.Normal, letterSpacing = 0.sp
@@ -606,7 +606,8 @@ fun FifthsCircle(
           labelWidthPx = labelLayout.inkBounds.width,
           labelHeightPx = labelLayout.inkBounds.height,
           angleRadians = angle,
-          ringGapPx = labelRingGapPx,
+          dotRadiusPx = max(inactiveDotRadiusPx, activeDotRadiusPx),
+          dotGapPx = labelRingGapPx,
         )
         val labelCenter = pointOnCircle(center, labelRadius, slot, itemCount, rotation.value)
         drawFifthsCircleLabel(labelLayout, labelCenter)
@@ -796,12 +797,17 @@ internal fun fifthsCircleLabelRadiusPx(
   labelWidthPx: Float,
   labelHeightPx: Float,
   angleRadians: Double,
-  ringGapPx: Float,
+  dotRadiusPx: Float,
+  dotGapPx: Float,
 ): Float {
   val outwardHalfExtent =
     abs(cos(angleRadians)).toFloat() * labelWidthPx / 2f +
       abs(sin(angleRadians)).toFloat() * labelHeightPx / 2f
-  val inset = max(minimumInsetPx, ringGapPx + outwardHalfExtent)
+  val inset = if (dotRadiusPx > 0f || dotGapPx > 0f) {
+    dotRadiusPx + dotGapPx + outwardHalfExtent
+  } else {
+    max(minimumInsetPx, outwardHalfExtent)
+  }
   return max(0f, ringRadiusPx - inset)
 }
 

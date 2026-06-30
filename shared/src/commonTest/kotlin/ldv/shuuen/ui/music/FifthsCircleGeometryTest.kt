@@ -45,7 +45,8 @@ class FifthsCircleGeometryTest {
       labelWidthPx = 44f,
       labelHeightPx = 30f,
       angleRadians = 5.0 * PI / 6.0,
-      ringGapPx = 8f,
+      dotRadiusPx = 10f,
+      dotGapPx = 8f,
     )
 
     assertTrue(radius < 176f)
@@ -61,9 +62,71 @@ class FifthsCircleGeometryTest {
         labelWidthPx = 20f,
         labelHeightPx = 28f,
         angleRadians = -PI / 2.0,
-        ringGapPx = 8f,
+        dotRadiusPx = 0f,
+        dotGapPx = 0f,
       ),
     )
+  }
+
+  @Test
+  fun labelRadiusKeepsConsistentGapFromDotsForDifferentWidths() {
+    val ringRadius = 200f
+    val dotRadius = 10f
+    val dotGap = 8f
+    val narrowHalfWidth = 12f
+    val wideHalfWidth = 24f
+
+    val narrowRadius = fifthsCircleLabelRadiusPx(
+      ringRadiusPx = ringRadius,
+      minimumInsetPx = 24f,
+      labelWidthPx = narrowHalfWidth * 2f,
+      labelHeightPx = 30f,
+      angleRadians = 0.0,
+      dotRadiusPx = dotRadius,
+      dotGapPx = dotGap,
+    )
+    val wideRadius = fifthsCircleLabelRadiusPx(
+      ringRadiusPx = ringRadius,
+      minimumInsetPx = 24f,
+      labelWidthPx = wideHalfWidth * 2f,
+      labelHeightPx = 30f,
+      angleRadians = PI,
+      dotRadiusPx = dotRadius,
+      dotGapPx = dotGap,
+    )
+
+    assertEquals(dotGap, ringRadius - dotRadius - narrowRadius - narrowHalfWidth)
+    assertEquals(dotGap, ringRadius - dotRadius - wideRadius - wideHalfWidth)
+  }
+
+  @Test
+  fun labelRadiusKeepsConsistentGapWithZeroConfiguredGap() {
+    val ringRadius = 200f
+    val dotRadius = 10f
+    val narrowHalfWidth = 7f
+    val wideHalfWidth = 17f
+
+    val narrowRadius = fifthsCircleLabelRadiusPx(
+      ringRadiusPx = ringRadius,
+      minimumInsetPx = 24f,
+      labelWidthPx = narrowHalfWidth * 2f,
+      labelHeightPx = 30f,
+      angleRadians = 0.0,
+      dotRadiusPx = dotRadius,
+      dotGapPx = 0f,
+    )
+    val wideRadius = fifthsCircleLabelRadiusPx(
+      ringRadiusPx = ringRadius,
+      minimumInsetPx = 24f,
+      labelWidthPx = wideHalfWidth * 2f,
+      labelHeightPx = 30f,
+      angleRadians = PI,
+      dotRadiusPx = dotRadius,
+      dotGapPx = 0f,
+    )
+
+    assertEquals(0f, ringRadius - dotRadius - narrowRadius - narrowHalfWidth)
+    assertEquals(0f, ringRadius - dotRadius - wideRadius - wideHalfWidth)
   }
 
   @Test
