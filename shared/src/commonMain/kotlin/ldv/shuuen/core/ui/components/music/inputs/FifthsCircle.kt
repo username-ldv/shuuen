@@ -617,7 +617,10 @@ fun FifthsCircle(
         drawFifthsCircleLabel(
           label = labelLayout,
           center = labelCenter + Offset(
-            x = labelLayout.verticalCardinalCenterNudgeX * verticalCardinalAxisFactor(angle),
+            x =
+              labelLayout.verticalCardinalCenterNudgeX * verticalCardinalAxisFactor(angle) +
+                labelLayout.rightCardinalCenterNudgeX * rightCardinalAxisFactor(angle) +
+                labelLayout.leftCardinalCenterNudgeX * leftCardinalAxisFactor(angle),
             y = 0f,
           ),
         )
@@ -697,6 +700,7 @@ private const val DirectionEpsilon = 0.0001f
 private const val CardinalFalloffStart = 0.9659258f // cos(15 degrees)
 private const val CardinalLabelTuckFraction = 0.18f
 private const val AccidentalVerticalCenterNudgeFraction = 0.45f
+private const val SharpHorizontalEdgeNudgeFraction = 0.5f
 
 private data class MeasuredFifthsCircleLabel(
   val first: TextLayoutResult,
@@ -704,6 +708,8 @@ private data class MeasuredFifthsCircleLabel(
   val secondOffset: Offset = Offset.Zero,
   val inkBounds: Rect,
   val verticalCardinalCenterNudgeX: Float = 0f,
+  val rightCardinalCenterNudgeX: Float = 0f,
+  val leftCardinalCenterNudgeX: Float = 0f,
 )
 
 private fun measureFifthsCircleLabel(
@@ -722,6 +728,13 @@ private fun measureFifthsCircleLabel(
       second = accidentalLayout,
       tuckPx = accidentalTuckPx,
       verticalCardinalCenterNudgeX = accidentalTuckPx * AccidentalVerticalCenterNudgeFraction,
+      rightCardinalCenterNudgeX =
+        if (accidental.isSharpAccidental()) {
+          accidentalTuckPx * SharpHorizontalEdgeNudgeFraction
+        } else {
+          0f
+        },
+      leftCardinalCenterNudgeX = 0f,
     )
   }
 
@@ -735,6 +748,13 @@ private fun measureFifthsCircleLabel(
       second = baseLayout,
       tuckPx = accidentalTuckPx,
       verticalCardinalCenterNudgeX = -accidentalTuckPx * AccidentalVerticalCenterNudgeFraction,
+      rightCardinalCenterNudgeX = 0f,
+      leftCardinalCenterNudgeX =
+        if (accidental.isSharpAccidental()) {
+          -accidentalTuckPx * SharpHorizontalEdgeNudgeFraction
+        } else {
+          0f
+        },
     )
   }
 
@@ -749,6 +769,8 @@ private fun measureTuckedLabel(
   second: TextLayoutResult,
   tuckPx: Float,
   verticalCardinalCenterNudgeX: Float,
+  rightCardinalCenterNudgeX: Float,
+  leftCardinalCenterNudgeX: Float,
 ): MeasuredFifthsCircleLabel {
   val firstInk = textInkBounds(first)
   val secondInk = textInkBounds(second)
@@ -765,6 +787,8 @@ private fun measureTuckedLabel(
     secondOffset = secondOffset,
     inkBounds = union(firstInk, shiftedSecondInk),
     verticalCardinalCenterNudgeX = verticalCardinalCenterNudgeX,
+    rightCardinalCenterNudgeX = rightCardinalCenterNudgeX,
+    leftCardinalCenterNudgeX = leftCardinalCenterNudgeX,
   )
 }
 
@@ -866,8 +890,16 @@ internal fun cardinalAxisFactor(angleRadians: Double): Float {
 internal fun verticalCardinalAxisFactor(angleRadians: Double): Float =
   axisProximityFactor(abs(sin(angleRadians)).toFloat())
 
+internal fun rightCardinalAxisFactor(angleRadians: Double): Float =
+  axisProximityFactor(cos(angleRadians).toFloat())
+
+internal fun leftCardinalAxisFactor(angleRadians: Double): Float =
+  axisProximityFactor(-cos(angleRadians).toFloat())
+
 private fun axisProximityFactor(axisComponent: Float): Float =
   ((axisComponent - CardinalFalloffStart) / (1f - CardinalFalloffStart)).coerceIn(0f, 1f)
+
+private fun String.isSharpAccidental(): Boolean = this == "♯" || this == "#"
 
 private fun textInkBounds(layout: TextLayoutResult): Rect {
   if (layout.layoutInput.text.text.isEmpty()) {

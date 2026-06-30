@@ -7,7 +7,9 @@ import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixParts
 import ldv.shuuen.core.ui.components.music.inputs.cardinalAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.fifthsCircleRingRadiusPx
 import ldv.shuuen.core.ui.components.music.inputs.fifthsCircleLabelRadiusPx
+import ldv.shuuen.core.ui.components.music.inputs.leftCardinalAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.radialHalfExtentPx
+import ldv.shuuen.core.ui.components.music.inputs.rightCardinalAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.verticalCardinalAxisFactor
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -192,6 +194,10 @@ class FifthsCircleGeometryTest {
     assertEquals(0f, cardinalAxisFactor(PI / 6.0))
     assertEquals(1f, verticalCardinalAxisFactor(PI / 2.0))
     assertEquals(0f, verticalCardinalAxisFactor(0.0))
+    assertEquals(1f, rightCardinalAxisFactor(0.0))
+    assertEquals(0f, rightCardinalAxisFactor(PI))
+    assertEquals(1f, leftCardinalAxisFactor(PI))
+    assertEquals(0f, leftCardinalAxisFactor(0.0))
   }
 
   @Test
