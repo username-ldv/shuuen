@@ -235,7 +235,7 @@ fun FifthsCircle(
   activeDotRadius: Dp = 10.dp,
   activeHaloRadius: Dp = 28.dp,
   labelInset: Dp = 24.dp,
-  labelRingGap: Dp = 2.dp,
+  labelRingGap: Dp = 0.dp,
   accidentalTuck: Dp = 5.dp,
   labelStyle: TextStyle = TextStyle(
     fontSize = 24.sp, fontWeight = FontWeight.Normal, letterSpacing = 0.sp
