@@ -523,6 +523,8 @@ fun FifthsCircle(
       val labelInsetPx = labelInset.toPx()
       val labelRingGapPx = labelRingGap.toPx()
       val accidentalTuckPx = accidentalTuck.toPx()
+      val cardinalLabelTuckPx =
+        max(inactiveDotRadiusPx, activeDotRadiusPx) * CardinalLabelTuckFraction
 
       // Outer colored halos. The inner circle is masked afterward,
       // which creates the nice outward semicircle effect.
@@ -609,9 +611,16 @@ fun FifthsCircle(
           angleRadians = angle,
           dotRadiusPx = max(inactiveDotRadiusPx, activeDotRadiusPx),
           dotGapPx = labelRingGapPx,
+          cardinalTuckPx = cardinalLabelTuckPx,
         )
         val labelCenter = pointOnCircle(center, labelRadius, slot, itemCount, rotation.value)
-        drawFifthsCircleLabel(labelLayout, labelCenter)
+        drawFifthsCircleLabel(
+          label = labelLayout,
+          center = labelCenter + Offset(
+            x = labelLayout.verticalCardinalCenterNudgeX * verticalCardinalAxisFactor(angle),
+            y = 0f,
+          ),
+        )
       }
 
       // Transient tap-feedback flashes, drawn on top so correct/incorrect colors read clearly over
@@ -685,12 +694,16 @@ private fun angleForCircleSlot(
 ): Double = -PI / 2.0 + 2.0 * PI * slot.toDouble() / count.toDouble() + rotationRadians
 
 private const val DirectionEpsilon = 0.0001f
+private const val CardinalFalloffStart = 0.9659258f // cos(15 degrees)
+private const val CardinalLabelTuckFraction = 0.18f
+private const val AccidentalVerticalCenterNudgeFraction = 0.45f
 
 private data class MeasuredFifthsCircleLabel(
   val first: TextLayoutResult,
   val second: TextLayoutResult? = null,
   val secondOffset: Offset = Offset.Zero,
   val inkBounds: Rect,
+  val verticalCardinalCenterNudgeX: Float = 0f,
 )
 
 private fun measureFifthsCircleLabel(
@@ -708,6 +721,7 @@ private fun measureFifthsCircleLabel(
       first = baseLayout,
       second = accidentalLayout,
       tuckPx = accidentalTuckPx,
+      verticalCardinalCenterNudgeX = accidentalTuckPx * AccidentalVerticalCenterNudgeFraction,
     )
   }
 
@@ -720,6 +734,7 @@ private fun measureFifthsCircleLabel(
       first = accidentalLayout,
       second = baseLayout,
       tuckPx = accidentalTuckPx,
+      verticalCardinalCenterNudgeX = -accidentalTuckPx * AccidentalVerticalCenterNudgeFraction,
     )
   }
 
@@ -733,6 +748,7 @@ private fun measureTuckedLabel(
   first: TextLayoutResult,
   second: TextLayoutResult,
   tuckPx: Float,
+  verticalCardinalCenterNudgeX: Float,
 ): MeasuredFifthsCircleLabel {
   val firstInk = textInkBounds(first)
   val secondInk = textInkBounds(second)
@@ -748,6 +764,7 @@ private fun measureTuckedLabel(
     second = second,
     secondOffset = secondOffset,
     inkBounds = union(firstInk, shiftedSecondInk),
+    verticalCardinalCenterNudgeX = verticalCardinalCenterNudgeX,
   )
 }
 
@@ -802,6 +819,7 @@ internal fun fifthsCircleLabelRadiusPx(
   angleRadians: Double,
   dotRadiusPx: Float,
   dotGapPx: Float,
+  cardinalTuckPx: Float = 0f,
 ): Float {
   val outwardHalfExtent = radialHalfExtentPx(
     widthPx = labelWidthPx,
@@ -813,7 +831,8 @@ internal fun fifthsCircleLabelRadiusPx(
   } else {
     max(minimumInsetPx, outwardHalfExtent)
   }
-  return max(0f, ringRadiusPx - inset)
+  val opticalInset = max(0f, inset - cardinalTuckPx * cardinalAxisFactor(angleRadians))
+  return max(0f, ringRadiusPx - opticalInset)
 }
 
 internal fun radialHalfExtentPx(
@@ -838,6 +857,17 @@ internal fun radialHalfExtentPx(
     0f
   }
 }
+
+internal fun cardinalAxisFactor(angleRadians: Double): Float {
+  val axis = max(abs(cos(angleRadians)).toFloat(), abs(sin(angleRadians)).toFloat())
+  return axisProximityFactor(axis)
+}
+
+internal fun verticalCardinalAxisFactor(angleRadians: Double): Float =
+  axisProximityFactor(abs(sin(angleRadians)).toFloat())
+
+private fun axisProximityFactor(axisComponent: Float): Float =
+  ((axisComponent - CardinalFalloffStart) / (1f - CardinalFalloffStart)).coerceIn(0f, 1f)
 
 private fun textInkBounds(layout: TextLayoutResult): Rect {
   if (layout.layoutInput.text.text.isEmpty()) {

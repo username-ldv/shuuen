@@ -4,9 +4,11 @@ import kotlin.math.PI
 import kotlin.math.abs
 import ldv.shuuen.core.ui.components.music.inputs.accidentalPrefixParts
 import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixParts
+import ldv.shuuen.core.ui.components.music.inputs.cardinalAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.fifthsCircleRingRadiusPx
 import ldv.shuuen.core.ui.components.music.inputs.fifthsCircleLabelRadiusPx
 import ldv.shuuen.core.ui.components.music.inputs.radialHalfExtentPx
+import ldv.shuuen.core.ui.components.music.inputs.verticalCardinalAxisFactor
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -129,6 +131,67 @@ class FifthsCircleGeometryTest {
 
     assertEquals(0f, ringRadius - dotRadius - narrowRadius - narrowHalfWidth)
     assertEquals(0f, ringRadius - dotRadius - wideRadius - wideHalfWidth)
+  }
+
+  @Test
+  fun labelRadiusTucksOnlyCardinalLabelsCloser() {
+    val ringRadius = 200f
+    val width = 20f
+    val height = 30f
+    val dotRadius = 10f
+
+    val cardinalUntucked = fifthsCircleLabelRadiusPx(
+      ringRadiusPx = ringRadius,
+      minimumInsetPx = 24f,
+      labelWidthPx = width,
+      labelHeightPx = height,
+      angleRadians = 0.0,
+      dotRadiusPx = dotRadius,
+      dotGapPx = 0f,
+      cardinalTuckPx = 0f,
+    )
+    val cardinalTucked = fifthsCircleLabelRadiusPx(
+      ringRadiusPx = ringRadius,
+      minimumInsetPx = 24f,
+      labelWidthPx = width,
+      labelHeightPx = height,
+      angleRadians = 0.0,
+      dotRadiusPx = dotRadius,
+      dotGapPx = 0f,
+      cardinalTuckPx = 2f,
+    )
+    val diagonalUntucked = fifthsCircleLabelRadiusPx(
+      ringRadiusPx = ringRadius,
+      minimumInsetPx = 24f,
+      labelWidthPx = width,
+      labelHeightPx = height,
+      angleRadians = PI / 6.0,
+      dotRadiusPx = dotRadius,
+      dotGapPx = 0f,
+      cardinalTuckPx = 0f,
+    )
+    val diagonalTucked = fifthsCircleLabelRadiusPx(
+      ringRadiusPx = ringRadius,
+      minimumInsetPx = 24f,
+      labelWidthPx = width,
+      labelHeightPx = height,
+      angleRadians = PI / 6.0,
+      dotRadiusPx = dotRadius,
+      dotGapPx = 0f,
+      cardinalTuckPx = 2f,
+    )
+
+    assertEquals(2f, cardinalTucked - cardinalUntucked)
+    assertEquals(diagonalUntucked, diagonalTucked)
+  }
+
+  @Test
+  fun cardinalFactorsOnlyApplyNearAxes() {
+    assertEquals(1f, cardinalAxisFactor(0.0))
+    assertEquals(1f, cardinalAxisFactor(PI / 2.0))
+    assertEquals(0f, cardinalAxisFactor(PI / 6.0))
+    assertEquals(1f, verticalCardinalAxisFactor(PI / 2.0))
+    assertEquals(0f, verticalCardinalAxisFactor(0.0))
   }
 
   @Test
