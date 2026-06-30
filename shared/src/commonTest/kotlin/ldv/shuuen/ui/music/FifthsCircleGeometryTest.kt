@@ -7,6 +7,7 @@ import ldv.shuuen.core.ui.components.music.inputs.accidentalPrefixLeftDiagonalRa
 import ldv.shuuen.core.ui.components.music.inputs.accidentalPrefixParts
 import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixRightCardinalNudgePx
 import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixRightDiagonalRadiusNudgePx
+import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixRightLowerDiagonalRadiusNudgePx
 import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixRightSideRadiusNudgePx
 import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixParts
 import ldv.shuuen.core.ui.components.music.inputs.cardinalAxisFactor
@@ -17,6 +18,7 @@ import ldv.shuuen.core.ui.components.music.inputs.leftDiagonalAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.radialHalfExtentPx
 import ldv.shuuen.core.ui.components.music.inputs.rightCardinalAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.rightDiagonalAxisFactor
+import ldv.shuuen.core.ui.components.music.inputs.rightLowerDiagonalAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.rightSideAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.verticalCardinalAxisFactor
 import kotlin.test.Test
@@ -306,6 +308,27 @@ class FifthsCircleGeometryTest {
     assertEquals(0f, rightDiagonalAxisFactor(PI / 3.0))
     assertEquals(0f, rightDiagonalAxisFactor(-PI / 3.0))
     assertEquals(0f, rightDiagonalAxisFactor(PI))
+  }
+
+  @Test
+  fun accidentalSuffixRightLowerDiagonalRadiusNudgeIncludesFlatsAndSharps() {
+    assertEquals(4f, accidentalSuffixRightLowerDiagonalRadiusNudgePx("♭", 8f))
+    assertEquals(4f, accidentalSuffixRightLowerDiagonalRadiusNudgePx("b", 8f))
+    assertEquals(4f, accidentalSuffixRightLowerDiagonalRadiusNudgePx("B", 8f))
+    assertEquals(4f, accidentalSuffixRightLowerDiagonalRadiusNudgePx("♯", 8f))
+    assertEquals(4f, accidentalSuffixRightLowerDiagonalRadiusNudgePx("#", 8f))
+    assertEquals(0f, accidentalSuffixRightLowerDiagonalRadiusNudgePx("x", 8f))
+  }
+
+  @Test
+  fun rightLowerDiagonalFactorOnlyAppliesToVisual150DegreeSlot() {
+    assertEquals(1f, rightLowerDiagonalAxisFactor(PI / 3.0))
+    assertEquals(0f, rightLowerDiagonalAxisFactor(PI / 6.0))
+    assertEquals(0f, rightLowerDiagonalAxisFactor(-PI / 6.0))
+    assertEquals(0f, rightLowerDiagonalAxisFactor(0.0))
+    assertEquals(0f, rightLowerDiagonalAxisFactor(PI / 2.0))
+    assertEquals(0f, rightLowerDiagonalAxisFactor(-PI / 3.0))
+    assertEquals(0f, rightLowerDiagonalAxisFactor(PI))
   }
 
   @Test
