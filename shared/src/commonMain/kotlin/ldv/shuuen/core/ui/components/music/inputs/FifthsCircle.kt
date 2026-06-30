@@ -35,13 +35,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
@@ -231,8 +234,10 @@ fun FifthsCircle(
   activeDotRadius: Dp = 10.dp,
   activeHaloRadius: Dp = 28.dp,
   labelInset: Dp = 24.dp,
+  labelRingGap: Dp = 8.dp,
+  accidentalTuck: Dp = 5.dp,
   labelStyle: TextStyle = TextStyle(
-    fontSize = 24.sp, fontWeight = FontWeight.Normal, letterSpacing = (-5).sp
+    fontSize = 24.sp, fontWeight = FontWeight.Normal, letterSpacing = 0.sp
   ),
 
   centerButtonSize: Dp = 104.dp,
@@ -514,7 +519,9 @@ fun FifthsCircle(
       val inactiveDotRadiusPx = inactiveDotRadius.toPx()
       val activeDotRadiusPx = activeDotRadius.toPx()
       val haloRadiusPx = activeHaloRadius.toPx()
-      val labelRadius = max(0f, ringRadius - labelInset.toPx())
+      val labelInsetPx = labelInset.toPx()
+      val labelRingGapPx = labelRingGap.toPx()
+      val accidentalTuckPx = accidentalTuck.toPx()
 
       // Outer colored halos. The inner circle is masked afterward,
       // which creates the nice outward semicircle effect.
@@ -563,8 +570,6 @@ fun FifthsCircle(
         val progress = pressProgress[itemIndex]
 
         val dotCenter = pointOnCircle(center, ringRadius, slot, itemCount, rotation.value)
-        val labelCenter = pointOnCircle(center, labelRadius, slot, itemCount, rotation.value)
-
         val dotColor = when {
           !enabled -> disabledDotColor
 //          else -> lerp(inactiveDotColor, itemColors[itemIndex], progress)
@@ -588,18 +593,23 @@ fun FifthsCircle(
           else -> inactiveLabelColor
         }
 
-        val layout = textMeasurer.measure(
-          text = AnnotatedString(itemNames[itemIndex]),
+        val labelLayout = measureFifthsCircleLabel(
+          textMeasurer = textMeasurer,
+          label = itemNames[itemIndex],
           style = labelStyle.copy(color = labelColor),
+          accidentalTuckPx = accidentalTuckPx,
         )
-
-        drawText(
-          textLayoutResult = layout,
-          topLeft = Offset(
-            x = labelCenter.x - layout.size.width / 2f,
-            y = labelCenter.y - layout.size.height / 2f,
-          ),
+        val angle = angleForCircleSlot(slot, itemCount, rotation.value)
+        val labelRadius = fifthsCircleLabelRadiusPx(
+          ringRadiusPx = ringRadius,
+          minimumInsetPx = labelInsetPx,
+          labelWidthPx = labelLayout.inkBounds.width,
+          labelHeightPx = labelLayout.inkBounds.height,
+          angleRadians = angle,
+          ringGapPx = labelRingGapPx,
         )
+        val labelCenter = pointOnCircle(center, labelRadius, slot, itemCount, rotation.value)
+        drawFifthsCircleLabel(labelLayout, labelCenter)
       }
 
       // Transient tap-feedback flashes, drawn on top so correct/incorrect colors read clearly over
@@ -658,13 +668,140 @@ private fun pointOnCircle(
   count: Int,
   rotationRadians: Float = 0f,
 ): Offset {
-  val angle = -PI / 2.0 + 2.0 * PI * slot.toDouble() / count.toDouble() + rotationRadians
+  val angle = angleForCircleSlot(slot, count, rotationRadians)
 
   return Offset(
     x = center.x + cos(angle).toFloat() * radius,
     y = center.y + sin(angle).toFloat() * radius,
   )
 }
+
+private fun angleForCircleSlot(
+  slot: Int,
+  count: Int,
+  rotationRadians: Float = 0f,
+): Double = -PI / 2.0 + 2.0 * PI * slot.toDouble() / count.toDouble() + rotationRadians
+
+private data class MeasuredFifthsCircleLabel(
+  val main: TextLayoutResult,
+  val accidental: TextLayoutResult? = null,
+  val accidentalOffset: Offset = Offset.Zero,
+  val inkBounds: Rect,
+)
+
+private fun measureFifthsCircleLabel(
+  textMeasurer: androidx.compose.ui.text.TextMeasurer,
+  label: String,
+  style: TextStyle,
+  accidentalTuckPx: Float,
+): MeasuredFifthsCircleLabel {
+  val accidentalParts = accidentalSuffixParts(label)
+  if (accidentalParts == null) {
+    val layout = textMeasurer.measure(text = AnnotatedString(label), style = style)
+    return MeasuredFifthsCircleLabel(main = layout, inkBounds = textInkBounds(layout))
+  }
+
+  val (base, accidental) = accidentalParts
+  val baseLayout = textMeasurer.measure(text = AnnotatedString(base), style = style)
+  val accidentalLayout = textMeasurer.measure(text = AnnotatedString(accidental), style = style)
+  val baseInk = textInkBounds(baseLayout)
+  val accidentalInk = textInkBounds(accidentalLayout)
+  val accidentalOffset =
+    Offset(
+      x = baseInk.right - accidentalTuckPx - accidentalInk.left,
+      y = baseLayout.getLineBaseline(0) - accidentalLayout.getLineBaseline(0),
+    )
+  val shiftedAccidentalInk = accidentalInk.translateBy(accidentalOffset)
+
+  return MeasuredFifthsCircleLabel(
+    main = baseLayout,
+    accidental = accidentalLayout,
+    accidentalOffset = accidentalOffset,
+    inkBounds = union(baseInk, shiftedAccidentalInk),
+  )
+}
+
+internal fun accidentalSuffixParts(label: String): Pair<String, String>? {
+  val accidental = label.lastOrNull() ?: return null
+  val base = label.dropLast(1).takeIf { it.isNotEmpty() } ?: return null
+
+  return when (accidental) {
+    '♭', '♯', '#' -> base to accidental.toString()
+    'b', 'B' ->
+      if (base.length == 1 && base.first().uppercaseChar() in 'A'..'G') {
+        base to accidental.toString()
+      } else {
+        null
+      }
+    else -> null
+  }
+}
+
+private fun DrawScope.drawFifthsCircleLabel(
+  label: MeasuredFifthsCircleLabel,
+  center: Offset,
+) {
+  val origin = center - label.inkBounds.center
+  drawText(textLayoutResult = label.main, topLeft = origin)
+  label.accidental?.let {
+    drawText(textLayoutResult = it, topLeft = origin + label.accidentalOffset)
+  }
+}
+
+internal fun fifthsCircleLabelRadiusPx(
+  ringRadiusPx: Float,
+  minimumInsetPx: Float,
+  labelWidthPx: Float,
+  labelHeightPx: Float,
+  angleRadians: Double,
+  ringGapPx: Float,
+): Float {
+  val outwardHalfExtent =
+    abs(cos(angleRadians)).toFloat() * labelWidthPx / 2f +
+      abs(sin(angleRadians)).toFloat() * labelHeightPx / 2f
+  val inset = max(minimumInsetPx, ringGapPx + outwardHalfExtent)
+  return max(0f, ringRadiusPx - inset)
+}
+
+private fun textInkBounds(layout: TextLayoutResult): Rect {
+  if (layout.layoutInput.text.text.isEmpty()) {
+    return Rect(0f, 0f, layout.size.width.toFloat(), layout.size.height.toFloat())
+  }
+
+  var left = Float.POSITIVE_INFINITY
+  var top = Float.POSITIVE_INFINITY
+  var right = Float.NEGATIVE_INFINITY
+  var bottom = Float.NEGATIVE_INFINITY
+
+  layout.layoutInput.text.text.indices.forEach { offset ->
+    val box = layout.getBoundingBox(offset)
+    left = min(left, box.left)
+    top = min(top, box.top)
+    right = max(right, box.right)
+    bottom = max(bottom, box.bottom)
+  }
+
+  if (left == Float.POSITIVE_INFINITY) {
+    return Rect(0f, 0f, layout.size.width.toFloat(), layout.size.height.toFloat())
+  }
+  return Rect(left, top, right, bottom)
+}
+
+private fun Rect.translateBy(offset: Offset): Rect =
+  Rect(
+    left = left + offset.x,
+    top = top + offset.y,
+    right = right + offset.x,
+    bottom = bottom + offset.y,
+  )
+
+private fun union(first: Rect, second: Rect): Rect =
+  Rect(
+    left = min(first.left, second.left),
+    top = min(first.top, second.top),
+    right = max(first.right, second.right),
+    bottom = max(first.bottom, second.bottom),
+  )
 
 private fun lerpFloat(
   start: Float,
