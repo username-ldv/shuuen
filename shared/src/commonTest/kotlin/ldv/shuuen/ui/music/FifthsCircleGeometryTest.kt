@@ -2,6 +2,7 @@ package ldv.shuuen.ui.music
 
 import kotlin.math.PI
 import kotlin.math.abs
+import ldv.shuuen.core.ui.components.music.inputs.accidentalPrefixLeftCardinalNudgePx
 import ldv.shuuen.core.ui.components.music.inputs.accidentalPrefixParts
 import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixParts
 import ldv.shuuen.core.ui.components.music.inputs.cardinalAxisFactor
@@ -198,6 +199,26 @@ class FifthsCircleGeometryTest {
     assertEquals(0f, rightCardinalAxisFactor(PI))
     assertEquals(1f, leftCardinalAxisFactor(PI))
     assertEquals(0f, leftCardinalAxisFactor(0.0))
+  }
+
+  @Test
+  fun accidentalPrefixLeftNudgeIncludesFlatAndSharpSpellings() {
+    assertEquals(-8f, accidentalPrefixLeftCardinalNudgePx("♭", 8f))
+    assertEquals(-8f, accidentalPrefixLeftCardinalNudgePx("♯", 8f))
+    assertEquals(-8f, accidentalPrefixLeftCardinalNudgePx("#", 8f))
+    assertEquals(-8f, accidentalPrefixLeftCardinalNudgePx("b", 8f))
+    assertEquals(-8f, accidentalPrefixLeftCardinalNudgePx("B", 8f))
+    assertEquals(0f, accidentalPrefixLeftCardinalNudgePx("x", 8f))
+  }
+
+  @Test
+  fun accidentalPrefixLeftNudgeOnlyAppliesWherePrefixFacesRing() {
+    val nudge = accidentalPrefixLeftCardinalNudgePx("♭", 10f)
+
+    assertEquals(-10f, nudge * leftCardinalAxisFactor(PI))
+    assertTrue(abs(nudge * leftCardinalAxisFactor(0.0)) < 0.001f)
+    assertTrue(abs(nudge * leftCardinalAxisFactor(PI / 2.0)) < 0.001f)
+    assertTrue(abs(nudge * leftCardinalAxisFactor(5.0 * PI / 6.0)) < 0.001f)
   }
 
   @Test

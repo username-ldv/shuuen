@@ -235,7 +235,7 @@ fun FifthsCircle(
   activeDotRadius: Dp = 10.dp,
   activeHaloRadius: Dp = 28.dp,
   labelInset: Dp = 24.dp,
-  labelRingGap: Dp = 0.dp,
+  labelRingGap: Dp = 2.dp,
   accidentalTuck: Dp = 5.dp,
   labelStyle: TextStyle = TextStyle(
     fontSize = 24.sp, fontWeight = FontWeight.Normal, letterSpacing = 0.sp
@@ -701,6 +701,7 @@ private const val CardinalFalloffStart = 0.9659258f // cos(15 degrees)
 private const val CardinalLabelTuckFraction = 0.18f
 private const val AccidentalVerticalCenterNudgeFraction = 0.45f
 private const val SharpHorizontalEdgeNudgeFraction = 0.5f
+private const val PrefixAccidentalHorizontalEdgeNudgeFraction = 1f
 
 private data class MeasuredFifthsCircleLabel(
   val first: TextLayoutResult,
@@ -749,12 +750,7 @@ private fun measureFifthsCircleLabel(
       tuckPx = accidentalTuckPx,
       verticalCardinalCenterNudgeX = -accidentalTuckPx * AccidentalVerticalCenterNudgeFraction,
       rightCardinalCenterNudgeX = 0f,
-      leftCardinalCenterNudgeX =
-        if (accidental.isSharpAccidental()) {
-          -accidentalTuckPx * SharpHorizontalEdgeNudgeFraction
-        } else {
-          0f
-        },
+      leftCardinalCenterNudgeX = accidentalPrefixLeftCardinalNudgePx(accidental, accidentalTuckPx),
     )
   }
 
@@ -823,6 +819,16 @@ internal fun accidentalPrefixParts(label: String): Pair<String, String>? {
     else -> null
   }
 }
+
+internal fun accidentalPrefixLeftCardinalNudgePx(
+  accidental: String,
+  accidentalTuckPx: Float,
+): Float =
+  when (accidental) {
+    "♭", "♯", "#", "b", "B" ->
+      -accidentalTuckPx * PrefixAccidentalHorizontalEdgeNudgeFraction
+    else -> 0f
+  }
 
 private fun DrawScope.drawFifthsCircleLabel(
   label: MeasuredFifthsCircleLabel,
