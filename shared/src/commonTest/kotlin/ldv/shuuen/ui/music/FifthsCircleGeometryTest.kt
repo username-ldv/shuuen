@@ -1,10 +1,12 @@
 package ldv.shuuen.ui.music
 
 import kotlin.math.PI
+import kotlin.math.abs
 import ldv.shuuen.core.ui.components.music.inputs.accidentalPrefixParts
 import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixParts
 import ldv.shuuen.core.ui.components.music.inputs.fifthsCircleRingRadiusPx
 import ldv.shuuen.core.ui.components.music.inputs.fifthsCircleLabelRadiusPx
+import ldv.shuuen.core.ui.components.music.inputs.radialHalfExtentPx
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -127,6 +129,31 @@ class FifthsCircleGeometryTest {
 
     assertEquals(0f, ringRadius - dotRadius - narrowRadius - narrowHalfWidth)
     assertEquals(0f, ringRadius - dotRadius - wideRadius - wideHalfWidth)
+  }
+
+  @Test
+  fun labelRadiusUsesOpticalExtentForDiagonalLabels() {
+    val ringRadius = 200f
+    val dotRadius = 10f
+    val dotGap = 8f
+    val width = 44f
+    val height = 30f
+    val angle = 2.0 * PI / 3.0
+
+    val radialHalfExtent = radialHalfExtentPx(width, height, angle)
+    val rectangleRayHalfExtent = height / (2f * kotlin.math.sin(angle).toFloat())
+    val radius = fifthsCircleLabelRadiusPx(
+      ringRadiusPx = ringRadius,
+      minimumInsetPx = 24f,
+      labelWidthPx = width,
+      labelHeightPx = height,
+      angleRadians = angle,
+      dotRadiusPx = dotRadius,
+      dotGapPx = dotGap,
+    )
+
+    assertTrue(radialHalfExtent < rectangleRayHalfExtent)
+    assertTrue(abs(dotGap - (ringRadius - dotRadius - radius - radialHalfExtent)) < 0.001f)
   }
 
   @Test

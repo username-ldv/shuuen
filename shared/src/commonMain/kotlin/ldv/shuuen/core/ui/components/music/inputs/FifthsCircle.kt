@@ -62,6 +62,7 @@ import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
+import kotlin.math.sqrt
 import kotlin.time.Duration.Companion.milliseconds
 
 @Immutable
@@ -234,7 +235,7 @@ fun FifthsCircle(
   activeDotRadius: Dp = 10.dp,
   activeHaloRadius: Dp = 28.dp,
   labelInset: Dp = 24.dp,
-  labelRingGap: Dp = 0.dp,
+  labelRingGap: Dp = 2.dp,
   accidentalTuck: Dp = 5.dp,
   labelStyle: TextStyle = TextStyle(
     fontSize = 24.sp, fontWeight = FontWeight.Normal, letterSpacing = 0.sp
@@ -683,6 +684,8 @@ private fun angleForCircleSlot(
   rotationRadians: Float = 0f,
 ): Double = -PI / 2.0 + 2.0 * PI * slot.toDouble() / count.toDouble() + rotationRadians
 
+private const val DirectionEpsilon = 0.0001f
+
 private data class MeasuredFifthsCircleLabel(
   val first: TextLayoutResult,
   val second: TextLayoutResult? = null,
@@ -800,15 +803,40 @@ internal fun fifthsCircleLabelRadiusPx(
   dotRadiusPx: Float,
   dotGapPx: Float,
 ): Float {
-  val outwardHalfExtent =
-    abs(cos(angleRadians)).toFloat() * labelWidthPx / 2f +
-      abs(sin(angleRadians)).toFloat() * labelHeightPx / 2f
+  val outwardHalfExtent = radialHalfExtentPx(
+    widthPx = labelWidthPx,
+    heightPx = labelHeightPx,
+    angleRadians = angleRadians,
+  )
   val inset = if (dotRadiusPx > 0f || dotGapPx > 0f) {
     dotRadiusPx + dotGapPx + outwardHalfExtent
   } else {
     max(minimumInsetPx, outwardHalfExtent)
   }
   return max(0f, ringRadiusPx - inset)
+}
+
+internal fun radialHalfExtentPx(
+  widthPx: Float,
+  heightPx: Float,
+  angleRadians: Double,
+): Float {
+  if (widthPx <= 0f || heightPx <= 0f) return 0f
+
+  val horizontal = abs(cos(angleRadians)).toFloat()
+  val vertical = abs(sin(angleRadians)).toFloat()
+
+  val halfWidth = widthPx / 2f
+  val halfHeight = heightPx / 2f
+  val denominator =
+    (horizontal * horizontal) / (halfWidth * halfWidth) +
+      (vertical * vertical) / (halfHeight * halfHeight)
+
+  return if (denominator > DirectionEpsilon) {
+    1f / sqrt(denominator)
+  } else {
+    0f
+  }
 }
 
 private fun textInkBounds(layout: TextLayoutResult): Rect {
