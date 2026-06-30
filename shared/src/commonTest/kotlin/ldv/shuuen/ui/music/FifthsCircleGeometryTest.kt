@@ -6,6 +6,7 @@ import ldv.shuuen.core.ui.components.music.inputs.accidentalPrefixLeftCardinalNu
 import ldv.shuuen.core.ui.components.music.inputs.accidentalPrefixLeftDiagonalRadiusNudgePx
 import ldv.shuuen.core.ui.components.music.inputs.accidentalPrefixParts
 import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixRightCardinalNudgePx
+import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixRightSideRadiusNudgePx
 import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixParts
 import ldv.shuuen.core.ui.components.music.inputs.cardinalAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.fifthsCircleRingRadiusPx
@@ -14,6 +15,7 @@ import ldv.shuuen.core.ui.components.music.inputs.leftCardinalAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.leftDiagonalAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.radialHalfExtentPx
 import ldv.shuuen.core.ui.components.music.inputs.rightCardinalAxisFactor
+import ldv.shuuen.core.ui.components.music.inputs.rightSideAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.verticalCardinalAxisFactor
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -262,6 +264,26 @@ class FifthsCircleGeometryTest {
     assertTrue(abs(nudge * rightCardinalAxisFactor(PI)) < 0.001f)
     assertTrue(abs(nudge * rightCardinalAxisFactor(PI / 2.0)) < 0.001f)
     assertTrue(abs(nudge * rightCardinalAxisFactor(PI / 6.0)) < 0.001f)
+  }
+
+  @Test
+  fun accidentalSuffixRightSideRadiusNudgeIncludesFlatsAndSharps() {
+    assertEquals(4f, accidentalSuffixRightSideRadiusNudgePx("♭", 8f))
+    assertEquals(4f, accidentalSuffixRightSideRadiusNudgePx("b", 8f))
+    assertEquals(4f, accidentalSuffixRightSideRadiusNudgePx("B", 8f))
+    assertEquals(4f, accidentalSuffixRightSideRadiusNudgePx("♯", 8f))
+    assertEquals(4f, accidentalSuffixRightSideRadiusNudgePx("#", 8f))
+    assertEquals(0f, accidentalSuffixRightSideRadiusNudgePx("x", 8f))
+  }
+
+  @Test
+  fun rightSideFactorOnlyAppliesToRightHalf() {
+    assertEquals(1f, rightSideAxisFactor(0.0))
+    assertTrue(abs(rightSideAxisFactor(PI / 3.0) - 0.5f) < 0.001f)
+    assertTrue(abs(rightSideAxisFactor(-PI / 3.0) - 0.5f) < 0.001f)
+    assertTrue(abs(rightSideAxisFactor(PI / 2.0)) < 0.001f)
+    assertTrue(abs(rightSideAxisFactor(-PI / 2.0)) < 0.001f)
+    assertTrue(abs(rightSideAxisFactor(PI)) < 0.001f)
   }
 
   @Test

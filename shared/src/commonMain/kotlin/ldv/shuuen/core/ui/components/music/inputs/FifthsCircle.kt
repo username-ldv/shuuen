@@ -612,7 +612,9 @@ fun FifthsCircle(
           dotRadiusPx = max(inactiveDotRadiusPx, activeDotRadiusPx),
           dotGapPx = labelRingGapPx,
           cardinalTuckPx = cardinalLabelTuckPx,
-        ) + labelLayout.leftDiagonalRadiusNudgePx * leftDiagonalAxisFactor(angle)
+        ) +
+          labelLayout.leftDiagonalRadiusNudgePx * leftDiagonalAxisFactor(angle) +
+          labelLayout.rightSideRadiusNudgePx * rightSideAxisFactor(angle)
         val labelCenter = pointOnCircle(center, labelRadius, slot, itemCount, rotation.value)
         drawFifthsCircleLabel(
           label = labelLayout,
@@ -704,6 +706,7 @@ private const val SharpHorizontalEdgeNudgeFraction = 0.5f
 private const val FlatHorizontalEdgeNudgeFraction = 0.5f
 private const val PrefixAccidentalHorizontalEdgeNudgeFraction = 1f
 private const val PrefixFlatDiagonalRadiusNudgeFraction = 0.5f
+private const val SuffixAccidentalRightSideRadiusNudgeFraction = 0.5f
 private val LeftDiagonalOffsetRadians = PI / 6.0
 private val LeftDiagonalFalloffRadians = PI / 12.0
 
@@ -716,6 +719,7 @@ private data class MeasuredFifthsCircleLabel(
   val rightCardinalCenterNudgeX: Float = 0f,
   val leftCardinalCenterNudgeX: Float = 0f,
   val leftDiagonalRadiusNudgePx: Float = 0f,
+  val rightSideRadiusNudgePx: Float = 0f,
 )
 
 private fun measureFifthsCircleLabel(
@@ -736,6 +740,7 @@ private fun measureFifthsCircleLabel(
       verticalCardinalCenterNudgeX = accidentalTuckPx * AccidentalVerticalCenterNudgeFraction,
       rightCardinalCenterNudgeX = accidentalSuffixRightCardinalNudgePx(accidental, accidentalTuckPx),
       leftCardinalCenterNudgeX = 0f,
+      rightSideRadiusNudgePx = accidentalSuffixRightSideRadiusNudgePx(accidental, accidentalTuckPx),
     )
   }
 
@@ -770,6 +775,7 @@ private fun measureTuckedLabel(
   rightCardinalCenterNudgeX: Float,
   leftCardinalCenterNudgeX: Float,
   leftDiagonalRadiusNudgePx: Float = 0f,
+  rightSideRadiusNudgePx: Float = 0f,
 ): MeasuredFifthsCircleLabel {
   val firstInk = textInkBounds(first)
   val secondInk = textInkBounds(second)
@@ -789,6 +795,7 @@ private fun measureTuckedLabel(
     rightCardinalCenterNudgeX = rightCardinalCenterNudgeX,
     leftCardinalCenterNudgeX = leftCardinalCenterNudgeX,
     leftDiagonalRadiusNudgePx = leftDiagonalRadiusNudgePx,
+    rightSideRadiusNudgePx = rightSideRadiusNudgePx,
   )
 }
 
@@ -852,6 +859,16 @@ internal fun accidentalSuffixRightCardinalNudgePx(
     accidental.isSharpAccidental() -> accidentalTuckPx * SharpHorizontalEdgeNudgeFraction
     accidental.isFlatAccidental() -> accidentalTuckPx * FlatHorizontalEdgeNudgeFraction
     else -> 0f
+  }
+
+internal fun accidentalSuffixRightSideRadiusNudgePx(
+  accidental: String,
+  accidentalTuckPx: Float,
+): Float =
+  if (accidental.isSharpAccidental() || accidental.isFlatAccidental()) {
+    accidentalTuckPx * SuffixAccidentalRightSideRadiusNudgeFraction
+  } else {
+    0f
   }
 
 private fun DrawScope.drawFifthsCircleLabel(
@@ -922,6 +939,9 @@ internal fun verticalCardinalAxisFactor(angleRadians: Double): Float =
 
 internal fun rightCardinalAxisFactor(angleRadians: Double): Float =
   axisProximityFactor(cos(angleRadians).toFloat())
+
+internal fun rightSideAxisFactor(angleRadians: Double): Float =
+  cos(angleRadians).toFloat().coerceIn(0f, 1f)
 
 internal fun leftCardinalAxisFactor(angleRadians: Double): Float =
   axisProximityFactor(-cos(angleRadians).toFloat())
