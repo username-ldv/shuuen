@@ -1,6 +1,7 @@
 package ldv.shuuen.ui.music
 
 import kotlin.math.PI
+import ldv.shuuen.core.ui.components.music.inputs.accidentalPrefixParts
 import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixParts
 import ldv.shuuen.core.ui.components.music.inputs.fifthsCircleRingRadiusPx
 import ldv.shuuen.core.ui.components.music.inputs.fifthsCircleLabelRadiusPx
@@ -74,5 +75,16 @@ class FifthsCircleGeometryTest {
     assertNull(accidentalSuffixParts("Yo"))
     assertNull(accidentalSuffixParts("Bob"))
     assertNull(accidentalSuffixParts("♭2"))
+  }
+
+  @Test
+  fun accidentalPrefixOnlySplitsAccidentalLabels() {
+    assertEquals("♭" to "2", accidentalPrefixParts("♭2"))
+    assertEquals("♯" to "4", accidentalPrefixParts("♯4"))
+    assertEquals("#" to "4", accidentalPrefixParts("#4"))
+    assertEquals("b" to "2", accidentalPrefixParts("b2"))
+    assertNull(accidentalPrefixParts("Yo"))
+    assertNull(accidentalPrefixParts("Bob"))
+    assertNull(accidentalPrefixParts("D♭"))
   }
 }

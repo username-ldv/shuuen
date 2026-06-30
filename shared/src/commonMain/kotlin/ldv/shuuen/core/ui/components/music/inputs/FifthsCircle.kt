@@ -683,9 +683,9 @@ private fun angleForCircleSlot(
 ): Double = -PI / 2.0 + 2.0 * PI * slot.toDouble() / count.toDouble() + rotationRadians
 
 private data class MeasuredFifthsCircleLabel(
-  val main: TextLayoutResult,
-  val accidental: TextLayoutResult? = null,
-  val accidentalOffset: Offset = Offset.Zero,
+  val first: TextLayoutResult,
+  val second: TextLayoutResult? = null,
+  val secondOffset: Offset = Offset.Zero,
   val inkBounds: Rect,
 )
 
@@ -696,28 +696,54 @@ private fun measureFifthsCircleLabel(
   accidentalTuckPx: Float,
 ): MeasuredFifthsCircleLabel {
   val accidentalParts = accidentalSuffixParts(label)
-  if (accidentalParts == null) {
-    val layout = textMeasurer.measure(text = AnnotatedString(label), style = style)
-    return MeasuredFifthsCircleLabel(main = layout, inkBounds = textInkBounds(layout))
+  if (accidentalParts != null) {
+    val (base, accidental) = accidentalParts
+    val baseLayout = textMeasurer.measure(text = AnnotatedString(base), style = style)
+    val accidentalLayout = textMeasurer.measure(text = AnnotatedString(accidental), style = style)
+    return measureTuckedLabel(
+      first = baseLayout,
+      second = accidentalLayout,
+      tuckPx = accidentalTuckPx,
+    )
   }
 
-  val (base, accidental) = accidentalParts
-  val baseLayout = textMeasurer.measure(text = AnnotatedString(base), style = style)
-  val accidentalLayout = textMeasurer.measure(text = AnnotatedString(accidental), style = style)
-  val baseInk = textInkBounds(baseLayout)
-  val accidentalInk = textInkBounds(accidentalLayout)
-  val accidentalOffset =
-    Offset(
-      x = baseInk.right - accidentalTuckPx - accidentalInk.left,
-      y = baseLayout.getLineBaseline(0) - accidentalLayout.getLineBaseline(0),
+  val prefixParts = accidentalPrefixParts(label)
+  if (prefixParts != null) {
+    val (accidental, base) = prefixParts
+    val accidentalLayout = textMeasurer.measure(text = AnnotatedString(accidental), style = style)
+    val baseLayout = textMeasurer.measure(text = AnnotatedString(base), style = style)
+    return measureTuckedLabel(
+      first = accidentalLayout,
+      second = baseLayout,
+      tuckPx = accidentalTuckPx,
     )
-  val shiftedAccidentalInk = accidentalInk.translateBy(accidentalOffset)
+  }
+
+  return run {
+    val layout = textMeasurer.measure(text = AnnotatedString(label), style = style)
+    MeasuredFifthsCircleLabel(first = layout, inkBounds = textInkBounds(layout))
+  }
+}
+
+private fun measureTuckedLabel(
+  first: TextLayoutResult,
+  second: TextLayoutResult,
+  tuckPx: Float,
+): MeasuredFifthsCircleLabel {
+  val firstInk = textInkBounds(first)
+  val secondInk = textInkBounds(second)
+  val secondOffset =
+    Offset(
+      x = firstInk.right - tuckPx - secondInk.left,
+      y = first.getLineBaseline(0) - second.getLineBaseline(0),
+    )
+  val shiftedSecondInk = secondInk.translateBy(secondOffset)
 
   return MeasuredFifthsCircleLabel(
-    main = baseLayout,
-    accidental = accidentalLayout,
-    accidentalOffset = accidentalOffset,
-    inkBounds = union(baseInk, shiftedAccidentalInk),
+    first = first,
+    second = second,
+    secondOffset = secondOffset,
+    inkBounds = union(firstInk, shiftedSecondInk),
   )
 }
 
@@ -737,14 +763,30 @@ internal fun accidentalSuffixParts(label: String): Pair<String, String>? {
   }
 }
 
+internal fun accidentalPrefixParts(label: String): Pair<String, String>? {
+  val accidental = label.firstOrNull() ?: return null
+  val base = label.drop(1).takeIf { it.isNotEmpty() } ?: return null
+
+  return when (accidental) {
+    '♭', '♯', '#' -> accidental.toString() to base
+    'b', 'B' ->
+      if (base.first().isDigit()) {
+        accidental.toString() to base
+      } else {
+        null
+      }
+    else -> null
+  }
+}
+
 private fun DrawScope.drawFifthsCircleLabel(
   label: MeasuredFifthsCircleLabel,
   center: Offset,
 ) {
   val origin = center - label.inkBounds.center
-  drawText(textLayoutResult = label.main, topLeft = origin)
-  label.accidental?.let {
-    drawText(textLayoutResult = it, topLeft = origin + label.accidentalOffset)
+  drawText(textLayoutResult = label.first, topLeft = origin)
+  label.second?.let {
+    drawText(textLayoutResult = it, topLeft = origin + label.secondOffset)
   }
 }
 
