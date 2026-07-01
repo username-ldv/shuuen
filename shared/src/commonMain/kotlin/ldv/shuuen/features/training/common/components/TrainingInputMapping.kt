@@ -52,6 +52,20 @@ fun circleItemNames(
     }
 
 /**
+ * Display label for an answered absolute [pitch], using the same item-index mapping and custom
+ * labels as the answer input. Piano and circle inputs share these indices; only [mode] determines
+ * whether the label is a note name or a degree name.
+ */
+fun inputLabelForPitch(
+    pitch: Pitch,
+    mode: InputMode,
+    root: Pitch?,
+    accidentalType: ScaleAccidentalType?,
+    musicLabels: MusicLabelSettings,
+): String =
+    circleItemNames(mode, root, accidentalType, musicLabels)[pitchToItemIndex(pitch, mode, root)]
+
+/**
  * The item the circle should rotate to its top slot, or null to keep the default top (C for
  * absolute, the tonic "1" for relative). Only Circle + Absolute with
  * [InputMethod.circleAbsoluteRootAtTop] pins the current [root] to the top; the circle animates the

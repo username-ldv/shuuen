@@ -47,6 +47,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ldv.shuuen.core.settings.InputComponent
+import ldv.shuuen.core.settings.InputMode
+import ldv.shuuen.core.settings.MusicLabelSettings
 import ldv.shuuen.core.ui.components.LinearTrainingProgress
 import ldv.shuuen.core.ui.components.ShuuenTopAppBar
 import ldv.shuuen.core.ui.components.ShuuenTopAppBarType
@@ -60,6 +62,7 @@ import ldv.shuuen.core.ui.components.music.inputs.rememberFifthsCircleState
 import ldv.shuuen.core.ui.components.music.inputs.rememberPianoKeyboardState
 import ldv.shuuen.features.training.common.components.circleItemNames
 import ldv.shuuen.features.training.common.components.circleTopItem
+import ldv.shuuen.features.training.common.components.inputLabelForPitch
 import ldv.shuuen.features.training.common.components.pitchToItemIndex
 
 @Composable
@@ -98,7 +101,12 @@ fun MelodiesPlayScreen(
 
       else -> {
         TrainingStatus(state, modifier = Modifier.padding(horizontal = ScreenHorizontalPadding))
-        MelodyBuffer(state, modifier = Modifier.padding(horizontal = ScreenHorizontalPadding))
+        MelodyBuffer(
+          state = state,
+          inputMode = inputMethod.mode,
+          musicLabels = musicLabels,
+          modifier = Modifier.padding(horizontal = ScreenHorizontalPadding),
+        )
 
         val keyboardState = rememberPianoKeyboardState()
         val circleState = rememberFifthsCircleState()
@@ -286,7 +294,12 @@ private fun ColumnScope.CenteredMessage(text: String, color: Color) {
  * within it.
  */
 @Composable
-private fun MelodyBuffer(state: MelodiesPlayState, modifier: Modifier = Modifier) {
+private fun MelodyBuffer(
+  state: MelodiesPlayState,
+  inputMode: InputMode,
+  musicLabels: MusicLabelSettings,
+  modifier: Modifier = Modifier,
+) {
   val listState = rememberLazyListState()
   val playbackIndex = state.playbackNoteIndex
   val missedIndexes = state.missedIndexes
@@ -302,9 +315,19 @@ private fun MelodyBuffer(state: MelodiesPlayState, modifier: Modifier = Modifier
     verticalAlignment = Alignment.CenterVertically,
   ) {
     itemsIndexed(state.notes) { index, _ ->
+      val label =
+        state.answeredPitches.getOrNull(index)?.let { pitch ->
+          inputLabelForPitch(
+            pitch = pitch,
+            mode = inputMode,
+            root = state.root,
+            accidentalType = state.accidentalType,
+            musicLabels = musicLabels,
+          )
+        } ?: "-"
       MelodyCell(
         position = index + 1,
-        label = state.answeredPitches.getOrNull(index)?.toString() ?: "-",
+        label = label,
         answered = index < state.answerIndex,
         target = index == state.answerIndex,
         playing = index == playbackIndex && state.isPlaybackActive,
