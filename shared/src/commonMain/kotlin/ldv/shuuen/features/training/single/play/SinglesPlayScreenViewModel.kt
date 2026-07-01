@@ -33,6 +33,7 @@ import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.InputMode
 import ldv.shuuen.core.settings.MusicLabelSettings
 import ldv.shuuen.core.settings.SettingsRepository
+import ldv.shuuen.features.training.common.components.KeyFlashRequest
 import ldv.shuuen.features.training.single.domain.SinglesLocalLevelRepository
 import ldv.shuuen.features.training.single.domain.SinglesLevel
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
@@ -44,13 +45,6 @@ enum class AnswerColors(val color: Color) {
 
 /** Monotone flash used for setup-melody key highlights (colorful palette is a future option). */
 // val SetupMelodyFlashColor = Color(0xFFD9D9DE)
-
-/**
- * A request from the VM for the screen to flash an input item (used for setup-melody highlights).
- * Carries the absolute [pitch]; the screen maps it to the active input component's item index
- * (absolute = pitch ordinal, relative = degree offset from the current root).
- */
-data class KeyFlashRequest(val pitch: Pitch, val color: Color)
 
 sealed interface QuizPhase {
   object LoadingContext : QuizPhase

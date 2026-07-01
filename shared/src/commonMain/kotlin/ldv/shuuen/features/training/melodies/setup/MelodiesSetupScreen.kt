@@ -6,41 +6,42 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Casino
 import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 import ldv.shuuen.core.music.DegreeContext
-import ldv.shuuen.core.music.Note
-import ldv.shuuen.core.music.Pitch
-import ldv.shuuen.core.music.Scale
-import ldv.shuuen.core.music.ScaleType
-import ldv.shuuen.features.training.domain.ScaleConfig
-import ldv.shuuen.features.training.common.asConfigDegreeStates
 import ldv.shuuen.core.ui.components.FlatSection
 import ldv.shuuen.core.ui.components.Hairline
-import ldv.shuuen.core.ui.components.LinearTrainingProgress
 import ldv.shuuen.core.ui.components.PillControl
 import ldv.shuuen.core.ui.components.PrimaryCta
 import ldv.shuuen.core.ui.components.SegmentedPlusMinus
@@ -52,14 +53,13 @@ import ldv.shuuen.core.ui.components.SoftControl
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.music.NoteRow
 import ldv.shuuen.features.training.common.components.ScaleChooser
-import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboard
-import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
+import ldv.shuuen.features.training.domain.ScaleConfig
 
 @Composable
 fun MelodiesSetupScreen(
   onNavigateBack: () -> Unit,
   onOpenContext: () -> Unit,
-  onStartTraining: () -> Unit,
+  onSaveLevel: () -> Unit,
   viewModel: MelodiesSetupScreenViewModel,
 ) {
   val state by viewModel.state.collectAsStateWithLifecycle()
@@ -76,7 +76,8 @@ fun MelodiesSetupScreen(
     },
   ) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-      val twoColumn = maxWidth > 760.dp
+      // The Midi mode only has two sections, so it never splits into columns.
+      val twoColumn = maxWidth > 760.dp && state.sourceMode == MelodiesSourceMode.Random
 
       if (twoColumn) {
         Row(
@@ -93,7 +94,7 @@ fun MelodiesSetupScreen(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(22.dp),
           ) {
-            TrailingSections()
+            RandomTrailingSections(state, viewModel)
           }
         }
       } else {
@@ -102,15 +103,19 @@ fun MelodiesSetupScreen(
           verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
           LeadingSections(state, viewModel, onOpenContext)
-          Hairline()
-          TrailingSections()
+          if (state.sourceMode == MelodiesSourceMode.Random) {
+            Hairline()
+            RandomTrailingSections(state, viewModel)
+          }
         }
       }
     }
 
+    val scope = rememberCoroutineScope()
     PrimaryCta(
-      text = "START TRAINING",
-      onClick = { if (viewModel.stageLevelForTraining()) onStartTraining() },
+      text = "SAVE LEVEL",
+      icon = Icons.Rounded.Save,
+      onClick = { scope.launch { if (viewModel.upsertLevel()) onSaveLevel() } },
       modifier = Modifier.padding(top = 4.dp, bottom = 18.dp),
     )
   }
@@ -122,50 +127,70 @@ private fun LeadingSections(
   viewModel: MelodiesSetupScreenViewModel,
   onOpenContext: () -> Unit,
 ) {
-  MelodyScaleSection()
-  Hairline()
-  ContextSection(state.context, onOpenContext)
-  Hairline()
-  SourceModeSection(state, viewModel)
-  Hairline()
-  QuestionCountSection()
+  when (state.sourceMode) {
+    MelodiesSourceMode.Random -> {
+      ScaleChooser(
+        scaleConfig = state.scaleConfig,
+        onScaleChosen = viewModel::changeScale,
+      )
+
+      // Scale rotation only applies to a random (relative) tonic, and only between finite
+      // sequences — an endless stream keeps its tonic. Stepping the control below 5 turns it off.
+      if (state.scaleConfig is ScaleConfig.RelativeScaleConfig && !state.endlessNotes) {
+        FlatSection(
+          label = "SCALE ROTATION",
+          supporting = "Off, or move to a new random tonic every few questions.",
+        ) {
+          SegmentedPlusMinus(
+            value = state.rotateEveryQuestions,
+            onChange = viewModel::changeRotateEveryQuestions,
+            delta = 5,
+            nullCondition = { (it.toIntOrNull() ?: 0) <= 0 },
+            nullLabel = "Off",
+          )
+        }
+      }
+
+      Hairline()
+      ContextSection("2 · CONTEXT", state.context, onOpenContext)
+      Hairline()
+      SourceModeSection("3 · SOURCE MODE", state, viewModel)
+      if (!state.endlessNotes) {
+        Hairline()
+        QuestionCountSection(state, viewModel)
+      }
+    }
+
+    MelodiesSourceMode.Midi -> {
+      SourceModeSection("1 · SOURCE MODE", state, viewModel)
+      Hairline()
+      ContextSection("2 · CONTEXT", state.context, onOpenContext)
+    }
+  }
 }
 
 @Composable
-private fun TrailingSections() {
-  NotesPerSequenceSection()
+private fun RandomTrailingSections(
+  state: MelodiesSetupState,
+  viewModel: MelodiesSetupScreenViewModel,
+) {
+  NotesPerSequenceSection(state, viewModel)
   Hairline()
-  TempoSection()
+  TempoSection(state, viewModel)
   Hairline()
   RhythmSection()
   Hairline()
-  MelodyRangeSection()
-}
-
-@Composable
-private fun MelodyScaleSection() {
-  // Local UI state only — saving comes with the melodies level functionality later.
-  var scaleConfig: ScaleConfig by remember {
-    mutableStateOf(
-      ScaleConfig.RelativeScaleConfig(
-        scaleType = ScaleType.Major,
-        degreeStates = Scale.major(Pitch.C).asConfigDegreeStates(),
-      )
-    )
-  }
-  ScaleChooser(
-    scaleConfig = scaleConfig,
-    onScaleChosen = { scaleConfig = it },
-  )
+  MelodyRangeSection(state, viewModel)
 }
 
 @Composable
 private fun ContextSection(
+  label: String,
   context: DegreeContext?,
   onOpenContext: () -> Unit,
 ) {
   SetupNavRow(
-    label = "2 · CONTEXT",
+    label = label,
     supporting =
       context?.let { "Using context ${it.name ?: it.id}" }
         ?: "Open context screen to configure.",
@@ -182,10 +207,11 @@ private fun ContextSection(
 
 @Composable
 private fun SourceModeSection(
+  label: String,
   state: MelodiesSetupState,
   viewModel: MelodiesSetupScreenViewModel,
 ) {
-  FlatSection(label = "3 · SOURCE MODE") {
+  FlatSection(label = label) {
     PillControl(
       text = "Random",
       selected = state.sourceMode == MelodiesSourceMode.Random,
@@ -199,10 +225,24 @@ private fun SourceModeSection(
       horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
       PillControl(
-        text = if (state.isLoadingMidi) "Loading…" else "Load .midi file",
+        text =
+          when {
+            state.isLoadingMidi -> "Loading…"
+            state.loadedMidiName != null -> state.loadedMidiName
+            else -> "Load .midi file"
+          },
         selected = state.sourceMode == MelodiesSourceMode.Midi,
         leadingIcon = Icons.Rounded.FolderOpen,
-        onClick = { if (!state.isLoadingMidi) viewModel.loadMidiFile() },
+        onClick = {
+          if (state.isLoadingMidi) return@PillControl
+          // No file yet, or already active: open the picker. A loaded file with Random
+          // active just switches back without re-picking.
+          if (state.loadedMidi == null || state.sourceMode == MelodiesSourceMode.Midi) {
+            viewModel.loadMidiFile()
+          } else {
+            viewModel.selectSourceMode(MelodiesSourceMode.Midi)
+          }
+        },
         modifier = Modifier.weight(1f),
       )
       PillControl(
@@ -215,67 +255,130 @@ private fun SourceModeSection(
       when {
         state.midiError != null -> state.midiError
         state.loadedMidiName != null -> "Loaded ${state.loadedMidiName}."
-        else -> "Load a .midi file to play its melody. (Random mode is coming soon.)"
+        else -> "Random sequences from a scale, or a .midi file's melody."
       }
     Text(
       text = statusText,
       color = if (state.midiError != null) ShuuenUi.Incorrect else ShuuenUi.Dim,
       style = MaterialTheme.typography.bodyMedium,
     )
-    SoftControl(
-      modifier = Modifier.fillMaxWidth(),
-      selected = state.useOriginalVelocities,
-      onClick = { viewModel.setUseOriginalVelocities(!state.useOriginalVelocities) },
-    ) {
-      Column(modifier = Modifier.weight(1f)) {
-        Text(
-          "Note velocities",
-          color = ShuuenUi.Text,
-          style = MaterialTheme.typography.titleSmall,
-        )
-        Text(
-          if (state.useOriginalVelocities) "Original file values" else "Full velocity (127)",
-          color = ShuuenUi.Muted,
-          style = MaterialTheme.typography.bodySmall,
+    if (state.sourceMode == MelodiesSourceMode.Midi) {
+      SoftControl(
+        modifier = Modifier.fillMaxWidth(),
+        selected = state.useOriginalVelocities,
+        onClick = { viewModel.setUseOriginalVelocities(!state.useOriginalVelocities) },
+      ) {
+        Column(modifier = Modifier.weight(1f)) {
+          Text(
+            "Note velocities",
+            color = ShuuenUi.Text,
+            style = MaterialTheme.typography.titleSmall,
+          )
+          Text(
+            if (state.useOriginalVelocities) "Original file values" else "Full velocity (127)",
+            color = ShuuenUi.Muted,
+            style = MaterialTheme.typography.bodySmall,
+          )
+        }
+        ShuuenSwitch(
+          checked = state.useOriginalVelocities,
+          onCheckedChange = null,
         )
       }
-      ShuuenSwitch(
-        checked = state.useOriginalVelocities,
-        onCheckedChange = null,
-      )
     }
   }
 }
 
 @Composable
-private fun QuestionCountSection() {
-  FlatSection(label = "4 · NUMBER OF QUESTIONS") {
+private fun QuestionCountSection(
+  state: MelodiesSetupState,
+  viewModel: MelodiesSetupScreenViewModel,
+) {
+  FlatSection(
+    label = "4 · NUMBER OF QUESTIONS",
+    supporting = "One question is one melody sequence.",
+  ) {
     Row(
       modifier = Modifier.fillMaxWidth(),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-      var questions: String by remember { mutableStateOf("20") }
       SegmentedPlusMinus(
-        value = questions.toIntOrNull(),
-        onChange = { questions = it.toString() },
-        modifier = Modifier.weight(1f)
+        value = state.questionsNumber,
+        onChange = viewModel::changeQuestionsNumber,
+        nullLabel = "∞",
+        modifier = Modifier.weight(1f),
       )
       Text(
         text = "∞",
         color = ShuuenUi.Muted,
         style = MaterialTheme.typography.headlineMedium,
       )
-      ShuuenSwitch(checked = false)
+      ShuuenSwitch(
+        checked = state.questionsNumber == null,
+        onCheckedChange = { unlimited ->
+          viewModel.changeQuestionsNumber(if (unlimited) null else 20)
+        },
+      )
     }
   }
 }
 
+private val NotesPerSequencePresets = listOf(2, 4, 8, 12)
+
 @Composable
-private fun NotesPerSequenceSection() {
+private fun NotesPerSequenceSection(
+  state: MelodiesSetupState,
+  viewModel: MelodiesSetupScreenViewModel,
+) {
   FlatSection(label = "5 · NOTES PER SEQUENCE") {
-    NotesPerSequenceControls()
-    SoftControl(modifier = Modifier.fillMaxWidth()) {
+    if (!state.endlessNotes) {
+      Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        NotesPerSequencePresets.forEach { value ->
+          PillControl(
+            text = "$value",
+            selected = state.notesPerSequence == value,
+            onClick = { viewModel.changeNotesPerSequence(value) },
+            modifier = Modifier.weight(1f),
+          )
+        }
+        Text("Custom", color = ShuuenUi.Dim, style = MaterialTheme.typography.bodySmall)
+        // Recreated whenever the VM value changes so preset taps refresh the field, while
+        // invalid input in-between (e.g. an empty field mid-edit) stays local.
+        var customText by remember(state.notesPerSequence) {
+          mutableStateOf(state.notesPerSequence.toString())
+        }
+        SoftControl(
+          modifier = Modifier.width(54.dp),
+          selected = state.notesPerSequence !in NotesPerSequencePresets,
+        ) {
+          BasicTextField(
+            value = customText,
+            onValueChange = { text ->
+              customText = text
+              text.toIntOrNull()?.let(viewModel::changeNotesPerSequence)
+            },
+            textStyle =
+              MaterialTheme.typography.titleSmall.copy(
+                color = ShuuenUi.Text,
+                textAlign = TextAlign.Center,
+              ),
+            singleLine = true,
+            cursorBrush = SolidColor(ShuuenUi.Text),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.weight(1f),
+          )
+        }
+      }
+    }
+    SoftControl(
+      modifier = Modifier.fillMaxWidth(),
+      selected = state.endlessNotes,
+      onClick = { viewModel.setEndlessNotes(!state.endlessNotes) },
+    ) {
       Column(modifier = Modifier.weight(1f)) {
         Text(
           "Endless note mode",
@@ -288,40 +391,92 @@ private fun NotesPerSequenceSection() {
           style = MaterialTheme.typography.bodySmall,
         )
       }
-      ShuuenSwitch(checked = false)
+      ShuuenSwitch(
+        checked = state.endlessNotes,
+        onCheckedChange = null,
+      )
     }
   }
 }
 
+private const val TempoSliderStep = 5
+
 @Composable
-private fun TempoSection() {
+private fun TempoSection(
+  state: MelodiesSetupState,
+  viewModel: MelodiesSetupScreenViewModel,
+) {
+  val tempoRange = MelodiesSetupScreenViewModel.TempoRange
   FlatSection(
     label = "6 · TEMPO",
-    supporting = "Used in Random mode.",
-    trailing = {
-      PillControl(
-        text = "96 BPM",
-        leadingIcon = Icons.Rounded.Edit,
-        modifier = Modifier.width(130.dp),
-      )
-    },
+    supporting = "Playback speed of the sequences.",
+    trailing = { TempoInputBox(state.tempo, viewModel::changeTempo) },
   ) {
-    LinearTrainingProgress(progress = 0.38f)
+    Slider(
+      value = state.tempo.toFloat(),
+      // The slider snaps to 5-BPM steps over the wide 20–360 span; the box above takes exact
+      // values.
+      onValueChange = {
+        viewModel.changeTempo((it / TempoSliderStep).roundToInt() * TempoSliderStep)
+      },
+      valueRange = tempoRange.first.toFloat()..tempoRange.last.toFloat(),
+      colors =
+        SliderDefaults.colors(
+          thumbColor = ShuuenUi.Text,
+          activeTrackColor = ShuuenUi.Text,
+          inactiveTrackColor = ShuuenUi.Hairline,
+        ),
+    )
     Row(
       modifier = Modifier.fillMaxWidth(),
       horizontalArrangement = Arrangement.SpaceBetween,
     ) {
       Text(
-        "60",
+        "${tempoRange.first}",
         color = ShuuenUi.Dim,
         style = MaterialTheme.typography.bodySmall
       )
       Text(
-        "180",
+        "${tempoRange.last}",
         color = ShuuenUi.Dim,
         style = MaterialTheme.typography.bodySmall
       )
     }
+  }
+}
+
+@Composable
+private fun TempoInputBox(tempo: Int, onTempoChange: (Int) -> Unit) {
+  val tempoRange = MelodiesSetupScreenViewModel.TempoRange
+  // Recreated whenever the VM value changes (e.g. slider drags); incomplete input like "3" while
+  // typing "360" stays local until it becomes a valid tempo.
+  var text by remember(tempo) { mutableStateOf(tempo.toString()) }
+  SoftControl(modifier = Modifier.width(110.dp)) {
+    BasicTextField(
+      value = text,
+      onValueChange = { newText ->
+        text = newText
+        val value = newText.toIntOrNull() ?: return@BasicTextField
+        when {
+          value in tempoRange -> onTempoChange(value)
+          value > tempoRange.last -> onTempoChange(tempoRange.last)
+        }
+      },
+      textStyle =
+        MaterialTheme.typography.titleSmall.copy(
+          color = ShuuenUi.Text,
+          textAlign = TextAlign.End,
+        ),
+      singleLine = true,
+      cursorBrush = SolidColor(ShuuenUi.Text),
+      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+      modifier = Modifier.weight(1f),
+    )
+    Text(
+      "BPM",
+      color = ShuuenUi.Muted,
+      style = MaterialTheme.typography.titleSmall,
+    )
   }
 }
 
@@ -329,7 +484,7 @@ private fun TempoSection() {
 private fun RhythmSection() {
   SetupNavRow(
     label = "7 · RHYTHM",
-    supporting = "Configure rhythm patterns. Used in Random mode only.",
+    supporting = "Configure rhythm patterns. Coming soon.",
   ) {
     ShuuenSwitch(checked = true)
     Icon(
@@ -342,78 +497,22 @@ private fun RhythmSection() {
 }
 
 @Composable
-private fun MelodyRangeSection() {
+private fun MelodyRangeSection(
+  state: MelodiesSetupState,
+  viewModel: MelodiesSetupScreenViewModel,
+) {
   FlatSection(
     label = "8 · RANGE",
     supporting = "Select the note range.",
   ) {
     Text(
-      text = "C3 - C5",
+      text = "${state.range.from} - ${state.range.to}",
       style = MaterialTheme.typography.headlineMedium.copy(letterSpacing = 3.sp),
       modifier = Modifier.align(Alignment.CenterHorizontally),
     )
-    NoteRow(value = Note(Pitch.C, 3)) {}
-    NoteRow(value = Note(Pitch.C, 5)) {}
+    NoteRow(value = state.range.from) { viewModel.changeRangeStart(it) }
+    NoteRow(value = state.range.to) { viewModel.changeRangeEnd(it) }
   }
-}
-
-@Composable
-private fun NotesPerSequenceControls(modifier: Modifier = Modifier) {
-  Row(
-    modifier = modifier,
-    horizontalArrangement = Arrangement.spacedBy(8.dp),
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    listOf("2", "4", "8", "12").forEach { value ->
-      PillControl(
-        text = value,
-        selected = value == "4",
-        modifier = Modifier.weight(1f),
-      )
-    }
-    Text("Custom", color = ShuuenUi.Dim, style = MaterialTheme.typography.bodySmall)
-    SoftControl(
-      modifier = Modifier.width(54.dp),
-      selected = false
-    ) {
-      Text(
-        "4",
-        color = ShuuenUi.Text,
-        style = MaterialTheme.typography.titleSmall,
-        modifier = Modifier.weight(1f),
-        maxLines = 1,
-      )
-    }
-  }
-}
-
-@Composable
-private fun MelodyRangeKeyboardStrip() {
-  val keyCount = 36
-  val selectedRange = 12..30
-
-  PianoKeyboard(
-    modifier = Modifier
-      .fillMaxWidth()
-      .aspectRatio(PianoKeyboardDefaults.aspectRatio(keyCount)),
-    keyCount = keyCount,
-    idleKeyColors = List(keyCount) { index ->
-      when {
-        index !in selectedRange -> if (PianoKeyboardDefaults.isBlackKey(index)) {
-          Color(0xFF151515)
-        } else {
-          Color(0xFF2A2A2A)
-        }
-
-        PianoKeyboardDefaults.isBlackKey(index) -> Color(0xFF4D4D4D)
-        else -> Color(0xFFE8E8E8)
-      }
-    },
-    borderWidth = 1.dp,
-    separatorWidth = 1.dp,
-    whiteKeyCornerRadius = 3.dp,
-    blackKeyCornerRadius = 2.dp,
-  )
 }
 
 @Composable

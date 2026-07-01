@@ -3,11 +3,23 @@ package ldv.shuuen.features.training.melodies.play
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
+import io.github.vinceglb.filekit.readBytes
+import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -16,10 +28,34 @@ import ldv.shuuen.core.audio.engine.MidiEngine
 import ldv.shuuen.core.audio.engine.MidiEngineStatus
 import ldv.shuuen.core.audio.engine.MidiFilePlaybackOptions
 import ldv.shuuen.core.audio.engine.MidiFilePlayer
+import ldv.shuuen.core.music.Degree
 import ldv.shuuen.core.music.Pitch
-import ldv.shuuen.features.training.melodies.domain.MelodiesSession
+import ldv.shuuen.core.music.ScaleAccidentalType
+import ldv.shuuen.core.music.decideAccidentalType
+import ldv.shuuen.core.music.generator.NaiveRandomDegreeNoteGenerator
+import ldv.shuuen.core.music.generator.NaiveRandomNoteGenerator
+import ldv.shuuen.core.music.generator.NoteGenerator
+import ldv.shuuen.core.music.withTiming
+import ldv.shuuen.core.result.ResponseState
+import ldv.shuuen.core.settings.InputMethod
+import ldv.shuuen.core.settings.InputMode
+import ldv.shuuen.core.settings.MusicLabelSettings
+import ldv.shuuen.core.settings.SettingsRepository
+import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
+import ldv.shuuen.features.training.common.DegreeContextPlayer
+import ldv.shuuen.features.training.common.components.KeyFlashRequest
+import ldv.shuuen.features.training.domain.LevelConfig
+import ldv.shuuen.features.training.domain.ScaleConfig
+import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
+import ldv.shuuen.features.training.melodies.domain.MelodiesLocalLevelRepository
+
+enum class MelodiesPlayMode {
+  Midi,
+  Random,
+}
 
 data class IncorrectMelodyAnswer(
+  val questionNumber: Int,
   val noteIndex: Int,
   val expectedPitch: Pitch,
   val guessedPitch: Pitch,
@@ -29,46 +65,139 @@ data class MelodiesPlayState(
   val title: String = "Melody",
   val isLoading: Boolean = true,
   val error: String? = null,
+  val mode: MelodiesPlayMode = MelodiesPlayMode.Midi,
+
+  /**
+   * The note sequence currently being transcribed: the whole file in [MelodiesPlayMode.Midi], the
+   * current question's sequence (or the growing endless stream) in [MelodiesPlayMode.Random].
+   */
   val notes: List<MelodyNote> = emptyList(),
+  val answerIndex: Int = 0,
+  val answeredPitches: List<Pitch> = emptyList(),
+  val correctAnswers: Int = 0,
+  val incorrectAnswers: List<IncorrectMelodyAnswer> = emptyList(),
+
+  /** Tonic of the random level (null for a MIDI melody, which has no tracked key). */
+  val root: Pitch? = null,
+  /** Sharp/flat orientation for [root]; re-decided whenever the root rotates. */
+  val accidentalType: ScaleAccidentalType? = null,
+
+  // Random-mode session; a Midi level is a single question spanning the whole file.
+  val questionNumber: Int = 1,
+  val questionsNumber: Int? = 1,
+  val isEndless: Boolean = false,
+  val isPlayingSequence: Boolean = false,
+  val sequencePlaybackIndex: Int = -1,
+
+  // Midi transport
   val lengthTicks: Long = 0L,
   val lengthSeconds: Double = 0.0,
   val positionTicks: Long = 0L,
   val positionSeconds: Double = 0.0,
   val isPlaying: Boolean = false,
-  val answerIndex: Int = 0,
-  val answeredPitches: List<Pitch> = emptyList(),
-  val correctAnswers: Int = 0,
-  val incorrectAnswers: List<IncorrectMelodyAnswer> = emptyList(),
 ) {
-  /** Index of the most recent note-on at or before the current position, or -1 before the first. */
+  /** Index of the note the playback is currently on, or -1 when nothing sounds. */
   val playbackNoteIndex: Int
-    get() = notes.indexOfLast { it.tick <= positionTicks }
+    get() =
+      when (mode) {
+        MelodiesPlayMode.Midi -> notes.indexOfLast { it.tick <= positionTicks }
+        MelodiesPlayMode.Random -> if (isPlayingSequence) sequencePlaybackIndex else -1
+      }
+
+  val isPlaybackActive: Boolean
+    get() =
+      when (mode) {
+        MelodiesPlayMode.Midi -> isPlaying
+        MelodiesPlayMode.Random -> isPlayingSequence
+      }
 
   val progress: Float
     get() = if (lengthTicks > 0) (positionTicks.toFloat() / lengthTicks).coerceIn(0f, 1f) else 0f
 
   val quizProgress: Float
-    get() = if (notes.isNotEmpty()) (answerIndex.toFloat() / notes.size).coerceIn(0f, 1f) else 0f
+    get() =
+      when {
+        mode == MelodiesPlayMode.Midi ->
+          if (notes.isNotEmpty()) (answerIndex.toFloat() / notes.size).coerceIn(0f, 1f) else 0f
+
+        isEndless -> 0f
+
+        else ->
+          ((questionNumber - 1).toFloat() / (questionsNumber ?: questionNumber)).coerceIn(0f, 1f)
+      }
+
+  /** Incorrect answers of the question currently on screen, keyed by cell index. */
+  val missedIndexes: Set<Int>
+    get() =
+      incorrectAnswers.filter { it.questionNumber == questionNumber }.map { it.noteIndex }.toSet()
 
   val isQuizComplete: Boolean
-    get() = notes.isNotEmpty() && answerIndex >= notes.size
+    get() =
+      when (mode) {
+        MelodiesPlayMode.Midi -> notes.isNotEmpty() && answerIndex >= notes.size
+        MelodiesPlayMode.Random ->
+          !isEndless && questionsNumber != null && questionNumber > questionsNumber
+      }
 }
 
 private val pollInterval = 50.milliseconds
 private const val SeekSeconds = 5.0
 
+/** How far the endless stream's rewind jumps back. */
+private const val RewindNotes = 4
+
+/** How many upcoming notes the endless stream keeps generated ahead of playback. */
+private const val StreamLookahead = 12
+
 class MelodiesPlayScreenViewModel(
-  session: MelodiesSession,
+  levelId: String,
+  levelRepository: MelodiesLocalLevelRepository,
   private val midiEngine: MidiEngine,
   private val player: MidiFilePlayer,
+  private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
   private val _state = MutableStateFlow(MelodiesPlayState())
   val state = _state.asStateFlow()
 
+  /** The input component + interpretation mode chosen in settings. */
+  val inputMethod: StateFlow<InputMethod> =
+    settingsRepository.settings
+      .map { it.inputMethod }
+      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InputMethod())
+
+  val musicLabels: StateFlow<MusicLabelSettings> =
+    settingsRepository.settings
+      .map { it.musicLabels }
+      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MusicLabelSettings())
+
   private var pollJob: Job? = null
+  private var sequenceJob: Job? = null
+  private var advanceJob: Job? = null
+  private var contextJob: Job? = null
+  private var setupMelodyIndicationJob: Job? = null
+  private var playMelodyJob: Job? = null
+  private var contextPlayer: DegreeContextPlayer? = null
+  private var generator: NoteGenerator? = null
+  private var randomConfig: LevelConfig.Melodies.Random? = null
+  private var allowSevenAccidentalKeys = false
+
+  /** Endless stream cursor; survives pause/resume and moves back on rewind. */
+  private var streamIndex = 0
+
+  /** Highest stream index that has started sounding — guesses can't run ahead of it. */
+  private var maxStartedIndex = -1
+
+  // Setup-melody highlights and answer feedback are both transient flashes driven by the screen
+  // through the input component's state. The VM only emits which key/color to flash as the
+  // context's setup melody plays.
+  private val _setupMelodyFlashes =
+    MutableSharedFlow<KeyFlashRequest>(
+      extraBufferCapacity = 8,
+      onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+  val setupMelodyFlashes: SharedFlow<KeyFlashRequest> = _setupMelodyFlashes.asSharedFlow()
 
   init {
-    val level = session.current.value
     viewModelScope.launch {
       when (val status = midiEngine.initialize()) {
         MidiEngineStatus.Ready -> Napier.v { "MIDI engine ready for melodies player" }
@@ -77,48 +206,76 @@ class MelodiesPlayScreenViewModel(
           return@launch
         }
       }
-      if (level == null) {
-        _state.update { it.copy(isLoading = false, error = "No melody to play.") }
-        return@launch
-      }
 
-      val loaded =
-        runCatching {
-          player.load(
-            level.midiBytes,
-            MidiFilePlaybackOptions(useOriginalVelocities = level.useOriginalVelocities),
-          )
-        }
-          .getOrElse { throwable ->
-            Napier.w(throwable) { "Failed to load melody" }
-            _state.update { it.copy(isLoading = false, error = "Couldn't load the MIDI file.") }
+      val level =
+        when (val response = levelRepository.getLevelById(levelId)
+          .first { it !is ResponseState.Loading }) {
+          is ResponseState.Success -> response.result
+          else -> {
+            _state.update { it.copy(isLoading = false, error = "Couldn't load the level.") }
             return@launch
           }
-      if (loaded.notes.isEmpty()) {
-        player.release()
-        _state.update {
-          it.copy(
-            title = level.name,
-            isLoading = false,
-            error = "No note events were found in this MIDI file.",
-          )
         }
-        return@launch
+
+      when (val config = level.config) {
+        is LevelConfig.Melodies.Midi -> startMidiMode(level, config)
+        is LevelConfig.Melodies.Random -> startRandomMode(level, config)
       }
+    }
+  }
+
+  // region Midi mode
+
+  private suspend fun startMidiMode(level: MelodiesLevel, config: LevelConfig.Melodies.Midi) {
+    val bytes = runCatching { config.file.readBytes() }.getOrNull()
+    if (bytes == null || bytes.isEmpty()) {
       _state.update {
         it.copy(
           title = level.name,
           isLoading = false,
-          notes = loaded.notes,
-          lengthTicks = loaded.lengthTicks,
-          lengthSeconds = loaded.lengthSeconds,
+          error = "Couldn't read ${config.fileName}. Has the file moved?",
         )
       }
-      // Play through at natural tempo by default.
-      player.play()
-      refreshTransportState()
-      startPolling()
+      return
     }
+
+    val loaded =
+      runCatching {
+        player.load(
+          bytes,
+          MidiFilePlaybackOptions(useOriginalVelocities = config.useOriginalVelocities),
+        )
+      }
+        .getOrElse { throwable ->
+          Napier.w(throwable) { "Failed to load melody" }
+          _state.update { it.copy(isLoading = false, error = "Couldn't load the MIDI file.") }
+          return
+        }
+    if (loaded.notes.isEmpty()) {
+      player.release()
+      _state.update {
+        it.copy(
+          title = level.name,
+          isLoading = false,
+          error = "No note events were found in this MIDI file.",
+        )
+      }
+      return
+    }
+    _state.update {
+      it.copy(
+        title = level.name,
+        isLoading = false,
+        mode = MelodiesPlayMode.Midi,
+        notes = loaded.notes,
+        lengthTicks = loaded.lengthTicks,
+        lengthSeconds = loaded.lengthSeconds,
+      )
+    }
+    // Play through at natural tempo by default.
+    player.play()
+    refreshTransportState()
+    startPolling()
   }
 
   private fun startPolling() {
@@ -132,51 +289,22 @@ class MelodiesPlayScreenViewModel(
       }
   }
 
-  fun userGuessed(pitch: Pitch): Boolean? {
-    val current = _state.value
-    val answerNote = current.notes.getOrNull(current.answerIndex) ?: return null
-    val isCorrect = answerNote.note.pitch == pitch
-
-    _state.update { state ->
-      val note = state.notes.getOrNull(state.answerIndex) ?: return@update state
-      if (note.note.pitch == pitch) {
-        val alreadyMissed = state.incorrectAnswers.any { it.noteIndex == state.answerIndex }
-        state.copy(
-          answerIndex = state.answerIndex + 1,
-          answeredPitches = state.answeredPitches + pitch,
-          correctAnswers = state.correctAnswers + if (alreadyMissed) 0 else 1,
-        )
-      } else {
-        val duplicate = state.incorrectAnswers.any { it.noteIndex == state.answerIndex }
-        if (duplicate) {
-          state
-        } else {
-          state.copy(
-            incorrectAnswers =
-              state.incorrectAnswers +
-                IncorrectMelodyAnswer(
-                  noteIndex = state.answerIndex,
-                  expectedPitch = note.note.pitch,
-                  guessedPitch = pitch,
-                ),
-          )
-        }
-      }
-    }
-
-    return isCorrect
-  }
-
   fun togglePlayPause() {
-    if (player.isPlaying()) {
-      player.pause()
-    } else {
-      val length = _state.value.lengthTicks
-      // If playback finished, restart from the top.
-      if (length > 0 && player.positionTicks() >= length) player.seekToTick(0)
-      player.play()
+    when (_state.value.mode) {
+      MelodiesPlayMode.Midi -> {
+        if (player.isPlaying()) {
+          player.pause()
+        } else {
+          val length = _state.value.lengthTicks
+          // If playback finished, restart from the top.
+          if (length > 0 && player.positionTicks() >= length) player.seekToTick(0)
+          player.play()
+        }
+        refreshTransportState()
+      }
+
+      MelodiesPlayMode.Random -> toggleStream()
     }
-    refreshTransportState()
   }
 
   fun seekForward() {
@@ -185,8 +313,14 @@ class MelodiesPlayScreenViewModel(
   }
 
   fun seekBackward() {
-    player.seekBySeconds(-SeekSeconds)
-    refreshTransportState()
+    when (_state.value.mode) {
+      MelodiesPlayMode.Midi -> {
+        player.seekBySeconds(-SeekSeconds)
+        refreshTransportState()
+      }
+
+      MelodiesPlayMode.Random -> rewindStream()
+    }
   }
 
   fun seekToFraction(fraction: Float) {
@@ -205,8 +339,362 @@ class MelodiesPlayScreenViewModel(
     }
   }
 
+  // endregion
+
+  // region Random mode
+
+  private suspend fun startRandomMode(level: MelodiesLevel, config: LevelConfig.Melodies.Random) {
+    randomConfig = config
+    allowSevenAccidentalKeys =
+      settingsRepository.settings.map { it.allowSevenAccidentalKeys }.first()
+
+    val root =
+      when (val scale = config.scaleConfig) {
+        is ScaleConfig.AbsoluteScaleConfig -> scale.root
+        is ScaleConfig.RelativeScaleConfig -> Pitch.random()
+      }
+    val generator = generatorFor(config, root)
+    this.generator = generator
+
+    val notesPerSequence = config.notesPerSequence
+    val isEndless = notesPerSequence == null
+    val initialNotes =
+      generateNotes(generator, notesPerSequence ?: StreamLookahead, startIndex = 0)
+    if (initialNotes == null) {
+      _state.update {
+        it.copy(
+          title = level.name,
+          isLoading = false,
+          error = "The scale and range produce no playable notes.",
+        )
+      }
+      return
+    }
+
+    level.context?.let { context ->
+      val player = DegreeContextPlayer(midiEngine, context, root)
+      contextPlayer = player
+      contextJob = viewModelScope.launch { player.start() }
+      setupMelodyIndicationJob =
+        viewModelScope.launch {
+          player.setupMelodyNotes.collect { note ->
+            if (note != null) {
+              _setupMelodyFlashes.emit(
+                KeyFlashRequest(note.pitch, PianoKeyboardDefaults.MonochromePressedColor)
+              )
+            }
+          }
+        }
+    }
+
+    _state.update {
+      it.copy(
+        title = level.name,
+        isLoading = false,
+        mode = MelodiesPlayMode.Random,
+        notes = initialNotes,
+        root = root,
+        accidentalType = accidentalTypeFor(root),
+        questionNumber = 1,
+        questionsNumber = config.questionsNumber,
+        isEndless = isEndless,
+      )
+    }
+
+    // The context (if any) sets the tonal ground first; the notes start once it settles.
+    contextPlayer?.ready?.first { it }
+    if (isEndless) startStream() else playSequence()
+  }
+
+  private fun generatorFor(config: LevelConfig.Melodies.Random, root: Pitch): NoteGenerator =
+    when (val scale = config.scaleConfig) {
+      is ScaleConfig.AbsoluteScaleConfig ->
+        NaiveRandomNoteGenerator(
+          range = config.range,
+          allowedPitches = scale.pitchStates.filter { it.active }.map { it.pitch },
+        )
+
+      is ScaleConfig.RelativeScaleConfig ->
+        NaiveRandomDegreeNoteGenerator(
+          root = root,
+          range = config.range,
+          allowedDegrees = scale.degreeStates.filter { it.active }.map { it.degree },
+        )
+    }
+
+  /** Sharp/flat orientation for [root], re-rolled (randomly for ambiguous keys) on root change. */
+  private fun accidentalTypeFor(root: Pitch): ScaleAccidentalType? {
+    val scaleType = randomConfig?.scaleConfig?.scaleType ?: return null
+    return decideAccidentalType(root.ordinal, scaleType, allowSevenAccidentalKeys, Random.Default)
+  }
+
+  /** [count] random notes with synthetic ticks, or null when the config allows no notes at all. */
+  private fun generateNotes(
+    generator: NoteGenerator,
+    count: Int,
+    startIndex: Int,
+  ): List<MelodyNote>? =
+    runCatching {
+      List(count) { i -> MelodyNote(generator.next(), tick = (startIndex + i).toLong()) }
+    }.getOrNull()
+
+  /** Plays the current finite sequence as quarter notes at the level tempo. Restarts on re-entry. */
+  private fun playSequence() {
+    val tempo = randomConfig?.tempo ?: return
+    val previous = sequenceJob
+    sequenceJob =
+      viewModelScope.launch {
+        previous?.cancelAndJoin()
+        val notes = _state.value.notes
+        _state.update { it.copy(isPlayingSequence = true) }
+        try {
+          withTiming(tempo) {
+            notes.forEachIndexed { index, melodyNote ->
+              _state.update { it.copy(sequencePlaybackIndex = index) }
+              maxStartedIndex = maxOf(maxStartedIndex, index)
+              try {
+                midiEngine.playNote(melodyNote.note)
+                delay(quarter())
+              } finally {
+                midiEngine.stopNote(melodyNote.note)
+              }
+            }
+          }
+        } finally {
+          _state.update { it.copy(isPlayingSequence = false, sequencePlaybackIndex = -1) }
+        }
+      }
+  }
+
+  /** Replays the current question's sequence. */
+  fun replaySequence() {
+    val current = _state.value
+    if (current.mode != MelodiesPlayMode.Random || current.isEndless || current.isQuizComplete) {
+      return
+    }
+    playSequence()
+  }
+
+  /** Replays the context's setup melody on demand; a no-op when the context has none. */
+  fun playSetupMelody() {
+    val previous = playMelodyJob
+    playMelodyJob = viewModelScope.launch {
+      previous?.cancelAndJoin()
+      contextPlayer?.playSetupMelody(true)
+    }
+  }
+
+  private fun advanceToNextQuestion() {
+    val previous = advanceJob
+    advanceJob =
+      viewModelScope.launch {
+        previous?.cancelAndJoin()
+        sequenceJob?.cancelAndJoin()
+
+        val nextQuestion = _state.value.questionNumber + 1
+        val questionsNumber = _state.value.questionsNumber
+        if (questionsNumber != null && nextQuestion > questionsNumber) {
+          // isQuizComplete flips true; the screen navigates to the level-end.
+          _state.update { it.copy(questionNumber = nextQuestion) }
+          return@launch
+        }
+
+        val config = randomConfig ?: return@launch
+        val notesPerSequence = config.notesPerSequence ?: return@launch
+
+        // Scale rotation: a new random tonic every N questions, mirroring SinglesLevelQuizzer.
+        // Only a relative (random-tonic) scale rotates.
+        val currentRoot = _state.value.root
+        val newRoot =
+          rootForQuestion(config, currentRoot, nextQuestion)
+            ?.takeIf { it != currentRoot }
+        if (newRoot != null) {
+          generator = generatorFor(config, newRoot)
+        }
+        val generator = generator ?: return@launch
+        val sequence = generateNotes(generator, notesPerSequence, startIndex = 0) ?: return@launch
+
+        _state.update {
+          it.copy(
+            questionNumber = nextQuestion,
+            notes = sequence,
+            answerIndex = 0,
+            answeredPitches = emptyList(),
+            root = newRoot ?: it.root,
+            accidentalType = if (newRoot != null) accidentalTypeFor(newRoot) else it.accidentalType,
+          )
+        }
+        maxStartedIndex = -1
+
+        // Passing the new root replays the context for it (and lets finite nodes rotate);
+        // questionAdvanced waits until the context is ready again. No extra pause beyond that —
+        // the next sequence should be heard the moment the last answer lands (like Singles).
+        contextPlayer?.questionAdvanced(newRoot)
+        playSequence()
+      }
+  }
+
+  /** Tonic for [questionNumber]: a fresh random root when rotation is due, else null (keep). */
+  private fun rootForQuestion(
+    config: LevelConfig.Melodies.Random,
+    currentRoot: Pitch?,
+    questionNumber: Int,
+  ): Pitch? {
+    if (config.scaleConfig !is ScaleConfig.RelativeScaleConfig) return null
+    val rotate = config.rotateEveryQuestions?.takeIf { it >= 1 } ?: return null
+    val dueForRotation = questionNumber > 1 && (questionNumber - 1) % rotate == 0
+    if (!dueForRotation) return null
+    // Force a different tonic so the scale actually moves and the context replays.
+    var newRoot = Pitch.random()
+    while (newRoot == currentRoot) newRoot = Pitch.random()
+    return newRoot
+  }
+
+  // endregion
+
+  // region Endless stream
+
+  /**
+   * The endless stream: plays note after note at the level tempo, generating ahead as it goes.
+   * [streamIndex] is the transport position — pause keeps it, rewind moves it back.
+   */
+  private fun startStream() {
+    val tempo = randomConfig?.tempo ?: return
+    val previous = sequenceJob
+    sequenceJob =
+      viewModelScope.launch {
+        previous?.cancelAndJoin()
+        _state.update { it.copy(isPlayingSequence = true) }
+        try {
+          withTiming(tempo) {
+            while (isActive) {
+              val index = streamIndex
+              ensureGeneratedUpTo(index + StreamLookahead)
+              val melodyNote = _state.value.notes.getOrNull(index) ?: break
+              _state.update { it.copy(sequencePlaybackIndex = index) }
+              maxStartedIndex = maxOf(maxStartedIndex, index)
+              try {
+                midiEngine.playNote(melodyNote.note)
+                delay(quarter())
+              } finally {
+                midiEngine.stopNote(melodyNote.note)
+              }
+              // A rewind mid-note moved the cursor already; don't overwrite it.
+              if (streamIndex == index) streamIndex = index + 1
+            }
+          }
+        } finally {
+          _state.update { it.copy(isPlayingSequence = false) }
+        }
+      }
+  }
+
+  private fun toggleStream() {
+    if (!_state.value.isEndless) return
+    val running = sequenceJob?.isActive == true
+    if (running) {
+      sequenceJob?.cancel()
+    } else {
+      startStream()
+    }
+  }
+
+  private fun rewindStream() {
+    if (!_state.value.isEndless) return
+    streamIndex = (streamIndex - RewindNotes).coerceAtLeast(0)
+    _state.update { it.copy(sequencePlaybackIndex = streamIndex) }
+  }
+
+  /** Appends generated notes until [lastIndex] exists, so the strip always shows what's ahead. */
+  private fun ensureGeneratedUpTo(lastIndex: Int) {
+    val generator = generator ?: return
+    val existing = _state.value.notes.size
+    if (existing > lastIndex) return
+    val appended =
+      generateNotes(generator, count = lastIndex + 1 - existing, startIndex = existing) ?: return
+    _state.update { it.copy(notes = it.notes + appended) }
+  }
+
+  // endregion
+
+  /**
+   * Interprets a tapped input item into a guessed pitch and checks it.
+   *
+   * [index] is the item's own index in the active input component (a piano key or a circle item).
+   * [mode] decides how it becomes a pitch: [InputMode.Absolute] reads it as a chromatic pitch
+   * ordinal; [InputMode.Relative] reads it as a chromatic degree offset from the current root
+   * (falling back to C when there is none, e.g. a MIDI melody, matching the on-screen labels).
+   */
+  fun userGuessed(index: Int, mode: InputMode): Boolean? {
+    val pitch =
+      when (mode) {
+        InputMode.Absolute -> Pitch.fromOrdinal(index)
+        InputMode.Relative -> Degree.fromOffset(index).pitch(_state.value.root ?: Pitch.C)
+      }
+    return userGuessed(pitch)
+  }
+
+  /**
+   * Checks the guessed pitch against the awaited note. A correct guess advances to the next note
+   * (and in Random mode to the next question after the last note); a wrong guess records at most
+   * one miss per note and stays on it. Returns null when no quiz is active (caller should not
+   * flash).
+   */
+  fun userGuessed(pitch: Pitch): Boolean? {
+    val current = _state.value
+    if (current.isLoading || current.error != null || current.isQuizComplete) return null
+    // The endless stream reveals notes as they sound; there is nothing to answer past the last
+    // note that has started playing.
+    if (current.isEndless && current.answerIndex > maxStartedIndex) return null
+    val answerNote = current.notes.getOrNull(current.answerIndex) ?: return null
+    val isCorrect = answerNote.note.pitch == pitch
+
+    var sequenceFinished = false
+    _state.update { state ->
+      val note = state.notes.getOrNull(state.answerIndex) ?: return@update state
+      val alreadyMissed =
+        state.incorrectAnswers.any {
+          it.questionNumber == state.questionNumber && it.noteIndex == state.answerIndex
+        }
+      if (note.note.pitch == pitch) {
+        val nextAnswerIndex = state.answerIndex + 1
+        sequenceFinished = !state.isEndless && nextAnswerIndex >= state.notes.size
+        state.copy(
+          answerIndex = nextAnswerIndex,
+          answeredPitches = state.answeredPitches + pitch,
+          correctAnswers = state.correctAnswers + if (alreadyMissed) 0 else 1,
+        )
+      } else {
+        if (alreadyMissed) {
+          state
+        } else {
+          state.copy(
+            incorrectAnswers =
+              state.incorrectAnswers +
+                IncorrectMelodyAnswer(
+                  questionNumber = state.questionNumber,
+                  noteIndex = state.answerIndex,
+                  expectedPitch = note.note.pitch,
+                  guessedPitch = pitch,
+                ),
+          )
+        }
+      }
+    }
+
+    if (isCorrect && sequenceFinished && current.mode == MelodiesPlayMode.Random) {
+      advanceToNextQuestion()
+    }
+    return isCorrect
+  }
+
   override fun onCleared() {
     pollJob?.cancel()
+    sequenceJob?.cancel()
+    advanceJob?.cancel()
+    contextJob?.cancel()
+    setupMelodyIndicationJob?.cancel()
+    playMelodyJob?.cancel()
     player.release()
   }
 }

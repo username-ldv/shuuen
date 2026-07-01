@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
 import io.github.vinceglb.filekit.FileKit
+import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.openFilePicker
 import io.github.vinceglb.filekit.name
@@ -15,9 +16,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ldv.shuuen.core.music.DegreeContext
+import ldv.shuuen.core.music.Note
+import ldv.shuuen.core.music.NoteRange
+import ldv.shuuen.core.music.Pitch
+import ldv.shuuen.core.music.Scale
+import ldv.shuuen.core.music.ScaleType
+import ldv.shuuen.core.music.toNoteRange
+import ldv.shuuen.features.training.common.asConfigDegreeStates
+import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.LevelSource
+import ldv.shuuen.features.training.domain.ScaleConfig
 import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
-import ldv.shuuen.features.training.melodies.domain.MelodiesSession
+import ldv.shuuen.features.training.melodies.domain.MelodiesLocalLevelRepository
 
 enum class MelodiesSourceMode {
   Random,
@@ -26,27 +36,70 @@ enum class MelodiesSourceMode {
 
 data class MelodiesSetupState(
   val sourceMode: MelodiesSourceMode = MelodiesSourceMode.Random,
+  val scaleConfig: ScaleConfig =
+    ScaleConfig.RelativeScaleConfig(
+      scaleType = ScaleType.Major,
+      degreeStates = Scale.major(Pitch.C).asConfigDegreeStates(),
+    ),
+  val context: DegreeContext? = null,
+  /** null means an unlimited session. */
+  val questionsNumber: Int? = 20,
+  val notesPerSequence: Int = 4,
+  /** When on, sequences are ignored and notes stream endlessly; questions/rotation don't apply. */
+  val endlessNotes: Boolean = false,
+  /** Move to a new random tonic every this many questions; null is off. Relative scales only. */
+  val rotateEveryQuestions: Int? = 10,
+  val tempo: Int = 96,
+  val range: NoteRange = NoteRange(Note(Pitch.C, 2), Note(Pitch.C, 7)),
+  val loadedMidi: PlatformFile? = null,
   val loadedMidiName: String? = null,
-  val midiBytes: ByteArray? = null,
   val isLoadingMidi: Boolean = false,
   val midiError: String? = null,
   val useOriginalVelocities: Boolean = false,
-  val context: DegreeContext? = null,
-) {
-  /** A melody can be started once a MIDI file has been loaded. */
-  val canStart: Boolean
-    get() = sourceMode == MelodiesSourceMode.Midi && midiBytes != null
-}
+)
 
 @OptIn(ExperimentalUuidApi::class)
 class MelodiesSetupScreenViewModel(
-  private val session: MelodiesSession,
+  private val levelRepository: MelodiesLocalLevelRepository,
 ) : ViewModel() {
   private val _state = MutableStateFlow(MelodiesSetupState())
   val state = _state.asStateFlow()
 
   fun selectSourceMode(mode: MelodiesSourceMode) {
     _state.update { it.copy(sourceMode = mode) }
+  }
+
+  fun changeScale(scaleConfig: ScaleConfig) {
+    _state.update { it.copy(scaleConfig = scaleConfig) }
+  }
+
+  fun changeQuestionsNumber(v: Int?) {
+    _state.update { it.copy(questionsNumber = v) }
+  }
+
+  fun changeNotesPerSequence(v: Int) {
+    if (v < 1) return
+    _state.update { it.copy(notesPerSequence = v) }
+  }
+
+  fun setEndlessNotes(v: Boolean) {
+    _state.update { it.copy(endlessNotes = v) }
+  }
+
+  fun changeRotateEveryQuestions(v: Int?) {
+    _state.update { it.copy(rotateEveryQuestions = v) }
+  }
+
+  fun changeTempo(v: Int) {
+    _state.update { it.copy(tempo = v.coerceIn(TempoRange)) }
+  }
+
+  fun changeRangeStart(v: Note) {
+    _state.update { it.copy(range = (v to it.range.to).toNoteRange()) }
+  }
+
+  fun changeRangeEnd(v: Note) {
+    _state.update { it.copy(range = (it.range.from to v).toNoteRange()) }
   }
 
   fun setUseOriginalVelocities(value: Boolean) {
@@ -61,17 +114,17 @@ class MelodiesSetupScreenViewModel(
         _state.update { it.copy(isLoadingMidi = false) }
         return@launch
       }
+      // Only the file reference is stored with the level; the read here just validates the pick.
       val bytes = runCatching { file.readBytes() }.getOrNull()
       if (bytes == null || bytes.isEmpty()) {
         _state.update { it.copy(isLoadingMidi = false, midiError = "Couldn't read ${file.name}.") }
         return@launch
       }
-      Napier.v { "Loaded ${bytes.size} bytes from ${file.name}" }
       _state.update {
         it.copy(
           sourceMode = MelodiesSourceMode.Midi,
+          loadedMidi = file,
           loadedMidiName = file.name,
-          midiBytes = bytes,
           isLoadingMidi = false,
           midiError = null,
         )
@@ -84,21 +137,66 @@ class MelodiesSetupScreenViewModel(
     _state.update { it.copy(context = context) }
   }
 
-  /** Builds the melody and stages it for the play screen. Returns false if nothing is ready yet. */
-  fun stageLevelForTraining(): Boolean {
+  /** Saves the configured level. Returns false when the level is not ready to save yet. */
+  suspend fun upsertLevel(): Boolean {
     val current = _state.value
-    val bytes = current.midiBytes ?: return false
+    val config =
+      when (current.sourceMode) {
+        MelodiesSourceMode.Random ->
+          LevelConfig.Melodies.Random(
+            scaleConfig = current.scaleConfig,
+            questionsNumber = if (current.endlessNotes) null else current.questionsNumber,
+            notesPerSequence = if (current.endlessNotes) null else current.notesPerSequence,
+            tempo = current.tempo,
+            range = current.range,
+            rotateEveryQuestions =
+              current.rotateEveryQuestions.takeIf {
+                current.scaleConfig is ScaleConfig.RelativeScaleConfig && !current.endlessNotes
+              },
+          )
+
+        MelodiesSourceMode.Midi -> {
+          val file = current.loadedMidi
+          if (file == null) {
+            _state.update { it.copy(midiError = "Load a .midi file first.") }
+            return false
+          }
+          LevelConfig.Melodies.Midi(
+            file = file,
+            fileName = current.loadedMidiName ?: file.name,
+            useOriginalVelocities = current.useOriginalVelocities,
+          )
+        }
+      }
     val level =
       MelodiesLevel(
         id = Uuid.generateV7().toString(),
-        name = current.loadedMidiName?.substringBeforeLast('.') ?: "Melody",
-        midiBytes = bytes,
-        useOriginalVelocities = current.useOriginalVelocities,
+        name = defaultLevelName(config),
+        config = config,
         context = current.context,
-        source = LevelSource.Imported,
+        source =
+          when (config) {
+            is LevelConfig.Melodies.Random -> LevelSource.User
+            is LevelConfig.Melodies.Midi -> LevelSource.Imported
+          },
       )
-    session.stage(level)
-    Napier.v { "Staged melody level '${level.name}'" }
+    levelRepository.upsertLevel(level)
+    Napier.v { "Saved melodies level '${level.name}'" }
     return true
+  }
+
+  private fun defaultLevelName(config: LevelConfig.Melodies): String =
+    when (config) {
+      is LevelConfig.Melodies.Random ->
+        when (val scale = config.scaleConfig) {
+          is ScaleConfig.AbsoluteScaleConfig -> "${scale.root} ${scale.scaleType}"
+          is ScaleConfig.RelativeScaleConfig -> "Random ${scale.scaleType}"
+        }
+
+      is LevelConfig.Melodies.Midi -> config.fileName.substringBeforeLast('.')
+    }
+
+  companion object {
+    val TempoRange = 20..360
   }
 }

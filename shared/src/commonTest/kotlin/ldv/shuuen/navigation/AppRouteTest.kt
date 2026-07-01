@@ -11,7 +11,7 @@ class AppRouteTest {
   fun includesMelodiesTrainingRoutes() {
     val routes: List<AppRoute> = listOf(
       AppRoute.MelodiesSetup,
-      AppRoute.MelodiesPlay,
+      AppRoute.MelodiesPlay("test-id"),
       AppRoute.Context(ContextRecipient.MelodiesSetup),
       AppRoute.SinglesLevelSelect,
       AppRoute.MelodiesLevelSelect,

@@ -26,20 +26,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ldv.shuuen.core.result.ResponseState
-import ldv.shuuen.core.music.ContextDuration
-import ldv.shuuen.core.music.DegreeContext
-import ldv.shuuen.core.music.SetupMelodyRepeat
-import ldv.shuuen.core.music.Sustain
 import ldv.shuuen.features.training.domain.LevelConfig
-import ldv.shuuen.features.training.domain.LevelSource
 import ldv.shuuen.features.training.single.domain.SinglesLevel
+import ldv.shuuen.features.training.common.components.ContextDetails
+import ldv.shuuen.features.training.common.components.DetailLabel
+import ldv.shuuen.features.training.common.components.DetailRow
+import ldv.shuuen.features.training.common.components.LevelParametersFlow
+import ldv.shuuen.features.training.common.components.sourceLabel
 import ldv.shuuen.features.training.common.toBoxedItems
 import ldv.shuuen.core.ui.components.Hairline
 import ldv.shuuen.core.ui.components.PrimaryCta
@@ -49,7 +47,6 @@ import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.SurfaceCard
 import ldv.shuuen.core.ui.components.BoxedItemRow
-import ldv.shuuen.core.ui.components.music.DegreeSequenceChips
 
 @Composable
 fun SinglesLevelSelectScreen(
@@ -170,41 +167,7 @@ private fun LevelParameterRow(
           level.range.toPair().toList().joinToString(" - ") to Icons.Rounded.Keyboard,
       )
 
-  Row(
-      modifier = modifier.fillMaxWidth(),
-      horizontalArrangement = Arrangement.spacedBy(20.dp),
-  ) {
-    items.forEach { (text, icon) ->
-      LevelParameter(text, icon)
-    }
-  }
-}
-
-@Composable
-private fun LevelParameter(
-    text: String,
-    icon: ImageVector,
-    modifier: Modifier = Modifier,
-) {
-  Row(
-      modifier = modifier,
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(6.dp),
-  ) {
-    Icon(
-        imageVector = icon,
-        contentDescription = null,
-        tint = ShuuenUi.Dim,
-        modifier = Modifier.size(16.dp),
-    )
-    Text(
-        text = text,
-        color = ShuuenUi.Muted,
-        style = MaterialTheme.typography.bodyMedium,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-    )
-  }
+  LevelParametersFlow(items, modifier = modifier)
 }
 
 @Composable
@@ -231,98 +194,3 @@ private fun LevelDetails(level: SinglesLevel) {
   }
 }
 
-@Composable
-private fun ContextDetails(context: DegreeContext) {
-  Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-    context.name?.let {
-      Text(
-          text = it,
-          color = ShuuenUi.Muted,
-          style = MaterialTheme.typography.bodyMedium,
-      )
-    }
-    context.nodes.forEachIndexed { index, node ->
-      Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        val durationText =
-          when (val d = node.duration) {
-            is ContextDuration.SameAsScaleRotation -> "Same as scale"
-            is ContextDuration.Endless -> "Endless"
-            is ContextDuration.Finite -> "${d.durationInQuestions} questions"
-            is ContextDuration.Immediate -> "Immediate"
-          }
-        Text(
-            text = "Node ${index + 1} · ${sustainLabel(node.sustain)} · $durationText",
-            color = ShuuenUi.Dim,
-            style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.2.sp),
-        )
-        val labels = listOf(node.firstDegree.toString()) + node.extraDegrees.map { it.label }
-        DegreeSequenceChips(labels = labels)
-      }
-      node.setupMelody?.let { setupMelody ->
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-          Text(
-              text = "Node ${index + 1} · Setup melody · ${repeatLabel(setupMelody.repeat)}",
-              color = ShuuenUi.Dim,
-              style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.2.sp),
-          )
-          DegreeSequenceChips(
-              labels =
-                  listOf(setupMelody.melody.firstDegree.toString()) +
-                      setupMelody.melody.extraDegrees.map { it.toString() }
-          )
-        }
-      }
-    }
-  }
-}
-
-@Composable
-private fun DetailRow(label: String, value: String) {
-  Row(
-      modifier = Modifier.fillMaxWidth(),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(10.dp),
-  ) {
-    DetailLabel(label, modifier = Modifier.weight(1f))
-    Text(
-        text = value,
-        color = ShuuenUi.Muted,
-        style = MaterialTheme.typography.bodyMedium,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-    )
-  }
-}
-
-@Composable
-private fun DetailLabel(text: String, modifier: Modifier = Modifier) {
-  Text(
-      text = text,
-      color = ShuuenUi.Dim,
-      style =
-          MaterialTheme.typography.labelSmall.copy(
-              letterSpacing = ShuuenUi.labelSpacing,
-              fontWeight = FontWeight.SemiBold,
-          ),
-      modifier = modifier,
-  )
-}
-
-private fun sourceLabel(source: LevelSource): String =
-    when (source) {
-      LevelSource.BuiltIn -> "Built-in"
-      LevelSource.User -> "Custom"
-      LevelSource.Imported -> "Imported"
-    }
-
-private fun sustainLabel(sustain: Sustain): String =
-    when (sustain) {
-      is Sustain.Endless -> "Sustained"
-      is Sustain.Finite -> "Timed"
-    }
-
-private fun repeatLabel(repeat: SetupMelodyRepeat): String =
-    when (repeat) {
-      SetupMelodyRepeat.Once -> "Once"
-      SetupMelodyRepeat.EveryTime -> "Every time"
-    }

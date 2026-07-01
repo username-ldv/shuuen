@@ -1,10 +1,10 @@
 package ldv.shuuen.features.training.melodies
 
 import androidx.compose.runtime.LaunchedEffect
-import ldv.shuuen.features.training.melodies.domain.MelodiesSession
 import ldv.shuuen.features.training.level_end.LevelCompleteScreen
 import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.melodies.level_select.MelodiesLevelSelectScreen
+import ldv.shuuen.features.training.melodies.level_select.MelodiesLevelSelectScreenViewModel
 import ldv.shuuen.features.training.melodies.play.MelodiesPlayScreen
 import ldv.shuuen.features.training.melodies.play.MelodiesPlayScreenViewModel
 import ldv.shuuen.features.training.melodies.setup.MelodiesSetupScreen
@@ -16,14 +16,14 @@ import ldv.shuuen.app.navigation.result.LocalNavResultStore
 import ldv.shuuen.app.navigation.result.NavResultKeys.MelodiesContextResult
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.annotation.KoinExperimentalAPI
+import org.koin.core.parameter.parametersOf
 import org.koin.dsl.module
 import org.koin.dsl.navigation3.navigation
-import org.koin.plugin.module.dsl.single
 import org.koin.plugin.module.dsl.viewModel
 
 @OptIn(KoinExperimentalAPI::class)
 val melodiesTrainingNavigationModule = module {
-  single<MelodiesSession>()
+  viewModel<MelodiesLevelSelectScreenViewModel>()
   viewModel<MelodiesSetupScreenViewModel>()
   viewModel<MelodiesPlayScreenViewModel>()
 
@@ -31,7 +31,9 @@ val melodiesTrainingNavigationModule = module {
     val navigator = LocalAppNavigator.current
     MelodiesLevelSelectScreen(
       onNavigateBack = { navigator.goBack() },
+      onStartLevel = { levelId -> navigator.add(AppRoute.MelodiesPlay(levelId)) },
       onCreateNewLevel = { navigator.add(AppRoute.MelodiesSetup) },
+      viewModel = koinViewModel(),
     )
   }
 
@@ -49,17 +51,17 @@ val melodiesTrainingNavigationModule = module {
     MelodiesSetupScreen(
       onNavigateBack = { navigator.goBack() },
       onOpenContext = { navigator.add(AppRoute.Context(ContextRecipient.MelodiesSetup)) },
-      onStartTraining = { navigator.add(AppRoute.MelodiesPlay) },
+      onSaveLevel = { navigator.goBack() },
       viewModel = viewModel,
     )
   }
 
-  navigation<AppRoute.MelodiesPlay> {
+  navigation<AppRoute.MelodiesPlay> { route ->
     val navigator = LocalAppNavigator.current
     MelodiesPlayScreen(
       onNavigateBack = { navigator.goBack() },
       onLevelEnd = { navigator.replaceLastWith(AppRoute.MelodiesLevelComplete) },
-      viewModel = koinViewModel(),
+      viewModel = koinViewModel { parametersOf(route.levelId) },
     )
   }
 

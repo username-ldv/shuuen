@@ -28,5 +28,5 @@ sealed interface AppRoute : NavKey {
 
   @Serializable data object MelodiesSetup : AppRoute
 
-  @Serializable data object MelodiesPlay : AppRoute
+  @Serializable data class MelodiesPlay(val levelId: String) : AppRoute
 }

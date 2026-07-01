@@ -22,8 +22,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -32,25 +34,33 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import ldv.shuuen.core.music.Pitch
+import ldv.shuuen.core.settings.InputComponent
 import ldv.shuuen.core.ui.components.LinearTrainingProgress
 import ldv.shuuen.core.ui.components.ShuuenTopAppBar
 import ldv.shuuen.core.ui.components.ShuuenTopAppBarType
 import ldv.shuuen.core.ui.components.ShuuenUi
+import ldv.shuuen.core.ui.components.SoftControl
 import ldv.shuuen.core.ui.components.StaticScreenFrame
+import ldv.shuuen.core.ui.components.music.inputs.FifthsCircle
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboard
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
+import ldv.shuuen.core.ui.components.music.inputs.rememberFifthsCircleState
 import ldv.shuuen.core.ui.components.music.inputs.rememberPianoKeyboardState
+import ldv.shuuen.features.training.common.components.circleItemNames
+import ldv.shuuen.features.training.common.components.circleTopItem
+import ldv.shuuen.features.training.common.components.pitchToItemIndex
 
 @Composable
 fun MelodiesPlayScreen(
@@ -59,13 +69,18 @@ fun MelodiesPlayScreen(
   viewModel: MelodiesPlayScreenViewModel,
 ) {
   val state by viewModel.state.collectAsStateWithLifecycle()
+  val inputMethod by viewModel.inputMethod.collectAsStateWithLifecycle()
+  val musicLabels by viewModel.musicLabels.collectAsStateWithLifecycle()
 
   LaunchedEffect(state.isQuizComplete) {
-//    if (state.isQuizComplete) onLevelEnd()
+    if (state.isQuizComplete) onLevelEnd()
   }
 
   StaticScreenFrame(
     scrollable = false,
+    // The circle input is full-bleed (it must reach the screen edges to stay tappable there), so
+    // the frame adds no horizontal padding; each child below applies its own where needed.
+    horizontalPadding = 0.dp,
     topBar = {
       ShuuenTopAppBar(
         title = state.title,
@@ -82,46 +97,145 @@ fun MelodiesPlayScreen(
         CenteredMessage(state.error ?: "Something went wrong.", ShuuenUi.Incorrect)
 
       else -> {
-        TrainingStatus(state)
-        Spacer(Modifier.height(4.dp))
-        MelodyBuffer(state)
+        TrainingStatus(state, modifier = Modifier.padding(horizontal = ScreenHorizontalPadding))
+        MelodyBuffer(state, modifier = Modifier.padding(horizontal = ScreenHorizontalPadding))
 
-        Spacer(Modifier.weight(1f))
+        val keyboardState = rememberPianoKeyboardState()
+        val circleState = rememberFifthsCircleState()
 
-        AnswerKeyboard(onGuess = viewModel::userGuessed)
+        // The setup-melody flow emits absolute pitches; the index meaning depends on the active
+        // input method, and the relative mapping needs the current root. Track both without
+        // restarting the collector each time they change.
+        val currentInputMethod by rememberUpdatedState(inputMethod)
+        val currentRoot by rememberUpdatedState(state.root)
 
-        Spacer(Modifier.weight(0.5f))
+        LaunchedEffect(Unit) {
+          viewModel.setupMelodyFlashes.collect { req ->
+            val method = currentInputMethod
+            val index = pitchToItemIndex(req.pitch, method.mode, currentRoot)
+            when (method.component) {
+              InputComponent.Piano ->
+                keyboardState.flash(index, req.color, holdMillis = 520, attackMillis = 80, releaseMillis = 300)
+              InputComponent.Circle ->
+                circleState.flash(index, req.color, holdMillis = 520, attackMillis = 80, releaseMillis = 300)
+            }
+          }
+        }
 
-        SeekBar(
-          progress = state.progress,
-          positionSeconds = state.positionSeconds,
-          lengthSeconds = state.lengthSeconds,
-          onSeek = viewModel::seekToFraction,
-        )
+        // Both components reduce a tapped item to a guess via userGuessed(index, mode); the flash
+        // uses the tapped index directly, so no extra mapping is needed for feedback.
+        fun handleGuess(index: Int, flashOn: (Int, Color) -> Unit) {
+          viewModel.userGuessed(index, inputMethod.mode)?.let { correct ->
+            flashOn(index, if (correct) ShuuenUi.Correct else ShuuenUi.Incorrect)
+          }
+        }
 
-        TransportBar(
-          isPlaying = state.isPlaying,
-          onRewind = viewModel::seekBackward,
-          onTogglePlay = viewModel::togglePlayPause,
-          onForward = viewModel::seekForward,
-        )
+        when (inputMethod.component) {
+          InputComponent.Piano -> {
+            Spacer(Modifier.weight(1f))
+            PianoKeyboard(
+              modifier = Modifier
+                .padding(horizontal = ScreenHorizontalPadding)
+                .fillMaxWidth()
+                .aspectRatio(PianoKeyboardDefaults.aspectRatio(12)),
+              keyCount = 12,
+              state = keyboardState,
+              onKeyPressedChange = { index, pressed ->
+                if (!pressed) handleGuess(index) { i, c -> keyboardState.flash(i, c) }
+              },
+            )
+            Spacer(Modifier.weight(0.34f))
+          }
+
+          // The circle is full-bleed: it fills the whole flexible region so the empty space
+          // around the ring is part of the touch surface (same as the Singles play screen).
+          InputComponent.Circle ->
+            FifthsCircle(
+              modifier = Modifier.fillMaxWidth().weight(1f),
+              itemNames =
+                circleItemNames(
+                  inputMethod.mode,
+                  state.root,
+                  state.accidentalType,
+                  musicLabels,
+                ),
+              rotateItemToTop = circleTopItem(inputMethod, state.root),
+              state = circleState,
+              onItemPressedChange = { index, pressed ->
+                if (!pressed) handleGuess(index) { i, c -> circleState.flash(i, c) }
+              },
+              dotEdgePadding = 16.dp,
+            )
+        }
+
+        Column(modifier = Modifier.padding(horizontal = ScreenHorizontalPadding)) {
+          when {
+            state.mode == MelodiesPlayMode.Midi -> {
+              SeekBar(
+                progress = state.progress,
+                positionSeconds = state.positionSeconds,
+                lengthSeconds = state.lengthSeconds,
+                onSeek = viewModel::seekToFraction,
+              )
+
+              TransportBar(
+                isPlaying = state.isPlaying,
+                onRewind = viewModel::seekBackward,
+                onTogglePlay = viewModel::togglePlayPause,
+                onForward = viewModel::seekForward,
+              )
+            }
+
+            // The endless stream has no destination to seek toward: just pause and rewind.
+            state.isEndless ->
+              EndlessTransportBar(
+                isPlaying = state.isPlayingSequence,
+                onRewind = viewModel::seekBackward,
+                onTogglePlay = viewModel::togglePlayPause,
+              )
+
+            else ->
+              ReplayBar(
+                onReplay = viewModel::replaySequence,
+                onRepeatMelody = viewModel::playSetupMelody,
+              )
+          }
+        }
       }
     }
   }
 }
 
+/**
+ * Horizontal inset applied to the non-circle children. The frame itself adds no horizontal padding
+ * so the circle can be full-bleed; padded children re-apply this to keep their usual margins.
+ */
+private val ScreenHorizontalPadding = 20.dp
+
 @Composable
-private fun TrainingStatus(state: MelodiesPlayState) {
+private fun TrainingStatus(state: MelodiesPlayState, modifier: Modifier = Modifier) {
   Column(
-    modifier = Modifier.fillMaxWidth(),
+    modifier = modifier.fillMaxWidth(),
     verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Row(
       modifier = Modifier.fillMaxWidth(),
       verticalAlignment = Alignment.Top,
     ) {
+      val counter =
+        when {
+          state.mode == MelodiesPlayMode.Midi ->
+            "${(state.answerIndex + 1).coerceAtMost(state.notes.size)}/${state.notes.size}"
+
+          state.isEndless -> "${state.answerIndex + 1}/∞"
+
+          else ->
+            state.questionsNumber?.let {
+              "${state.questionNumber.coerceAtMost(it)}/$it"
+            } ?: "${state.questionNumber}/∞"
+        }
       Text(
-        "${(state.answerIndex + 1).coerceAtMost(state.notes.size)}/${state.notes.size}",
+        counter,
         color = ShuuenUi.Muted,
         style = MaterialTheme.typography.titleSmall,
         modifier = Modifier.weight(1f),
@@ -145,7 +259,12 @@ private fun TrainingStatus(state: MelodiesPlayState) {
       }
     }
 
-    LinearTrainingProgress(progress = state.quizProgress)
+    // An endless stream or an unlimited-questions session has no end to progress toward.
+    val hasProgressTarget =
+      state.mode == MelodiesPlayMode.Midi || (!state.isEndless && state.questionsNumber != null)
+    if (hasProgressTarget) {
+      LinearTrainingProgress(progress = state.quizProgress)
+    }
   }
 }
 
@@ -163,22 +282,23 @@ private fun ColumnScope.CenteredMessage(text: String, color: Color) {
 
 /**
  * The melody as a horizontally-scrolling strip of note cells that follows the answer cursor. The
- * lazy row keeps it cheap for long MIDI files while roughly 10–12 cells stay visible.
+ * lazy row keeps it cheap for long MIDI files and the endless stream; short sequences sit centered
+ * within it.
  */
 @Composable
-private fun MelodyBuffer(state: MelodiesPlayState) {
+private fun MelodyBuffer(state: MelodiesPlayState, modifier: Modifier = Modifier) {
   val listState = rememberLazyListState()
   val playbackIndex = state.playbackNoteIndex
-  val missedIndexes = state.incorrectAnswers.map { it.noteIndex }.toSet()
-  LaunchedEffect(state.isPlaying, playbackIndex) {
-    if (state.isPlaying && playbackIndex >= 0) {
+  val missedIndexes = state.missedIndexes
+  LaunchedEffect(state.isPlaybackActive, playbackIndex) {
+    if (state.isPlaybackActive && playbackIndex >= 0) {
       listState.animateScrollToItem((playbackIndex - 3).coerceAtLeast(0))
     }
   }
   LazyRow(
-    modifier = Modifier.fillMaxWidth().height(64.dp),
+    modifier = modifier.fillMaxWidth().height(64.dp),
     state = listState,
-    horizontalArrangement = Arrangement.spacedBy(6.dp),
+    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     itemsIndexed(state.notes) { index, _ ->
@@ -187,7 +307,7 @@ private fun MelodyBuffer(state: MelodiesPlayState) {
         label = state.answeredPitches.getOrNull(index)?.toString() ?: "-",
         answered = index < state.answerIndex,
         target = index == state.answerIndex,
-        playing = index == playbackIndex && state.isPlaying,
+        playing = index == playbackIndex && state.isPlaybackActive,
         missed = index in missedIndexes,
       )
     }
@@ -260,29 +380,6 @@ private fun MelodyCell(
   }
 }
 
-/** A single-octave keyboard for answers. Playback never highlights keys here. */
-@Composable
-private fun AnswerKeyboard(
-  onGuess: (Pitch) -> Boolean?,
-) {
-  val keyboardState = rememberPianoKeyboardState()
-  PianoKeyboard(
-    modifier = Modifier.fillMaxWidth().aspectRatio(PianoKeyboardDefaults.aspectRatio(12)),
-    keyCount = 12,
-    state = keyboardState,
-    onKeyPressedChange = { offset, pressed ->
-      if (!pressed) {
-        onGuess(Pitch.fromOrdinal(offset))?.let { correct ->
-          keyboardState.flash(
-            index = offset,
-            color = if (correct) ShuuenUi.Correct else ShuuenUi.Incorrect,
-          )
-        }
-      }
-    },
-  )
-}
-
 @Composable
 private fun SeekBar(
   progress: Float,
@@ -324,13 +421,74 @@ private fun TransportBar(
   onForward: () -> Unit,
 ) {
   Row(
-    modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
+    modifier = Modifier.fillMaxWidth(),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
   ) {
     TransportIcon(Icons.Rounded.FastRewind, "Rewind", size = 32.dp, onClick = onRewind)
     PlayPauseButton(isPlaying = isPlaying, onClick = onTogglePlay)
     TransportIcon(Icons.Rounded.FastForward, "Forward", size = 32.dp, onClick = onForward)
+  }
+}
+
+/** Endless-stream transport: pause/resume and rewind — there is no forward in an endless melody. */
+@Composable
+private fun EndlessTransportBar(
+  isPlaying: Boolean,
+  onRewind: () -> Unit,
+  onTogglePlay: () -> Unit,
+) {
+  Row(
+    modifier = Modifier.fillMaxWidth(),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
+  ) {
+    TransportIcon(Icons.Rounded.FastRewind, "Rewind", size = 32.dp, onClick = onRewind)
+    PlayPauseButton(isPlaying = isPlaying, onClick = onTogglePlay)
+  }
+}
+
+/**
+ * Finite Random mode's bottom bar, arranged like the Singles one: replay the current sequence,
+ * plus a music-note button that replays the context's setup melody.
+ */
+@Composable
+private fun ReplayBar(onReplay: () -> Unit, onRepeatMelody: () -> Unit) {
+  Row(
+    modifier = Modifier.fillMaxWidth(),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(12.dp),
+  ) {
+    SoftControl(
+      modifier = Modifier.weight(1.8f).height(60.dp),
+      onClick = onReplay,
+    ) {
+      Icon(
+        imageVector = Icons.Rounded.Replay,
+        contentDescription = null,
+        tint = ShuuenUi.Text,
+        modifier = Modifier.size(24.dp),
+      )
+      Text(
+        text = "Replay",
+        color = ShuuenUi.Text,
+        style = MaterialTheme.typography.titleSmall,
+        textAlign = TextAlign.Center,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+      )
+    }
+    SoftControl(
+      modifier = Modifier.width(80.dp).height(60.dp),
+      onClick = onRepeatMelody,
+    ) {
+      Icon(
+        Icons.Rounded.MusicNote,
+        contentDescription = "Repeat setup melody",
+        tint = ShuuenUi.Muted,
+        modifier = Modifier.size(24.dp),
+      )
+    }
   }
 }
 
