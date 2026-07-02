@@ -178,7 +178,7 @@ private fun RandomTrailingSections(
   Hairline()
   TempoSection(state, viewModel)
   Hairline()
-  RhythmSection()
+  RhythmSection(state, viewModel)
   Hairline()
   MelodyRangeSection(state, viewModel)
 }
@@ -481,17 +481,31 @@ private fun TempoInputBox(tempo: Int, onTempoChange: (Int) -> Unit) {
 }
 
 @Composable
-private fun RhythmSection() {
+private fun RhythmSection(
+  state: MelodiesSetupState,
+  viewModel: MelodiesSetupScreenViewModel,
+) {
+  var showSheet by remember { mutableStateOf(false) }
   SetupNavRow(
     label = "7 · RHYTHM",
-    supporting = "Configure rhythm patterns. Coming soon.",
+    supporting = "${state.melodyStyle.name} · ${state.melodyStyle.tier.label}",
+    onClick = { showSheet = true },
   ) {
-    ShuuenSwitch(checked = true)
     Icon(
       Icons.Rounded.ChevronRight,
       contentDescription = null,
       tint = ShuuenUi.Dim,
       modifier = Modifier.size(26.dp),
+    )
+  }
+  if (showSheet) {
+    RhythmStyleSheet(
+      selected = state.melodyStyle,
+      onSelect = { style ->
+        viewModel.changeMelodyStyle(style)
+        showSheet = false
+      },
+      onDismiss = { showSheet = false },
     )
   }
 }

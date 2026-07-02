@@ -23,6 +23,11 @@ data class Timing(val tempo: Int) {
   fun sixtyFourth(): Duration = quarter() / 16.0
 
   fun oneHundredTwentyEighth(): Duration = quarter() / 32.0
+
+  fun of(value: NoteValue): Duration = quarter() * value.quarters
+
+  /** Duration of [quarters] quarter-note beats, e.g. a MelodyNote's durationQuarters. */
+  fun ofQuarters(quarters: Double): Duration = quarter() * quarters
 }
 
 inline fun <T> withTiming(tempo: Int, block: Timing.() -> T): T = Timing(tempo).block()

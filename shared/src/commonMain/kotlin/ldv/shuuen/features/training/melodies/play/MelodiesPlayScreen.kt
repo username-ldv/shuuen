@@ -341,7 +341,7 @@ private fun MelodyBuffer(
   val missedIndexes = state.missedIndexes
   LaunchedEffect(state.isPlaybackActive, playbackIndex) {
     if (state.isPlaybackActive && playbackIndex >= 0) {
-      listState.animateScrollToItem((playbackIndex - 3).coerceAtLeast(0))
+      listState.animateScrollToItem((playbackIndex - 5).coerceAtLeast(0))
     }
   }
   LazyRow(

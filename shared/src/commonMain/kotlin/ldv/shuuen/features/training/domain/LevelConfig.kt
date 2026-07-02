@@ -7,6 +7,8 @@ import ldv.shuuen.core.music.Degree
 import ldv.shuuen.core.music.NoteRange
 import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.ScaleType
+import ldv.shuuen.core.music.generator.MelodyStyle
+import ldv.shuuen.core.music.generator.MelodyStyles
 
 @Serializable
 sealed interface LevelConfig {
@@ -42,6 +44,11 @@ sealed interface LevelConfig {
        * relative (random-tonic) scale with finite sequences.
        */
       val rotateEveryQuestions: Int? = null,
+      /**
+       * Rhythm figures and note-picker weights shaping the generated melodies. The default
+       * matches levels saved before styles existed: uniformly random quarter notes.
+       */
+      val melodyStyle: MelodyStyle = MelodyStyles.Default,
     ) : Melodies
 
     /**

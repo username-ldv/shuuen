@@ -21,6 +21,8 @@ import ldv.shuuen.core.music.NoteRange
 import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.Scale
 import ldv.shuuen.core.music.ScaleType
+import ldv.shuuen.core.music.generator.MelodyStyle
+import ldv.shuuen.core.music.generator.MelodyStyles
 import ldv.shuuen.core.music.toNoteRange
 import ldv.shuuen.features.training.common.asConfigDegreeStates
 import ldv.shuuen.features.training.domain.LevelConfig
@@ -50,6 +52,8 @@ data class MelodiesSetupState(
   /** Move to a new random tonic every this many questions; null is off. Relative scales only. */
   val rotateEveryQuestions: Int? = 10,
   val tempo: Int = 96,
+  /** Rhythm figures + note-picker weights of the generated melodies. */
+  val melodyStyle: MelodyStyle = MelodyStyles.Default,
   val range: NoteRange = NoteRange(Note(Pitch.C, 2), Note(Pitch.C, 7)),
   val loadedMidi: PlatformFile? = null,
   val loadedMidiName: String? = null,
@@ -92,6 +96,10 @@ class MelodiesSetupScreenViewModel(
 
   fun changeTempo(v: Int) {
     _state.update { it.copy(tempo = v.coerceIn(TempoRange)) }
+  }
+
+  fun changeMelodyStyle(style: MelodyStyle) {
+    _state.update { it.copy(melodyStyle = style) }
   }
 
   fun changeRangeStart(v: Note) {
@@ -149,6 +157,7 @@ class MelodiesSetupScreenViewModel(
             notesPerSequence = if (current.endlessNotes) null else current.notesPerSequence,
             tempo = current.tempo,
             range = current.range,
+            melodyStyle = current.melodyStyle,
             rotateEveryQuestions =
               current.rotateEveryQuestions.takeIf {
                 current.scaleConfig is ScaleConfig.RelativeScaleConfig && !current.endlessNotes

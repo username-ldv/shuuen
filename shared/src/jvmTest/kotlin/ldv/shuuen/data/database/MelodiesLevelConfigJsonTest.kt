@@ -13,6 +13,7 @@ import ldv.shuuen.core.music.NoteRange
 import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.Scale
 import ldv.shuuen.core.music.ScaleType
+import ldv.shuuen.core.music.generator.MelodyStyles
 import ldv.shuuen.features.training.common.asConfigDegreeStates
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.ScaleConfig
@@ -92,6 +93,55 @@ class MelodiesLevelConfigJsonTest {
     assertTrue(decoded is LevelConfig.Melodies.Random)
     assertEquals(null, decoded.rotateEveryQuestions)
     assertEquals(4, decoded.notesPerSequence)
+  }
+
+  @Test
+  fun randomConfigRoundTripsANonDefaultMelodyStyle() {
+    val config: LevelConfig.Melodies =
+      LevelConfig.Melodies.Random(
+        scaleConfig =
+          ScaleConfig.RelativeScaleConfig(
+            scaleType = ScaleType.Major,
+            degreeStates = Scale.major(Pitch.C).asConfigDegreeStates(),
+          ),
+        questionsNumber = 20,
+        notesPerSequence = 4,
+        tempo = 96,
+        range = NoteRange(Note(Pitch.C, 3), Note(Pitch.C, 5)),
+        melodyStyle = MelodyStyles.WalkingLines,
+      )
+
+    val decoded: LevelConfig.Melodies = RoomJson.decode(RoomJson.encode(config))
+
+    assertEquals(config, decoded)
+  }
+
+  @Test
+  fun randomConfigSavedBeforeMelodyStyleFieldStillDecodes() {
+    val config: LevelConfig.Melodies =
+      LevelConfig.Melodies.Random(
+        scaleConfig =
+          ScaleConfig.RelativeScaleConfig(
+            scaleType = ScaleType.Major,
+            degreeStates = Scale.major(Pitch.C).asConfigDegreeStates(),
+          ),
+        questionsNumber = 20,
+        notesPerSequence = 4,
+        tempo = 96,
+        range = NoteRange(Note(Pitch.C, 3), Note(Pitch.C, 5)),
+      )
+    // A level saved by the previous app version has no melodyStyle key.
+    val legacyJson =
+      JsonObject(
+        Json.parseToJsonElement(RoomJson.encode(config)).jsonObject.filterKeys {
+          it != "melodyStyle"
+        }
+      ).toString()
+
+    val decoded: LevelConfig.Melodies = RoomJson.decode(legacyJson)
+
+    assertTrue(decoded is LevelConfig.Melodies.Random)
+    assertEquals(MelodyStyles.SteadyQuarters, decoded.melodyStyle)
   }
 
   @Test

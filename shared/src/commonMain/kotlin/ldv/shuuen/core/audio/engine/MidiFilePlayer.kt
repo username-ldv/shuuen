@@ -2,8 +2,12 @@ package ldv.shuuen.core.audio.engine
 
 import ldv.shuuen.core.music.Note
 
-/** A note within a loaded melody: the pitch plus its start position in MIDI ticks. */
-data class MelodyNote(val note: Note, val tick: Long)
+/**
+ * A note within a loaded melody: the pitch plus its start position in MIDI ticks.
+ * [durationQuarters] is the note's rhythm value in quarter-note beats; only generated (random)
+ * melodies play by it — a MIDI file's own player keeps the file's real timing.
+ */
+data class MelodyNote(val note: Note, val tick: Long, val durationQuarters: Double = 1.0)
 
 /** The outcome of loading a MIDI file: its note-on sequence and total length. */
 data class LoadedMelody(

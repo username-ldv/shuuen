@@ -39,9 +39,8 @@ import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.ScaleAccidentalType
 import ldv.shuuen.core.music.decideAccidentalType
-import ldv.shuuen.core.music.generator.NaiveRandomDegreeNoteGenerator
-import ldv.shuuen.core.music.generator.NaiveRandomNoteGenerator
-import ldv.shuuen.core.music.generator.NoteGenerator
+import ldv.shuuen.core.music.generator.TimedNote
+import ldv.shuuen.core.music.generator.WeightedMelodyGenerator
 import ldv.shuuen.core.music.withTiming
 import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.core.settings.InputMethod
@@ -198,7 +197,7 @@ class MelodiesPlayScreenViewModel(
   private var setupMelodyIndicationJob: Job? = null
   private var playMelodyJob: Job? = null
   private var contextPlayer: DegreeContextPlayer? = null
-  private var generator: NoteGenerator? = null
+  private var generator: WeightedMelodyGenerator? = null
   private var randomConfig: LevelConfig.Melodies.Random? = null
   private var allowSevenAccidentalKeys = false
 
@@ -456,21 +455,25 @@ class MelodiesPlayScreenViewModel(
     if (isEndless) startStream() else playSequence()
   }
 
-  private fun generatorFor(config: LevelConfig.Melodies.Random, root: Pitch): NoteGenerator =
-    when (val scale = config.scaleConfig) {
-      is ScaleConfig.AbsoluteScaleConfig ->
-        NaiveRandomNoteGenerator(
-          range = config.range,
-          allowedPitches = scale.pitchStates.filter { it.active }.map { it.pitch },
-        )
+  private fun generatorFor(
+    config: LevelConfig.Melodies.Random,
+    root: Pitch,
+  ): WeightedMelodyGenerator {
+    val allowedPitches =
+      when (val scale = config.scaleConfig) {
+        is ScaleConfig.AbsoluteScaleConfig ->
+          scale.pitchStates.filter { it.active }.map { it.pitch }
 
-      is ScaleConfig.RelativeScaleConfig ->
-        NaiveRandomDegreeNoteGenerator(
-          root = root,
-          range = config.range,
-          allowedDegrees = scale.degreeStates.filter { it.active }.map { it.degree },
-        )
-    }
+        is ScaleConfig.RelativeScaleConfig ->
+          scale.degreeStates.filter { it.active }.map { it.degree.pitch(root) }
+      }
+    return WeightedMelodyGenerator(
+      style = config.melodyStyle,
+      root = root,
+      range = config.range,
+      allowedPitches = allowedPitches,
+    )
+  }
 
   /** Sharp/flat orientation for [root], re-rolled (randomly for ambiguous keys) on root change. */
   private fun accidentalTypeFor(root: Pitch): ScaleAccidentalType? {
@@ -478,17 +481,36 @@ class MelodiesPlayScreenViewModel(
     return decideAccidentalType(root.ordinal, scaleType, allowSevenAccidentalKeys, Random.Default)
   }
 
-  /** [count] random notes with synthetic ticks, or null when the config allows no notes at all. */
+  /**
+   * At least [count] notes of whole rhythm figures from [generator], or null when the config
+   * allows no notes at all. Figures are kept intact so eighth pairs and stepwise runs never get
+   * split across the lookahead boundary of the endless stream.
+   */
+  private fun generateFigures(generator: WeightedMelodyGenerator, count: Int): List<TimedNote>? =
+    runCatching {
+      val notes = mutableListOf<TimedNote>()
+      while (notes.size < count) notes += generator.nextFigure()
+      notes
+    }.getOrNull()
+
+  /** Exactly [count] random notes with synthetic ticks, or null when no notes are allowed. */
   private fun generateNotes(
-    generator: NoteGenerator,
+    generator: WeightedMelodyGenerator,
     count: Int,
     startIndex: Int,
   ): List<MelodyNote>? =
-    runCatching {
-      List(count) { i -> MelodyNote(generator.next(), tick = (startIndex + i).toLong()) }
-    }.getOrNull()
+    generateFigures(generator, count)?.take(count)?.toMelodyNotes(startIndex)
 
-  /** Plays the current finite sequence as quarter notes at the level tempo. Restarts on re-entry. */
+  private fun List<TimedNote>.toMelodyNotes(startIndex: Int): List<MelodyNote> =
+    mapIndexed { i, timed ->
+      MelodyNote(
+        note = timed.note,
+        tick = (startIndex + i).toLong(),
+        durationQuarters = timed.value.quarters,
+      )
+    }
+
+  /** Plays the current finite sequence at the level tempo, one note per its rhythm value. */
   private fun playSequence(startIndex: Int = 0) {
     val tempo = randomConfig?.tempo ?: return
     cancelSequencePlayback(updateState = false)
@@ -510,7 +532,7 @@ class MelodiesPlayScreenViewModel(
               activePlaybackNote = activeNote
               try {
                 midiEngine.playNote(melodyNote.note)
-                delay(quarter())
+                delay(ofQuarters(melodyNote.durationQuarters))
               } finally {
                 stopActivePlaybackNote(activeNote)
               }
@@ -660,7 +682,7 @@ class MelodiesPlayScreenViewModel(
               activePlaybackNote = activeNote
               try {
                 midiEngine.playNote(melodyNote.note)
-                delay(quarter())
+                delay(ofQuarters(melodyNote.durationQuarters))
               } finally {
                 stopActivePlaybackNote(activeNote)
               }
@@ -728,8 +750,10 @@ class MelodiesPlayScreenViewModel(
     val generator = generator ?: return
     val existing = _state.value.notes.size
     if (existing > lastIndex) return
+    // Whole figures only: the stream may run slightly past the lookahead, never through a figure.
     val appended =
-      generateNotes(generator, count = lastIndex + 1 - existing, startIndex = existing) ?: return
+      generateFigures(generator, count = lastIndex + 1 - existing)?.toMelodyNotes(existing)
+        ?: return
     _state.update { it.copy(notes = it.notes + appended) }
   }
 
