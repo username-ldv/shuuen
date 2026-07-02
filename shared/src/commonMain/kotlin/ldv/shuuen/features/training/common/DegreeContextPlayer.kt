@@ -30,7 +30,7 @@ private data class CurrentlyPlayingNode(
     val channel: MidiChannel,
     val startQuestionNumber: Int,
     val duration: ContextDuration,
-  val sustain: Sustain
+    val sustain: Sustain
 )
 
 private data class QuestionEvent(val currentQuestion: Int = 1, val newRoot: Pitch? = null)
@@ -43,7 +43,7 @@ class DegreeContextPlayer(
   val endlessPreMelody: Duration = 2.seconds,
   val finitePreMelody: Duration = 1.seconds,
   val endlessAfterMelody: Duration = 1.5.seconds,
-  val afterFinite: Duration = 1.seconds,
+  val beforeNotes: Duration = 1.5.seconds,
 ) {
   private val questionEvent = MutableStateFlow(QuestionEvent())
   private val currentRoot = MutableStateFlow(startingRoot)
@@ -123,11 +123,11 @@ class DegreeContextPlayer(
     } ?: false
   }
 
-  suspend fun playSetupMelody(manual: Boolean = false) {
+  suspend fun playSetupMelody(manual: Boolean = false): Boolean {
     Napier.v { "setup melody $setupMelody" }
-    val m = setupMelody ?: return
+    val m = setupMelody ?: return false
     var currentlyPlaying: Note? = null
-    if (m.repeat == SetupMelodyRepeat.Once && playedSetupMelody && !manual) return
+    if (!shouldPlaySetupMelody(m, manual)) return false
     constructSetupMelodyFlow(currentRoot.value, m.melody)
         .onEach { note ->
           withContext(NonCancellable) {
@@ -146,6 +146,11 @@ class DegreeContextPlayer(
           currentlyPlaying = note
           _setupMelodyNotes.value = note
         }
+    return true
+  }
+
+  private fun shouldPlaySetupMelody(melody: SetupMelody, manual: Boolean = false): Boolean {
+    return manual || melody.repeat != SetupMelodyRepeat.Once || !playedSetupMelody
   }
 
   private fun stopCurrent(advance: Boolean) {
@@ -182,11 +187,18 @@ class DegreeContextPlayer(
     when (val sustain = node.sustain) {
       is Sustain.Endless -> {
         Napier.v { "Endless sustain node" }
-        if (node.setupMelody != null) {
-          delay(endlessPreMelody)
-          setupMelody = node.setupMelody
-          playSetupMelody()
-          delay(endlessAfterMelody)
+        val nodeSetupMelody = node.setupMelody
+        if (nodeSetupMelody != null) {
+          setupMelody = nodeSetupMelody
+          if (shouldPlaySetupMelody(nodeSetupMelody)) {
+            delay(endlessPreMelody)
+            val played = playSetupMelody()
+            delay(if (played) endlessAfterMelody else beforeNotes)
+          } else {
+            delay(beforeNotes)
+          }
+        } else {
+          delay(beforeNotes)
         }
         _ready.value = true
         return
@@ -196,17 +208,20 @@ class DegreeContextPlayer(
         Napier.v { "Finite sustain node..." }
         delay(sustain.duration)
         stopCurrent(true)
-        if (node.setupMelody != null) {
-          delay(finitePreMelody)
-          setupMelody = node.setupMelody
-          playSetupMelody()
+        val nodeSetupMelody = node.setupMelody
+        if (nodeSetupMelody != null) {
+          setupMelody = nodeSetupMelody
+          if (shouldPlaySetupMelody(nodeSetupMelody)) {
+            delay(finitePreMelody)
+            playSetupMelody()
+          }
         }
         if (node.duration == ContextDuration.Immediate) {
           Napier.v { "continuing next..." }
           playNode(c, questionEvent)
           return
         }
-        delay(afterFinite)
+        delay(beforeNotes)
         _ready.value = true
         return
       }
