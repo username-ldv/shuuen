@@ -38,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -61,6 +62,7 @@ import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboard
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
 import ldv.shuuen.core.ui.components.music.inputs.rememberFifthsCircleState
 import ldv.shuuen.core.ui.components.music.inputs.rememberPianoKeyboardState
+import ldv.shuuen.features.training.common.components.CircleCenterIconButton
 import ldv.shuuen.features.training.common.components.circleItemNames
 import ldv.shuuen.features.training.common.components.circleTopItem
 import ldv.shuuen.features.training.common.components.inputLabelForPitch
@@ -181,40 +183,45 @@ fun MelodiesPlayScreen(
                 if (!pressed) handleGuess(index) { i, c -> circleState.flash(i, c) }
               },
               dotEdgePadding = 16.dp,
+              // The transport lives in the ring's empty middle, so no bottom bar steals height
+              // from the circle in any level configuration.
+              centerContent = { CircleCenterControls(state, viewModel) },
             )
         }
 
-        Column(modifier = Modifier.padding(horizontal = ScreenHorizontalPadding)) {
-          when {
-            state.mode == MelodiesPlayMode.Midi -> {
-              SeekBar(
-                progress = state.progress,
-                positionSeconds = state.positionSeconds,
-                lengthSeconds = state.lengthSeconds,
-                onSeek = viewModel::seekToFraction,
-              )
+        if (inputMethod.component == InputComponent.Piano) {
+          Column(modifier = Modifier.padding(horizontal = ScreenHorizontalPadding)) {
+            when {
+              state.mode == MelodiesPlayMode.Midi -> {
+                SeekBar(
+                  progress = state.progress,
+                  positionSeconds = state.positionSeconds,
+                  lengthSeconds = state.lengthSeconds,
+                  onSeek = viewModel::seekToFraction,
+                )
 
-              TransportBar(
-                isPlaying = state.isPlaying,
-                onRewind = viewModel::seekBackward,
-                onTogglePlay = viewModel::togglePlayPause,
-                onForward = viewModel::seekForward,
-              )
+                TransportBar(
+                  isPlaying = state.isPlaying,
+                  onRewind = viewModel::seekBackward,
+                  onTogglePlay = viewModel::togglePlayPause,
+                  onForward = viewModel::seekForward,
+                )
+              }
+
+              // The endless stream has no destination to seek toward: just pause and rewind.
+              state.isEndless ->
+                EndlessTransportBar(
+                  isPlaying = state.isPlayingSequence,
+                  onRewind = viewModel::seekBackward,
+                  onTogglePlay = viewModel::togglePlayPause,
+                )
+
+              else ->
+                RewindBar(
+                  onRewind = viewModel::rewindSequence,
+                  onRepeatMelody = viewModel::playSetupMelody,
+                )
             }
-
-            // The endless stream has no destination to seek toward: just pause and rewind.
-            state.isEndless ->
-              EndlessTransportBar(
-                isPlaying = state.isPlayingSequence,
-                onRewind = viewModel::seekBackward,
-                onTogglePlay = viewModel::togglePlayPause,
-              )
-
-            else ->
-              RewindBar(
-                onRewind = viewModel::rewindSequence,
-                onRepeatMelody = viewModel::playSetupMelody,
-              )
           }
         }
       }
@@ -237,6 +244,15 @@ private val PlayPauseButtonSize = 64.dp
 private val PlayPauseIconSize = 34.dp
 private val TransportIconSize = 32.dp
 private val TransportButtonGap = 28.dp
+
+// Compact metrics for the transport cluster inside the fifths circle's middle: everything must
+// stay clear of the ring's labels even on narrow screens.
+private val CenterTransportIconSize = 30.dp
+private val CenterTransportGap = 20.dp
+private val CenterPlayPauseButtonSize = 56.dp
+private val CenterPlayPauseIconSize = 30.dp
+private val CenterSeekBarWidth = 172.dp
+private val CenterSeekBarHeight = 30.dp
 
 @Composable
 private fun TrainingStatus(state: MelodiesPlayState, modifier: Modifier = Modifier) {
@@ -285,12 +301,14 @@ private fun TrainingStatus(state: MelodiesPlayState, modifier: Modifier = Modifi
       }
     }
 
-    // An endless stream or an unlimited-questions session has no end to progress toward.
+    // An endless stream or an unlimited-questions session has no end to progress toward; the bar
+    // still reserves its slot so the input area below keeps the same size in every configuration.
     val hasProgressTarget =
       state.mode == MelodiesPlayMode.Midi || (!state.isEndless && state.questionsNumber != null)
-    if (hasProgressTarget) {
-      LinearTrainingProgress(progress = state.quizProgress)
-    }
+    LinearTrainingProgress(
+      progress = state.quizProgress,
+      modifier = Modifier.alpha(if (hasProgressTarget) 1f else 0f),
+    )
   }
 }
 
@@ -496,6 +514,101 @@ private fun EndlessTransportBar(
 }
 
 /**
+ * Mode-specific transport controls rendered inside the fifths circle's empty middle, replacing the
+ * bottom bars of the piano layout so the circle keeps its full size in every level configuration.
+ */
+@Composable
+private fun CircleCenterControls(
+  state: MelodiesPlayState,
+  viewModel: MelodiesPlayScreenViewModel,
+) {
+  when {
+    state.mode == MelodiesPlayMode.Midi ->
+      Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+      ) {
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(CenterTransportGap),
+        ) {
+          TransportIcon(
+            icon = Icons.Rounded.FastRewind,
+            contentDescription = "Rewind",
+            size = CenterTransportIconSize,
+            onClick = viewModel::seekBackward,
+          )
+          PlayPauseButton(
+            isPlaying = state.isPlaying,
+            size = CenterPlayPauseButtonSize,
+            iconSize = CenterPlayPauseIconSize,
+            onClick = viewModel::togglePlayPause,
+          )
+          TransportIcon(
+            icon = Icons.Rounded.FastForward,
+            contentDescription = "Forward",
+            size = CenterTransportIconSize,
+            onClick = viewModel::seekForward,
+          )
+        }
+        Slider(
+          value = state.progress,
+          onValueChange = viewModel::seekToFraction,
+          modifier = Modifier.width(CenterSeekBarWidth).height(CenterSeekBarHeight),
+          colors =
+            SliderDefaults.colors(
+              thumbColor = ShuuenUi.Text,
+              activeTrackColor = ShuuenUi.Text,
+              inactiveTrackColor = ShuuenUi.Hairline,
+            ),
+        )
+        Text(
+          "${formatTime(state.positionSeconds)} / ${formatTime(state.lengthSeconds)}",
+          color = ShuuenUi.Muted,
+          style = MaterialTheme.typography.bodySmall,
+        )
+      }
+
+    // The endless stream has no destination to seek toward: just pause and rewind.
+    state.isEndless ->
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(CenterTransportGap),
+      ) {
+        TransportIcon(
+          icon = Icons.Rounded.FastRewind,
+          contentDescription = "Rewind",
+          size = CenterTransportIconSize,
+          onClick = viewModel::seekBackward,
+        )
+        PlayPauseButton(
+          isPlaying = state.isPlayingSequence,
+          size = CenterPlayPauseButtonSize,
+          iconSize = CenterPlayPauseIconSize,
+          onClick = viewModel::togglePlayPause,
+        )
+        // Mirrors the rewind icon so the play button sits dead-center in the ring.
+        Spacer(Modifier.size(CenterTransportIconSize))
+      }
+
+    else ->
+      Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        CircleCenterIconButton(
+          icon = Icons.Rounded.FastRewind,
+          contentDescription = "Rewind",
+          onClick = viewModel::rewindSequence,
+        )
+        CircleCenterIconButton(
+          icon = Icons.Rounded.MusicNote,
+          contentDescription = "Repeat setup melody",
+          tint = ShuuenUi.Muted,
+          onClick = viewModel::playSetupMelody,
+        )
+      }
+  }
+}
+
+/**
  * Finite Random mode's bottom bar, arranged like the Singles one: rewind the current sequence,
  * plus a music-note button that replays the context's setup melody.
  */
@@ -540,10 +653,15 @@ private fun RewindBar(onRewind: () -> Unit, onRepeatMelody: () -> Unit) {
 }
 
 @Composable
-private fun PlayPauseButton(isPlaying: Boolean, onClick: () -> Unit) {
+private fun PlayPauseButton(
+  isPlaying: Boolean,
+  onClick: () -> Unit,
+  size: Dp = PlayPauseButtonSize,
+  iconSize: Dp = PlayPauseIconSize,
+) {
   Box(
     modifier =
-      Modifier.size(PlayPauseButtonSize)
+      Modifier.size(size)
         .clip(CircleShape)
         .background(ShuuenUi.Inverse)
         .clickable(onClick = onClick),
@@ -553,7 +671,7 @@ private fun PlayPauseButton(isPlaying: Boolean, onClick: () -> Unit) {
       imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
       contentDescription = if (isPlaying) "Pause" else "Play",
       tint = ShuuenUi.OnInverse,
-      modifier = Modifier.size(PlayPauseIconSize),
+      modifier = Modifier.size(iconSize),
     )
   }
 }

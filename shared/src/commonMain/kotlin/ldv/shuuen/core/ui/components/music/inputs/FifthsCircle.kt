@@ -661,16 +661,16 @@ fun FifthsCircle(
       val click = onCenterClick
 
       Box(
-        modifier = Modifier
-          .size(centerButtonSize)
-          .clip(CircleShape)
-          .then(
-            if (click != null) {
-              Modifier.clickable(onClick = click)
-            } else {
-              Modifier
-            }
-          ),
+        // A clickable center is a fixed-size round button; content-only centers size themselves,
+        // so callers can host arbitrary control clusters in the ring's empty middle.
+        modifier = if (click != null) {
+          Modifier
+            .size(centerButtonSize)
+            .clip(CircleShape)
+            .clickable(onClick = click)
+        } else {
+          Modifier
+        },
         contentAlignment = Alignment.Center,
       ) {
         centerContent?.let { it() }

@@ -43,6 +43,7 @@ import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboard
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
 import ldv.shuuen.core.ui.components.music.inputs.rememberFifthsCircleState
 import ldv.shuuen.core.ui.components.music.inputs.rememberPianoKeyboardState
+import ldv.shuuen.features.training.common.components.CircleCenterIconButton
 import ldv.shuuen.features.training.common.components.circleItemNames
 import ldv.shuuen.features.training.common.components.circleTopItem
 import ldv.shuuen.features.training.common.components.pitchToItemIndex
@@ -72,6 +73,7 @@ fun SinglesPlayScreen(
     }
   }
 
+  val circleInput = inputMethod.component == InputComponent.Circle
   StaticScreenFrame(
       scrollable = false,
       // The circle input is full-bleed (it must reach the screen edges to stay tappable there), so
@@ -81,6 +83,11 @@ fun SinglesPlayScreen(
         ShuuenTopAppBar(
             title = title,
             onBack = onNavigateBack,
+            // The circle layout has no bottom bar; finishing early lives up here instead, matching
+            // the melodies play screen.
+            trailingIcon =
+                if (circleInput && screenState.quizState != null) Icons.Rounded.Flag else null,
+            onTrailingClick = { viewModel.finishEarly() },
             type = ShuuenTopAppBarType.Simple,
         )
       },
@@ -166,15 +173,34 @@ fun SinglesPlayScreen(
                 if (!pressed) handleGuess(index) { i, c -> circleState.flash(i, c) }
               },
               dotEdgePadding = 16.dp,
+              // The repeat controls live in the ring's empty middle, so no bottom bar steals
+              // height from the circle.
+              centerContent = {
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                  CircleCenterIconButton(
+                      icon = Icons.Rounded.Replay,
+                      contentDescription = "Repeat note",
+                      onClick = { viewModel.repeatNote() },
+                  )
+                  CircleCenterIconButton(
+                      icon = Icons.Rounded.MusicNote,
+                      contentDescription = "Repeat setup melody",
+                      tint = ShuuenUi.Muted,
+                      onClick = { viewModel.playSetupMelody() },
+                  )
+                }
+              },
           )
     }
 
-    BottomActionBar(
-        onRepeatNote = { viewModel.repeatNote() },
-        onRepeatMelody = { viewModel.playSetupMelody() },
-        onFinishSession = { viewModel.finishEarly() },
-        modifier = Modifier.padding(horizontal = ScreenHorizontalPadding),
-    )
+    if (inputMethod.component == InputComponent.Piano) {
+      BottomActionBar(
+          onRepeatNote = { viewModel.repeatNote() },
+          onRepeatMelody = { viewModel.playSetupMelody() },
+          onFinishSession = { viewModel.finishEarly() },
+          modifier = Modifier.padding(horizontal = ScreenHorizontalPadding),
+      )
+    }
   }
 }
 
