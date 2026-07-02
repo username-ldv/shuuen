@@ -25,7 +25,6 @@ import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -203,8 +202,8 @@ fun MelodiesPlayScreen(
               )
 
             else ->
-              ReplayBar(
-                onReplay = viewModel::replaySequence,
+              RewindBar(
+                onRewind = viewModel::rewindSequence,
                 onRepeatMelody = viewModel::playSetupMelody,
               )
           }
@@ -472,11 +471,11 @@ private fun EndlessTransportBar(
 }
 
 /**
- * Finite Random mode's bottom bar, arranged like the Singles one: replay the current sequence,
+ * Finite Random mode's bottom bar, arranged like the Singles one: rewind the current sequence,
  * plus a music-note button that replays the context's setup melody.
  */
 @Composable
-private fun ReplayBar(onReplay: () -> Unit, onRepeatMelody: () -> Unit) {
+private fun RewindBar(onRewind: () -> Unit, onRepeatMelody: () -> Unit) {
   Row(
     modifier = Modifier.fillMaxWidth(),
     verticalAlignment = Alignment.CenterVertically,
@@ -484,16 +483,16 @@ private fun ReplayBar(onReplay: () -> Unit, onRepeatMelody: () -> Unit) {
   ) {
     SoftControl(
       modifier = Modifier.weight(1.8f).height(60.dp),
-      onClick = onReplay,
+      onClick = onRewind,
     ) {
       Icon(
-        imageVector = Icons.Rounded.Replay,
+        imageVector = Icons.Rounded.FastRewind,
         contentDescription = null,
         tint = ShuuenUi.Text,
         modifier = Modifier.size(24.dp),
       )
       Text(
-        text = "Replay",
+        text = "Back 4",
         color = ShuuenUi.Text,
         style = MaterialTheme.typography.titleSmall,
         textAlign = TextAlign.Center,

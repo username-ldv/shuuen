@@ -143,7 +143,7 @@ data class MelodiesPlayState(
 private val pollInterval = 50.milliseconds
 private const val SeekSeconds = 5.0
 
-/** How far the endless stream's rewind jumps back. */
+/** How far rewind jumps back in note-based melody playback. */
 private const val RewindNotes = 4
 
 /** How many upcoming notes the endless stream keeps generated ahead of playback. */
@@ -180,6 +180,9 @@ class MelodiesPlayScreenViewModel(
   private var generator: NoteGenerator? = null
   private var randomConfig: LevelConfig.Melodies.Random? = null
   private var allowSevenAccidentalKeys = false
+
+  /** Finite-sequence cursor; ends at notes.size after playback and moves back on rewind. */
+  private var sequenceIndex = 0
 
   /** Endless stream cursor; survives pause/resume and moves back on rewind. */
   private var streamIndex = 0
@@ -319,7 +322,8 @@ class MelodiesPlayScreenViewModel(
         refreshTransportState()
       }
 
-      MelodiesPlayMode.Random -> rewindStream()
+      MelodiesPlayMode.Random ->
+        if (_state.value.isEndless) rewindStream() else rewindSequence()
     }
   }
 
@@ -401,6 +405,10 @@ class MelodiesPlayScreenViewModel(
       )
     }
 
+    sequenceIndex = 0
+    streamIndex = 0
+    maxStartedIndex = -1
+
     // The context (if any) sets the tonal ground first; the notes start once it settles.
     contextPlayer?.ready?.first { it }
     if (isEndless) startStream() else playSequence()
@@ -439,17 +447,21 @@ class MelodiesPlayScreenViewModel(
     }.getOrNull()
 
   /** Plays the current finite sequence as quarter notes at the level tempo. Restarts on re-entry. */
-  private fun playSequence() {
+  private fun playSequence(startIndex: Int = 0) {
     val tempo = randomConfig?.tempo ?: return
     val previous = sequenceJob
     sequenceJob =
       viewModelScope.launch {
         previous?.cancelAndJoin()
         val notes = _state.value.notes
+        if (notes.isEmpty()) return@launch
+        val firstIndex = startIndex.coerceIn(0, notes.lastIndex)
+        sequenceIndex = firstIndex
         _state.update { it.copy(isPlayingSequence = true) }
         try {
           withTiming(tempo) {
-            notes.forEachIndexed { index, melodyNote ->
+            for (index in firstIndex..notes.lastIndex) {
+              val melodyNote = notes[index]
               _state.update { it.copy(sequencePlaybackIndex = index) }
               maxStartedIndex = maxOf(maxStartedIndex, index)
               try {
@@ -458,6 +470,7 @@ class MelodiesPlayScreenViewModel(
               } finally {
                 midiEngine.stopNote(melodyNote.note)
               }
+              sequenceIndex = index + 1
             }
           }
         } finally {
@@ -466,13 +479,25 @@ class MelodiesPlayScreenViewModel(
       }
   }
 
-  /** Replays the current question's sequence. */
-  fun replaySequence() {
+  /** Moves finite sequence playback back by [RewindNotes] notes and plays from there. */
+  fun rewindSequence() {
     val current = _state.value
-    if (current.mode != MelodiesPlayMode.Random || current.isEndless || current.isQuizComplete) {
+    if (
+      current.mode != MelodiesPlayMode.Random ||
+        current.isEndless ||
+        current.isQuizComplete ||
+        current.notes.isEmpty()
+    ) {
       return
     }
-    playSequence()
+    val currentIndex =
+      if (current.isPlayingSequence && current.sequencePlaybackIndex >= 0) {
+        current.sequencePlaybackIndex
+      } else {
+        sequenceIndex
+      }
+    val rewindTo = (currentIndex - RewindNotes).coerceAtLeast(0)
+    playSequence(startIndex = rewindTo)
   }
 
   /** Replays the context's setup melody on demand; a no-op when the context has none. */
@@ -525,6 +550,7 @@ class MelodiesPlayScreenViewModel(
           )
         }
         maxStartedIndex = -1
+        sequenceIndex = 0
 
         // Passing the new root replays the context for it (and lets finite nodes rotate);
         // questionAdvanced waits until the context is ready again. No extra pause beyond that —
