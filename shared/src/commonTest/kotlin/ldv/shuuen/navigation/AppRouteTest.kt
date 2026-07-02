@@ -15,12 +15,12 @@ class AppRouteTest {
       AppRoute.Context(ContextRecipient.MelodiesSetup),
       AppRoute.SinglesLevelSelect,
       AppRoute.MelodiesLevelSelect,
-      AppRoute.SinglesLevelComplete("test-id"),
-      AppRoute.MelodiesLevelComplete,
+      AppRoute.SinglesLevelComplete("test-id", "session-id"),
+      AppRoute.MelodiesLevelComplete("test-id", "session-id"),
     )
 
     assertEquals(AppRoute.MelodiesSetup, routes.first())
-    assertEquals(AppRoute.MelodiesLevelComplete, routes.last())
+    assertEquals(AppRoute.MelodiesLevelComplete("test-id", "session-id"), routes.last())
     assertTrue(routes.toSet().size == routes.size)
   }
 }

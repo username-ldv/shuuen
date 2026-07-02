@@ -2,7 +2,6 @@ package ldv.shuuen.features.training.single
 
 import androidx.compose.runtime.LaunchedEffect
 import ldv.shuuen.features.training.level_end.LevelCompleteScreen
-import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.single.level_select.SinglesLevelSelectScreen
 import ldv.shuuen.features.training.single.level_select.SinglesLevelSelectScreenViewModel
 import ldv.shuuen.features.training.single.play.SinglesPlayScreen
@@ -61,8 +60,8 @@ val singlesTrainingNavigationModule = module {
     val navigator = LocalAppNavigator.current
     SinglesPlayScreen(
       onNavigateBack = { navigator.goBack() },
-      onLevelEnd = {
-        navigator.replaceLastWith(AppRoute.SinglesLevelComplete(route.levelId))
+      onLevelEnd = { sessionId ->
+        navigator.replaceLastWith(AppRoute.SinglesLevelComplete(route.levelId, sessionId))
       },
       viewModel = koinViewModel { parametersOf(route.levelId) },
     )
@@ -71,10 +70,11 @@ val singlesTrainingNavigationModule = module {
   navigation<AppRoute.SinglesLevelComplete> { route ->
     val navigator = LocalAppNavigator.current
     LevelCompleteScreen(
-      flow = TrainingFlow.Singles,
       onNavigateBack = { navigator.goBack() },
       onRetryLevel = { navigator.replaceLastWith(AppRoute.SinglesPlay(route.levelId)) },
-      onNextLevel = { navigator.add(AppRoute.SinglesLevelSelect) },
+      // The level select this play session started from is right below on the back stack.
+      onLevelSelect = { navigator.goBack() },
+      viewModel = koinViewModel { parametersOf(route.sessionId) },
     )
   }
 }

@@ -11,28 +11,38 @@ import ldv.shuuen.data.database.converters.ContextTypeConverter
 import ldv.shuuen.data.database.converters.GeneralTypeConverter
 import ldv.shuuen.data.database.converters.MelodiesLevelTypeConverter
 import ldv.shuuen.data.database.converters.SinglesLevelTypeConverter
+import ldv.shuuen.data.database.converters.TrainingSessionTypeConverter
 import ldv.shuuen.data.database.dao.ContextDao
 import ldv.shuuen.data.database.dao.MelodiesLevelDao
 import ldv.shuuen.data.database.dao.SinglesLevelDao
+import ldv.shuuen.data.database.dao.TrainingSessionDao
 import ldv.shuuen.data.database.entity.ContextDbEntity
 import ldv.shuuen.data.database.entity.MelodiesLevelDbEntity
 import ldv.shuuen.data.database.entity.SinglesLevelDbEntity
+import ldv.shuuen.data.database.entity.TrainingSessionDbEntity
 
 @Database(
-  entities = [SinglesLevelDbEntity::class, MelodiesLevelDbEntity::class, ContextDbEntity::class],
-  version = 5,
+  entities = [
+    SinglesLevelDbEntity::class,
+    MelodiesLevelDbEntity::class,
+    ContextDbEntity::class,
+    TrainingSessionDbEntity::class,
+  ],
+  version = 6,
 )
 @TypeConverters(
   GeneralTypeConverter::class,
   SinglesLevelTypeConverter::class,
   MelodiesLevelTypeConverter::class,
   ContextTypeConverter::class,
+  TrainingSessionTypeConverter::class,
 )
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
   abstract fun singlesLevelDao(): SinglesLevelDao
   abstract fun melodiesLevelDao(): MelodiesLevelDao
   abstract fun contextDao(): ContextDao
+  abstract fun trainingSessionDao(): TrainingSessionDao
 }
 
 expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {

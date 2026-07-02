@@ -2,7 +2,6 @@ package ldv.shuuen.features.training.melodies
 
 import androidx.compose.runtime.LaunchedEffect
 import ldv.shuuen.features.training.level_end.LevelCompleteScreen
-import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.melodies.level_select.MelodiesLevelSelectScreen
 import ldv.shuuen.features.training.melodies.level_select.MelodiesLevelSelectScreenViewModel
 import ldv.shuuen.features.training.melodies.play.MelodiesPlayScreen
@@ -60,18 +59,21 @@ val melodiesTrainingNavigationModule = module {
     val navigator = LocalAppNavigator.current
     MelodiesPlayScreen(
       onNavigateBack = { navigator.goBack() },
-      onLevelEnd = { navigator.replaceLastWith(AppRoute.MelodiesLevelComplete) },
+      onLevelEnd = { sessionId ->
+        navigator.replaceLastWith(AppRoute.MelodiesLevelComplete(route.levelId, sessionId))
+      },
       viewModel = koinViewModel { parametersOf(route.levelId) },
     )
   }
 
-  navigation<AppRoute.MelodiesLevelComplete> {
+  navigation<AppRoute.MelodiesLevelComplete> { route ->
     val navigator = LocalAppNavigator.current
     LevelCompleteScreen(
-      flow = TrainingFlow.Melodies,
       onNavigateBack = { navigator.goBack() },
-      onRetryLevel = { navigator.replaceLastWith(AppRoute.MelodiesSetup) },
-      onNextLevel = { navigator.add(AppRoute.MelodiesLevelSelect) },
+      onRetryLevel = { navigator.replaceLastWith(AppRoute.MelodiesPlay(route.levelId)) },
+      // The level select this play session started from is right below on the back stack.
+      onLevelSelect = { navigator.goBack() },
+      viewModel = koinViewModel { parametersOf(route.sessionId) },
     )
   }
 }

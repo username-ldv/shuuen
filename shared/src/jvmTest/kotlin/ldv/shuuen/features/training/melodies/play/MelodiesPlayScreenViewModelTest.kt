@@ -35,6 +35,8 @@ import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.LevelSource
 import ldv.shuuen.features.training.domain.ScaleConfig
 import ldv.shuuen.features.training.domain.ScaleConfig.ScaleItemState.ScalePitchState
+import ldv.shuuen.features.training.level_end.domain.TrainingSession
+import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
 import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
 import ldv.shuuen.features.training.melodies.domain.MelodiesLocalLevelRepository
 
@@ -62,6 +64,7 @@ class MelodiesPlayScreenViewModelTest {
         midiEngine = engine,
         player = FakeMidiFilePlayer(),
         settingsRepository = FakeSettingsRepository(),
+        trainingSessionRepository = FakeTrainingSessionRepository(),
       )
     advanceUntilIdle()
     assertEquals(6, engine.playedNotes.size)
@@ -84,6 +87,7 @@ class MelodiesPlayScreenViewModelTest {
           midiEngine = engine,
           player = FakeMidiFilePlayer(),
           settingsRepository = FakeSettingsRepository(),
+          trainingSessionRepository = FakeTrainingSessionRepository(),
         )
       runCurrent()
       assertEquals(listOf("play:C4"), engine.events)
@@ -129,6 +133,17 @@ private class FakeMelodiesRepository(private val level: MelodiesLevel) :
     flowOf(ResponseState.Success(level))
 
   override suspend fun upsertLevel(level: MelodiesLevel) = Unit
+}
+
+private class FakeTrainingSessionRepository : TrainingSessionRepository {
+  val savedSessions = mutableListOf<TrainingSession>()
+
+  override suspend fun saveSession(session: TrainingSession) {
+    savedSessions += session
+  }
+
+  override fun getSessionById(id: String): Flow<ResponseState<TrainingSession>> =
+    flowOf(ResponseState.Error(IllegalStateException("not implemented")))
 }
 
 private class FakeSettingsRepository : SettingsRepository {

@@ -5,7 +5,12 @@ import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
 import io.github.vinceglb.filekit.readBytes
 import kotlin.random.Random
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.ExperimentalTime
+import kotlin.time.TimeSource
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
@@ -45,9 +50,14 @@ import ldv.shuuen.core.settings.MusicLabelSettings
 import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
 import ldv.shuuen.features.training.common.DegreeContextPlayer
+import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.common.components.KeyFlashRequest
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.ScaleConfig
+import ldv.shuuen.features.training.level_end.domain.QuestionResult
+import ldv.shuuen.features.training.level_end.domain.TrainingSession
+import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
+import ldv.shuuen.features.training.level_end.domain.longestCleanRun
 import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
 import ldv.shuuen.features.training.melodies.domain.MelodiesLocalLevelRepository
 
@@ -62,6 +72,9 @@ data class IncorrectMelodyAnswer(
   val expectedPitch: Pitch,
   val guessedPitch: Pitch,
 )
+
+/** The session is over; [sessionId] points at the saved results, null when nothing was saved. */
+data class SessionCompletion(val sessionId: String?)
 
 data class MelodiesPlayState(
   val title: String = "Melody",
@@ -97,6 +110,9 @@ data class MelodiesPlayState(
   val positionTicks: Long = 0L,
   val positionSeconds: Double = 0.0,
   val isPlaying: Boolean = false,
+
+  /** Set once when the session ends (naturally or early); the screen navigates on it. */
+  val completion: SessionCompletion? = null,
 ) {
   /** Index of the note the playback is currently on, or -1 when nothing sounds. */
   val playbackNoteIndex: Int
@@ -154,11 +170,12 @@ private const val StreamLookahead = 12
 private data class ActivePlaybackNote(val runId: Int, val note: Note)
 
 class MelodiesPlayScreenViewModel(
-  levelId: String,
+  private val levelId: String,
   levelRepository: MelodiesLocalLevelRepository,
   private val midiEngine: MidiEngine,
   private val player: MidiFilePlayer,
   private val settingsRepository: SettingsRepository,
+  private val trainingSessionRepository: TrainingSessionRepository,
 ) : ViewModel() {
   private val _state = MutableStateFlow(MelodiesPlayState())
   val state = _state.asStateFlow()
@@ -196,6 +213,12 @@ class MelodiesPlayScreenViewModel(
 
   /** Highest stream index that has started sounding — guesses can't run ahead of it. */
   private var maxStartedIndex = -1
+
+  // Session statistics, gathered as the quiz runs and saved when the level ends.
+  private var sessionStartMark: TimeSource.Monotonic.ValueTimeMark? = null
+  private val rootsPracticed = mutableSetOf<Pitch>()
+  private var rewindCount = 0
+  private var sessionSaved = false
 
   // Setup-melody highlights and answer feedback are both transient flashes driven by the screen
   // through the input component's state. The VM only emits which key/color to flash as the
@@ -283,6 +306,7 @@ class MelodiesPlayScreenViewModel(
       )
     }
     // Play through at natural tempo by default.
+    sessionStartMark = TimeSource.Monotonic.markNow()
     player.play()
     refreshTransportState()
     startPolling()
@@ -325,6 +349,7 @@ class MelodiesPlayScreenViewModel(
   fun seekBackward() {
     when (_state.value.mode) {
       MelodiesPlayMode.Midi -> {
+        rewindCount += 1
         player.seekBySeconds(-SeekSeconds)
         refreshTransportState()
       }
@@ -418,6 +443,8 @@ class MelodiesPlayScreenViewModel(
 
     // The context (if any) sets the tonal ground first; the notes start once it settles.
     contextPlayer?.ready?.first { it }
+    rootsPracticed += root
+    sessionStartMark = TimeSource.Monotonic.markNow()
     if (isEndless) startStream() else playSequence()
   }
 
@@ -501,6 +528,7 @@ class MelodiesPlayScreenViewModel(
     ) {
       return
     }
+    rewindCount += 1
     val currentIndex =
       if (current.isPlayingSequence && current.sequencePlaybackIndex >= 0) {
         current.sequencePlaybackIndex
@@ -530,8 +558,8 @@ class MelodiesPlayScreenViewModel(
         val nextQuestion = _state.value.questionNumber + 1
         val questionsNumber = _state.value.questionsNumber
         if (questionsNumber != null && nextQuestion > questionsNumber) {
-          // isQuizComplete flips true; the screen navigates to the level-end.
           _state.update { it.copy(questionNumber = nextQuestion) }
+          completeSession(finishedEarly = false)
           return@launch
         }
 
@@ -546,6 +574,7 @@ class MelodiesPlayScreenViewModel(
             ?.takeIf { it != currentRoot }
         if (newRoot != null) {
           generator = generatorFor(config, newRoot)
+          rootsPracticed += newRoot
         }
         val generator = generator ?: return@launch
         val sequence = generateNotes(generator, notesPerSequence, startIndex = 0) ?: return@launch
@@ -642,6 +671,7 @@ class MelodiesPlayScreenViewModel(
 
   private fun rewindStream() {
     if (!_state.value.isEndless) return
+    rewindCount += 1
     val wasRunning = sequenceJob?.isActive == true
     streamIndex = (streamIndex - RewindNotes).coerceAtLeast(0)
     if (wasRunning) {
@@ -755,8 +785,129 @@ class MelodiesPlayScreenViewModel(
 
     if (isCorrect && sequenceFinished && current.mode == MelodiesPlayMode.Random) {
       advanceToNextQuestion()
+    } else if (isCorrect && current.mode == MelodiesPlayMode.Midi && _state.value.isQuizComplete) {
+      viewModelScope.launch { completeSession(finishedEarly = false) }
     }
     return isCorrect
+  }
+
+  /** Ends the session before its natural end, saving whatever was answered so far. */
+  fun finishEarly() {
+    viewModelScope.launch { completeSession(finishedEarly = true) }
+  }
+
+  /**
+   * Gathers the session's statistics, saves them, and publishes [SessionCompletion]. A session
+   * with no answered notes is not worth a results screen — it completes with a null session id
+   * and the screen simply navigates back.
+   */
+  @OptIn(ExperimentalTime::class, ExperimentalUuidApi::class)
+  private suspend fun completeSession(finishedEarly: Boolean) {
+    if (sessionSaved) return
+    sessionSaved = true
+    cancelSequencePlayback()
+    if (_state.value.mode == MelodiesPlayMode.Midi) player.pause()
+
+    val state = _state.value
+    val results = questionResults(state)
+    val notesTotal = results.sumOf { it.noteCount }
+    if (state.isLoading || state.error != null || notesTotal <= 0) {
+      _state.update { it.copy(completion = SessionCompletion(sessionId = null)) }
+      return
+    }
+
+    val session = TrainingSession(
+      id = Uuid.generateV7().toString(),
+      flow = TrainingFlow.Melodies,
+      levelId = levelId,
+      levelName = state.title,
+      completedAtEpochMillis = Clock.System.now().toEpochMilliseconds(),
+      finishedEarly = finishedEarly,
+      questionsAnswered = results.size,
+      notesTotal = notesTotal,
+      correctNotes = state.correctAnswers,
+      missedNotes = results.sumOf { it.missedCount },
+      replays = rewindCount,
+      durationMillis = sessionStartMark?.elapsedNow()?.inWholeMilliseconds ?: 0L,
+      // A melody answer overlaps with listening to the rest of the sequence, so a per-answer time
+      // would not mean much; only the total duration is kept.
+      avgAnswerMillis = null,
+      bestStreak = bestStreak(state),
+      keysPracticed = rootsPracticed.size,
+      questionResults = results,
+    )
+    val savedId =
+      runCatching { trainingSessionRepository.saveSession(session) }
+        .fold(
+          onSuccess = { session.id },
+          onFailure = {
+            Napier.w(it) { "Failed to save the training session" }
+            null
+          },
+        )
+    _state.update { it.copy(completion = SessionCompletion(sessionId = savedId)) }
+  }
+
+  /**
+   * The session's answered questions. A MIDI melody and the endless stream are per-note (each
+   * answered note is one entry); finite Random mode is per-sequence, with a partial entry for a
+   * sequence that was still open when the session ended early. A wrong guess on a note that never
+   * got resolved is dropped, matching how the live score only counts resolved notes.
+   */
+  private fun questionResults(state: MelodiesPlayState): List<QuestionResult> {
+    if (state.mode == MelodiesPlayMode.Midi || state.isEndless) {
+      val missedIndexes =
+        state.incorrectAnswers
+          .filter { it.noteIndex < state.answerIndex }
+          .map { it.noteIndex }
+          .toSet()
+      return (0 until state.answerIndex).map { i ->
+        QuestionResult(i + 1, 1, if (i in missedIndexes) 1 else 0)
+      }
+    }
+
+    val notesPerSequence = randomConfig?.notesPerSequence ?: return emptyList()
+    val completedQuestions =
+      (state.questionNumber - 1).coerceAtMost(state.questionsNumber ?: Int.MAX_VALUE)
+    val results = mutableListOf<QuestionResult>()
+    for (q in 1..completedQuestions) {
+      results +=
+        QuestionResult(q, notesPerSequence, state.incorrectAnswers.count { it.questionNumber == q })
+    }
+    val inProgress = completedQuestions < (state.questionsNumber ?: Int.MAX_VALUE)
+    if (inProgress && state.answerIndex > 0) {
+      val q = state.questionNumber
+      val missed =
+        state.incorrectAnswers.count { it.questionNumber == q && it.noteIndex < state.answerIndex }
+      results += QuestionResult(q, state.answerIndex, missed)
+    }
+    return results
+  }
+
+  /** Longest run of first-try-correct notes, walked in the order the notes were answered. */
+  private fun bestStreak(state: MelodiesPlayState): Int {
+    if (state.mode == MelodiesPlayMode.Midi || state.isEndless) {
+      val missed =
+        state.incorrectAnswers
+          .filter { it.noteIndex < state.answerIndex }
+          .map { it.noteIndex }
+          .toSet()
+      return longestCleanRun(state.answerIndex, missed)
+    }
+
+    val notesPerSequence = randomConfig?.notesPerSequence ?: return 0
+    val results = questionResults(state)
+    val totalNotes = results.sumOf { it.noteCount }
+    val answeredQuestions = results.map { it.questionNumber }.toSet()
+    val missedPositions =
+      state.incorrectAnswers
+        .filter {
+          it.questionNumber in answeredQuestions &&
+            (it.questionNumber < state.questionNumber || it.noteIndex < state.answerIndex)
+        }
+        .map { (it.questionNumber - 1) * notesPerSequence + it.noteIndex }
+        .toSet()
+    return longestCleanRun(totalNotes, missedPositions)
   }
 
   override fun onCleared() {

@@ -4,7 +4,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.ExperimentalTime
+import kotlin.time.TimeSource
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.BufferOverflow
@@ -23,6 +28,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.features.training.common.DegreeContextPlayer
+import ldv.shuuen.features.training.common.TrainingFlow
+import ldv.shuuen.features.training.level_end.domain.QuestionResult
+import ldv.shuuen.features.training.level_end.domain.TrainingSession
+import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
+import ldv.shuuen.features.training.level_end.domain.longestCleanRun
 import ldv.shuuen.core.audio.engine.MidiEngine
 import ldv.shuuen.core.audio.engine.MidiEngineStatus
 import ldv.shuuen.core.music.Degree
@@ -51,7 +61,8 @@ sealed interface QuizPhase {
 
   object AwaitingAnswer : QuizPhase
 
-  object Complete : QuizPhase
+  /** [sessionId] points at the saved results; null when there was nothing worth saving. */
+  data class Complete(val sessionId: String?) : QuizPhase
 }
 
 data class SinglesPlayScreenState(
@@ -67,6 +78,7 @@ class SinglesPlayScreenViewModel(
     levelRepository: SinglesLocalLevelRepository,
     val midiEngine: MidiEngine,
     settingsRepository: SettingsRepository,
+    private val trainingSessionRepository: TrainingSessionRepository,
 ) : ViewModel() {
   private val _state = MutableStateFlow(SinglesPlayScreenState())
   val state = _state.asStateFlow()
@@ -93,6 +105,14 @@ class SinglesPlayScreenViewModel(
   private var quizzer: SinglesLevelQuizzer? = null
   var lastHandledQuestion = 0
   var lastHandledRoot: Pitch? = null
+
+  // Session statistics, gathered as the quiz runs and saved when the level ends.
+  private var sessionStartMark: TimeSource.Monotonic.ValueTimeMark? = null
+  private var questionStartMark: TimeSource.Monotonic.ValueTimeMark? = null
+  private val answerTimesMillis = mutableListOf<Long>()
+  private val rootsPracticed = mutableSetOf<Pitch>()
+  private var replayCount = 0
+  private var sessionSaved = false
 
   // Setup-melody highlights and answer feedback are both transient flashes driven by the screen
   // through PianoKeyboardState. The VM only emits which key/color to flash as the melody plays.
@@ -139,7 +159,7 @@ class SinglesPlayScreenViewModel(
         if (!isNewQuestion) return@collect
 
         if (quizState.currentQuestionNumber > (quizState.questionsNumber ?: Int.MAX_VALUE)) {
-          _state.update { it.copy(phase = QuizPhase.Complete) }
+          completeSession(finishedEarly = false)
           return@collect
         }
 
@@ -166,6 +186,11 @@ class SinglesPlayScreenViewModel(
         }
 
         Napier.v { "Playing ${quizState.currentNote}" }
+        // The question is only answerable from here on, so timing starts with the note, not with
+        // the context playback that may precede it.
+        if (sessionStartMark == null) sessionStartMark = TimeSource.Monotonic.markNow()
+        questionStartMark = TimeSource.Monotonic.markNow()
+        rootsPracticed += quizState.root
         playNote(quizState.currentNote)
       }
     }
@@ -198,13 +223,82 @@ class SinglesPlayScreenViewModel(
 
     // Correctness must be read before check() advances the question.
     val isCorrect = quizzer.quizState.value.currentNote.pitch == pitch
+    if (isCorrect) {
+      // Time to answer counts wrong tries and repeats: it runs from the first time the question's
+      // note sounded until the correct answer landed.
+      questionStartMark?.let { answerTimesMillis += it.elapsedNow().inWholeMilliseconds }
+      questionStartMark = null
+    }
     quizzer.check(pitch)
     return isCorrect
   }
 
   fun repeatNote() {
     val note = quizzer?.quizState?.value?.currentNote ?: return
+    replayCount += 1
     playNote(note)
+  }
+
+  /** Ends the session before its natural end, saving whatever was answered so far. */
+  fun finishEarly() {
+    viewModelScope.launch {
+      playNoteJob?.cancelAndJoin()
+      completeSession(finishedEarly = true)
+    }
+  }
+
+  /**
+   * Gathers the session's statistics, saves them, and flips the phase to [QuizPhase.Complete].
+   * A session with no answered questions is not worth a results screen — it completes with a null
+   * session id and the screen simply navigates back.
+   */
+  @OptIn(ExperimentalTime::class, ExperimentalUuidApi::class)
+  private suspend fun completeSession(finishedEarly: Boolean) {
+    if (sessionSaved) return
+    sessionSaved = true
+
+    val quizState = quizzer?.quizState?.value
+    val level = (_state.value.levelData as? ResponseState.Success)?.result
+    val answered = (quizState?.currentQuestionNumber ?: 1) - 1
+    if (quizState == null || level == null || answered <= 0) {
+      _state.update { it.copy(phase = QuizPhase.Complete(sessionId = null)) }
+      return
+    }
+
+    // A wrong guess on the question that was still open when the session ended never got resolved,
+    // so it doesn't count as an answered (missed) question.
+    val missedQuestions =
+      quizState.incorrectAnswers.map { it.questionNumber }.filter { it <= answered }.toSet()
+    val session = TrainingSession(
+      id = Uuid.generateV7().toString(),
+      flow = TrainingFlow.Singles,
+      levelId = level.id,
+      levelName = level.name,
+      completedAtEpochMillis = Clock.System.now().toEpochMilliseconds(),
+      finishedEarly = finishedEarly,
+      questionsAnswered = answered,
+      notesTotal = answered,
+      correctNotes = quizState.correctAnswers,
+      missedNotes = missedQuestions.size,
+      replays = replayCount,
+      durationMillis = sessionStartMark?.elapsedNow()?.inWholeMilliseconds ?: 0L,
+      avgAnswerMillis =
+        answerTimesMillis.takeIf { it.isNotEmpty() }?.let { it.sum() / it.size },
+      bestStreak = longestCleanRun(answered, missedQuestions.map { it - 1 }.toSet()),
+      keysPracticed = rootsPracticed.size,
+      questionResults =
+        (1..answered).map { q -> QuestionResult(q, 1, if (q in missedQuestions) 1 else 0) },
+    )
+    val savedId =
+      runCatching { trainingSessionRepository.saveSession(session) }
+        .fold(
+          onSuccess = { session.id },
+          onFailure = {
+            Napier.w(it) { "Failed to save the training session" }
+            null
+          },
+        )
+    _state.update { it.copy(phase = QuizPhase.Complete(sessionId = savedId)) }
   }
 
   /**

@@ -50,7 +50,7 @@ import ldv.shuuen.features.training.common.components.pitchToItemIndex
 @Composable
 fun SinglesPlayScreen(
     onNavigateBack: () -> Unit,
-    onLevelEnd: () -> Unit,
+    onLevelEnd: (sessionId: String) -> Unit,
     viewModel: SinglesPlayScreenViewModel,
 ) {
   val screenState by viewModel.state.collectAsStateWithLifecycle()
@@ -64,9 +64,10 @@ fun SinglesPlayScreen(
       }
 
   LaunchedEffect(screenState.phase) {
-    when (screenState.phase) {
-      is QuizPhase.Complete -> onLevelEnd()
-      // for now
+    when (val phase = screenState.phase) {
+      // A session that saved nothing (e.g. finished early before any answer) has no results to
+      // show; just leave the play screen.
+      is QuizPhase.Complete -> phase.sessionId?.let(onLevelEnd) ?: onNavigateBack()
       else -> Unit
     }
   }
@@ -171,6 +172,7 @@ fun SinglesPlayScreen(
     BottomActionBar(
         onRepeatNote = { viewModel.repeatNote() },
         onRepeatMelody = { viewModel.playSetupMelody() },
+        onFinishSession = { viewModel.finishEarly() },
         modifier = Modifier.padding(horizontal = ScreenHorizontalPadding),
     )
   }
@@ -233,6 +235,7 @@ private fun ScoreCount(
 private fun BottomActionBar(
     onRepeatNote: () -> Unit,
     onRepeatMelody: () -> Unit,
+    onFinishSession: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
   Row(
@@ -250,9 +253,7 @@ private fun BottomActionBar(
     BottomIconButton(
         icon = Icons.Rounded.Flag,
         modifier = Modifier.width(64.dp),
-      onClick = {
-        // todo
-      }
+      onClick = onFinishSession
     )
   }
 }

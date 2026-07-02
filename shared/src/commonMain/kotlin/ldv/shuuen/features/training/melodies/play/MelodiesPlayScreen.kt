@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
+import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -68,17 +69,20 @@ import ldv.shuuen.features.training.common.components.pitchToItemIndex
 @Composable
 fun MelodiesPlayScreen(
   onNavigateBack: () -> Unit,
-  onLevelEnd: () -> Unit,
+  onLevelEnd: (sessionId: String) -> Unit,
   viewModel: MelodiesPlayScreenViewModel,
 ) {
   val state by viewModel.state.collectAsStateWithLifecycle()
   val inputMethod by viewModel.inputMethod.collectAsStateWithLifecycle()
   val musicLabels by viewModel.musicLabels.collectAsStateWithLifecycle()
 
-  LaunchedEffect(state.isQuizComplete) {
-    if (state.isQuizComplete) onLevelEnd()
+  LaunchedEffect(state.completion) {
+    // A session that saved nothing (e.g. finished early before any answer) has no results to
+    // show; just leave the play screen.
+    state.completion?.let { it.sessionId?.let(onLevelEnd) ?: onNavigateBack() }
   }
 
+  val quizRunning = !state.isLoading && state.error == null
   StaticScreenFrame(
     scrollable = false,
     // The circle input is full-bleed (it must reach the screen edges to stay tappable there), so
@@ -90,6 +94,8 @@ fun MelodiesPlayScreen(
       ShuuenTopAppBar(
         title = state.title,
         onBack = onNavigateBack,
+        trailingIcon = if (quizRunning) Icons.Rounded.Flag else null,
+        onTrailingClick = { viewModel.finishEarly() },
         type = ShuuenTopAppBarType.Simple,
       )
     },

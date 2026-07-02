@@ -17,22 +17,27 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.HelpOutline
-import androidx.compose.material.icons.rounded.BarChart
+import androidx.compose.material.icons.rounded.AllInclusive
+import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Keyboard
+import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material.icons.rounded.Schedule
-import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.TrackChanges
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,7 +50,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ldv.shuuen.features.training.common.TrainingFlow
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlin.math.roundToInt
+import ldv.shuuen.core.result.ResponseState
+import ldv.shuuen.core.ui.components.BoxedItemRow
 import ldv.shuuen.core.ui.components.FlatSection
 import ldv.shuuen.core.ui.components.Hairline
 import ldv.shuuen.core.ui.components.ShuuenTopAppBar
@@ -54,23 +62,24 @@ import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.SoftControl
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.SurfaceCard
-
-private data class LevelCompleteData(
-  val levelTitle: String,
-  val flowLabel: String,
-  val key: String,
-  val parameterDescription: String,
-  val parameters: List<Pair<ImageVector, String>>,
-)
+import ldv.shuuen.features.training.common.TrainingFlow
+import ldv.shuuen.features.training.common.components.sourceLabel
+import ldv.shuuen.features.training.common.toBoxedItems
+import ldv.shuuen.features.training.domain.LevelConfig
+import ldv.shuuen.features.training.domain.ScaleConfig
+import ldv.shuuen.features.training.level_end.domain.AccuracyBucket
+import ldv.shuuen.features.training.level_end.domain.TrainingSession
+import ldv.shuuen.features.training.level_end.domain.accuracyBuckets
 
 @Composable
 fun LevelCompleteScreen(
-  flow: TrainingFlow,
   onNavigateBack: () -> Unit,
   onRetryLevel: () -> Unit,
-  onNextLevel: () -> Unit,
+  onLevelSelect: () -> Unit,
+  viewModel: LevelCompleteViewModel,
 ) {
-  val data = levelCompleteData(flow)
+  val state by viewModel.state.collectAsStateWithLifecycle()
+
   StaticScreenFrame(
     maxWidth = 920.dp,
     verticalSpacing = 18.dp,
@@ -78,108 +87,109 @@ fun LevelCompleteScreen(
       ShuuenTopAppBar(
         title = "SESSION COMPLETE",
         onBack = onNavigateBack,
-        trailingIcon = Icons.Rounded.Share,
         type = ShuuenTopAppBarType.Simple,
       )
     },
   ) {
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-      val twoColumn = maxWidth > 760.dp
+    when (val session = state.session) {
+      is ResponseState.Loading ->
+        Text(
+          text = "Loading results...",
+          color = ShuuenUi.Muted,
+          style = MaterialTheme.typography.bodyLarge,
+        )
 
-      if (twoColumn) {
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(44.dp),
-        ) {
-          Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-          ) {
-            CompletionTitle(data)
-            ScoreHero(data)
-            CompletionActions(
-              onRetryLevel = onRetryLevel,
-              onNextLevel = onNextLevel,
-            )
-          }
-          Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-          ) {
-            PerformanceOverview()
-            Hairline()
-            LevelParameters(data)
-          }
-        }
-      } else {
+      is ResponseState.Error ->
+        Text(
+          text = "Couldn't load the session results: ${session.throwable.message}",
+          color = ShuuenUi.Incorrect,
+          style = MaterialTheme.typography.bodyLarge,
+        )
+
+      is ResponseState.Success ->
+        LevelCompleteContent(
+          session = session.result,
+          level = state.level,
+          onRetryLevel = onRetryLevel,
+          onLevelSelect = onLevelSelect,
+        )
+    }
+  }
+}
+
+@Composable
+private fun LevelCompleteContent(
+  session: TrainingSession,
+  level: CompletedLevel?,
+  onRetryLevel: () -> Unit,
+  onLevelSelect: () -> Unit,
+) {
+  BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+    val twoColumn = maxWidth > 760.dp
+
+    if (twoColumn) {
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(44.dp),
+      ) {
         Column(
-          modifier = Modifier.fillMaxWidth(),
+          modifier = Modifier.weight(1f),
           verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-          CompletionTitle(data)
-          ScoreHero(data)
+          CompletionTitle(session, level)
+          ScoreHero(session)
           CompletionActions(
             onRetryLevel = onRetryLevel,
-            onNextLevel = onNextLevel,
+            onLevelSelect = onLevelSelect,
           )
-          PerformanceOverview()
+        }
+        Column(
+          modifier = Modifier.weight(1f),
+          verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+          PerformanceOverview(session)
+          if (level != null) {
+            Hairline()
+            LevelParameters(level)
+          }
+        }
+      }
+    } else {
+      Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+      ) {
+        CompletionTitle(session, level)
+        ScoreHero(session)
+        CompletionActions(
+          onRetryLevel = onRetryLevel,
+          onLevelSelect = onLevelSelect,
+        )
+        PerformanceOverview(session)
+        if (level != null) {
           Hairline()
-          LevelParameters(data)
+          LevelParameters(level)
         }
       }
     }
   }
 }
 
-private fun levelCompleteData(flow: TrainingFlow): LevelCompleteData {
-  return when (flow) {
-    TrainingFlow.Singles -> LevelCompleteData(
-      levelTitle = "Level 2 - Triad Tones",
-      flowLabel = "Singles",
-      key = "D Major",
-      parameterDescription = "Root, third, and fifth of the triad.",
-      parameters = listOf(
-        Icons.Rounded.MusicNote to "3 notes",
-        Icons.AutoMirrored.Rounded.HelpOutline to "20 questions",
-        Icons.Rounded.Speed to "96 BPM",
-        Icons.Rounded.Keyboard to "C3-C5",
-        Icons.Rounded.Replay to "Random",
-        Icons.Rounded.TrackChanges to "D Major",
-      ),
-    )
-
-    TrainingFlow.Melodies -> LevelCompleteData(
-      levelTitle = "Level 2 - Triad Motifs",
-      flowLabel = "Melodies",
-      key = "D Major",
-      parameterDescription = "Four-note melodies built from triad tones.",
-      parameters = listOf(
-        Icons.Rounded.MusicNote to "4 notes",
-        Icons.AutoMirrored.Rounded.HelpOutline to "20 questions",
-        Icons.Rounded.Speed to "96 BPM",
-        Icons.Rounded.Keyboard to "C3-C5",
-        Icons.Rounded.Replay to "Random",
-        Icons.Rounded.TrackChanges to "D Major",
-      ),
-    )
-  }
-}
-
 @Composable
-private fun CompletionTitle(data: LevelCompleteData) {
+private fun CompletionTitle(session: TrainingSession, level: CompletedLevel?) {
   Column(
     modifier = Modifier.fillMaxWidth(),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.spacedBy(4.dp),
   ) {
     Text(
-      text = data.levelTitle,
+      text = session.levelName,
       color = ShuuenUi.Text,
       style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
       textAlign = TextAlign.Center,
     )
     Text(
-      text = "${data.flowLabel} • ${data.key}",
+      text = sessionSubtitle(session, level),
       color = ShuuenUi.Muted,
       style = MaterialTheme.typography.titleSmall,
       textAlign = TextAlign.Center,
@@ -187,22 +197,61 @@ private fun CompletionTitle(data: LevelCompleteData) {
   }
 }
 
+private fun sessionSubtitle(session: TrainingSession, level: CompletedLevel?): String {
+  val flowLabel =
+    when (session.flow) {
+      TrainingFlow.Singles -> "Singles"
+      TrainingFlow.Melodies -> "Melodies"
+    }
+  val keyLabel =
+    when (level) {
+      is CompletedLevel.Singles ->
+        when (val config = level.level.levelConfig) {
+          is LevelConfig.Singles.Absolute -> scaleLabel(config.scales.first())
+          is LevelConfig.Singles.Relative -> "Random keys (${config.scaleConfig.scaleType})"
+        }
+
+      is CompletedLevel.Melodies ->
+        when (val config = level.level.config) {
+          is LevelConfig.Melodies.Random ->
+            when (val scale = config.scaleConfig) {
+              is ScaleConfig.AbsoluteScaleConfig -> scaleLabel(scale)
+              is ScaleConfig.RelativeScaleConfig -> "Random keys (${scale.scaleType})"
+            }
+
+          is LevelConfig.Melodies.Midi -> "MIDI melody"
+        }
+
+      null -> null
+    }
+  return listOfNotNull(
+    flowLabel,
+    keyLabel,
+    "Ended early".takeIf { session.finishedEarly },
+  ).joinToString(" • ")
+}
+
+private fun scaleLabel(scale: ScaleConfig.AbsoluteScaleConfig): String =
+  "${scale.root} ${scale.scaleType}"
+
+// region Score
+
 @Composable
-private fun ScoreHero(data: LevelCompleteData) {
+private fun ScoreHero(session: TrainingSession) {
   SurfaceCard {
     Row(
       modifier = Modifier.fillMaxWidth(),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(22.dp),
     ) {
-      ScoreRing()
-      ScoreSummary(data, Modifier.weight(1f))
+      ScoreRing(session.accuracy)
+      ScoreSummary(session, Modifier.weight(1f))
     }
   }
 }
 
 @Composable
-private fun ScoreRing() {
+private fun ScoreRing(accuracy: Float) {
   Box(modifier = Modifier.size(116.dp), contentAlignment = Alignment.Center) {
     Canvas(Modifier.size(116.dp)) {
       val stroke = 7.dp.toPx()
@@ -215,15 +264,15 @@ private fun ScoreRing() {
       )
       drawArc(
         color = ShuuenUi.Text,
-        startAngle = -88f,
-        sweepAngle = 245f,
+        startAngle = -90f,
+        sweepAngle = 360f * accuracy.coerceIn(0f, 1f),
         useCenter = false,
         style = Stroke(stroke, cap = StrokeCap.Round),
       )
     }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
       Text(
-        text = "68%",
+        text = "${(accuracy * 100).roundToInt()}%",
         color = ShuuenUi.Text,
         style = MaterialTheme.typography.displayLarge.copy(
           fontSize = 32.sp, fontWeight = FontWeight.Bold
@@ -241,10 +290,10 @@ private fun ScoreRing() {
 }
 
 @Composable
-private fun ScoreSummary(data: LevelCompleteData, modifier: Modifier = Modifier) {
+private fun ScoreSummary(session: TrainingSession, modifier: Modifier = Modifier) {
   Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Text(
-      text = "14 / 20 CORRECT",
+      text = "${session.correctNotes} / ${session.notesTotal} CORRECT",
       color = ShuuenUi.Text,
       style = MaterialTheme.typography.titleLarge.copy(
         letterSpacing = 2.sp, fontWeight = FontWeight.Bold
@@ -253,39 +302,96 @@ private fun ScoreSummary(data: LevelCompleteData, modifier: Modifier = Modifier)
       overflow = TextOverflow.Ellipsis,
     )
     Text(
-      "${data.flowLabel} level result",
+      text = scoreDescription(session),
       color = ShuuenUi.Muted,
-      style = MaterialTheme.typography.bodyMedium
+      style = MaterialTheme.typography.bodyMedium,
     )
   }
 }
 
+private fun scoreDescription(session: TrainingSession): String =
+  when (session.flow) {
+    TrainingFlow.Singles ->
+      "${session.questionsAnswered} " +
+        (if (session.questionsAnswered == 1) "question" else "questions") + " answered"
+
+    TrainingFlow.Melodies ->
+      // Per-note sessions (a MIDI melody or the endless stream) have one entry per note; a
+      // sequence count would just repeat the note count there.
+      if (session.questionsAnswered == session.notesTotal) {
+        "${session.notesTotal} notes answered"
+      } else {
+        "${session.questionsAnswered} sequences • ${session.notesTotal} notes"
+      }
+  }
+
+// endregion
+
+// region Performance
+
+private data class StatCellData(
+  val icon: ImageVector,
+  val value: String,
+  val label: String,
+)
+
 @Composable
-private fun PerformanceOverview() {
+private fun PerformanceOverview(session: TrainingSession) {
   FlatSection(label = "PERFORMANCE OVERVIEW") {
-    StatsGrid()
-    Text(
-      text = "ACCURACY BY QUESTION RANGE",
-      color = ShuuenUi.Dim,
-      style = MaterialTheme.typography.labelMedium.copy(letterSpacing = ShuuenUi.labelSpacing),
+    StatsGrid(session)
+    val buckets = accuracyBuckets(session.questionResults)
+    if (buckets.isNotEmpty()) {
+      Text(
+        text = "ACCURACY ACROSS THE SESSION",
+        color = ShuuenUi.Dim,
+        style = MaterialTheme.typography.labelMedium.copy(letterSpacing = ShuuenUi.labelSpacing),
+      )
+      AccuracyRangeBar(buckets)
+    }
+  }
+}
+
+private fun statCells(session: TrainingSession): List<StatCellData> = buildList {
+  add(
+    StatCellData(
+      Icons.Rounded.TrackChanges,
+      "${(session.accuracy * 100).roundToInt()}%",
+      "ACCURACY",
     )
-    AccuracyRangeBar()
+  )
+  session.avgAnswerMillis?.let {
+    add(StatCellData(Icons.Rounded.Timer, formatSeconds(it), "AVG TIME"))
+  }
+  add(StatCellData(Icons.Rounded.Schedule, formatDuration(session.durationMillis), "TOTAL TIME"))
+  add(StatCellData(Icons.Rounded.LocalFireDepartment, "${session.bestStreak}", "BEST STREAK"))
+  add(
+    StatCellData(
+      Icons.Rounded.Replay,
+      "${session.replays}",
+      if (session.flow == TrainingFlow.Singles) "REPLAYS" else "REWINDS",
+    )
+  )
+  add(StatCellData(Icons.Rounded.Close, "${session.missedNotes}", "MISSED"))
+  // A single fixed key isn't a stat; the cell only appears once the scale actually rotated.
+  if (session.keysPracticed > 1) {
+    add(StatCellData(Icons.Rounded.MusicNote, "${session.keysPracticed}", "KEYS"))
   }
 }
 
 @Composable
-private fun StatsGrid() {
+private fun StatsGrid(session: TrainingSession) {
+  val rows = statCells(session).chunked(3)
   Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-    Row(modifier = Modifier.fillMaxWidth()) {
-      StatCell(Icons.Rounded.TrackChanges, "68%", "ACCURACY", Modifier.weight(1f))
-      StatCell(Icons.Rounded.Schedule, "2.8s", "AVG TIME", Modifier.weight(1f))
-      StatCell(Icons.Rounded.LocalFireDepartment, "6", "BEST", Modifier.weight(1f))
-    }
-    Hairline()
-    Row(modifier = Modifier.fillMaxWidth()) {
-      StatCell(Icons.Rounded.Replay, "2", "REPLAYS", Modifier.weight(1f))
-      StatCell(Icons.Rounded.Close, "6", "WRONG", Modifier.weight(1f))
-      StatCell(Icons.Rounded.BarChart, "", "HOTSPOTS", Modifier.weight(1f), trailing = true)
+    rows.forEachIndexed { index, row ->
+      if (index > 0) Hairline()
+      Row(modifier = Modifier.fillMaxWidth()) {
+        row.forEach { cell ->
+          StatCell(cell.icon, cell.value, cell.label, Modifier.weight(1f))
+        }
+        repeat(3 - row.size) {
+          Box(Modifier.weight(1f))
+        }
+      }
     }
   }
 }
@@ -296,7 +402,6 @@ private fun RowScope.StatCell(
   value: String,
   label: String,
   modifier: Modifier = Modifier,
-  trailing: Boolean = false,
 ) {
   Column(
     modifier = modifier,
@@ -308,22 +413,12 @@ private fun RowScope.StatCell(
       horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
       Icon(icon, contentDescription = null, tint = ShuuenUi.Muted, modifier = Modifier.size(18.dp))
-      if (value.isNotBlank()) {
-        Text(
-          value,
-          color = ShuuenUi.Text,
-          style = MaterialTheme.typography.headlineMedium.copy(fontSize = 20.sp),
-          maxLines = 1,
-        )
-      }
-      if (trailing) {
-        Icon(
-          Icons.Rounded.ChevronRight,
-          contentDescription = null,
-          tint = ShuuenUi.Dim,
-          modifier = Modifier.size(22.dp)
-        )
-      }
+      Text(
+        value,
+        color = ShuuenUi.Text,
+        style = MaterialTheme.typography.headlineMedium.copy(fontSize = 20.sp),
+        maxLines = 1,
+      )
     }
     Text(
       label,
@@ -336,12 +431,12 @@ private fun RowScope.StatCell(
 }
 
 @Composable
-private fun AccuracyRangeBar() {
+private fun AccuracyRangeBar(buckets: List<AccuracyBucket>) {
   Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-      listOf("80%", "70%", "60%", "50%").forEach { label ->
+      buckets.forEach { bucket ->
         Text(
-          text = label,
+          text = "${(bucket.accuracy * 100).roundToInt()}%",
           color = ShuuenUi.Muted,
           style = MaterialTheme.typography.titleSmall,
         )
@@ -349,9 +444,11 @@ private fun AccuracyRangeBar() {
     }
     Row(
       modifier = Modifier.fillMaxWidth().height(14.dp),
-      horizontalArrangement = Arrangement.spacedBy(4.dp)
+      horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-      listOf(0.92f, 0.65f, 0.40f, 0.20f).forEach { alpha ->
+      buckets.forEach { bucket ->
+        // A small alpha floor keeps a fully-missed range visible as an empty slot.
+        val alpha = 0.12f + 0.8f * bucket.accuracy
         Box(
           modifier = Modifier.weight(1f).fillMaxWidth()
             .height(14.dp)
@@ -360,32 +457,125 @@ private fun AccuracyRangeBar() {
       }
     }
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-      listOf("1-5", "6-10", "11-15", "16-20").forEach {
-        Text(it, color = ShuuenUi.Dim, style = MaterialTheme.typography.bodyMedium)
+      buckets.forEach { bucket ->
+        Text(bucket.rangeLabel, color = ShuuenUi.Dim, style = MaterialTheme.typography.bodyMedium)
       }
     }
   }
 }
 
+// endregion
+
+// region Level parameters
+
 @Composable
-private fun LevelParameters(data: LevelCompleteData) {
-  FlatSection(
-    label = "LEVEL PARAMETERS",
-    supporting = data.parameterDescription,
-  ) {
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-      val compact = maxWidth < 420.dp
-      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        data.parameters.chunked(if (compact) 2 else 3).forEach { row ->
-          Row(
-            modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)
-          ) {
-            row.forEach { (icon, text) ->
-              ParameterChip(icon, text, Modifier.weight(1f))
+private fun LevelParameters(level: CompletedLevel) {
+  FlatSection(label = "LEVEL PARAMETERS") {
+    ParameterChips(parameterChips(level))
+    when (level) {
+      is CompletedLevel.Singles ->
+        when (val config = level.level.levelConfig) {
+          is LevelConfig.Singles.Absolute ->
+            BoxedItemRow(config.scales.first().pitchStates.toBoxedItems(), itemSize = 32.dp)
+
+          is LevelConfig.Singles.Relative ->
+            BoxedItemRow(config.scaleConfig.degreeStates.toBoxedItems(), itemSize = 32.dp)
+        }
+
+      is CompletedLevel.Melodies ->
+        when (val config = level.level.config) {
+          is LevelConfig.Melodies.Random ->
+            when (val scale = config.scaleConfig) {
+              is ScaleConfig.AbsoluteScaleConfig ->
+                BoxedItemRow(scale.pitchStates.toBoxedItems(), itemSize = 32.dp)
+
+              is ScaleConfig.RelativeScaleConfig ->
+                BoxedItemRow(scale.degreeStates.toBoxedItems(), itemSize = 32.dp)
             }
-            repeat((if (compact) 2 else 3) - row.size) {
-              Box(Modifier.weight(1f))
+
+          is LevelConfig.Melodies.Midi -> Unit
+        }
+    }
+  }
+}
+
+/** Mirrors the level-select card: the same parameters, as chips. */
+private fun parameterChips(level: CompletedLevel): List<Pair<ImageVector, String>> =
+  when (level) {
+    is CompletedLevel.Singles -> {
+      val l = level.level
+      buildList {
+        add(
+          Icons.AutoMirrored.Rounded.HelpOutline to
+            (l.questionsNumber?.let { "$it questions" } ?: "Unlimited")
+        )
+        add(Icons.Rounded.Keyboard to l.range.toPair().toList().joinToString(" - "))
+        add(
+          Icons.Rounded.Replay to
+            (l.levelConfig.rotateEveryQuestions?.let { "Rotate every $it" } ?: "No rotation")
+        )
+        add(Icons.Rounded.LibraryMusic to (l.context?.let { it.name ?: "Context" } ?: "No context"))
+        add(Icons.Rounded.Bookmark to sourceLabel(l.source))
+      }
+    }
+
+    is CompletedLevel.Melodies -> {
+      val l = level.level
+      when (val config = l.config) {
+        is LevelConfig.Melodies.Random ->
+          buildList {
+            val notesPerSequence = config.notesPerSequence
+            if (notesPerSequence == null) {
+              add(Icons.Rounded.AllInclusive to "Endless notes")
+            } else {
+              add(
+                Icons.AutoMirrored.Rounded.HelpOutline to
+                  (config.questionsNumber?.let { "$it questions" } ?: "Unlimited")
+              )
+              add(Icons.Rounded.MusicNote to "$notesPerSequence-note sequences")
             }
+            add(Icons.Rounded.Speed to "${config.tempo} BPM")
+            add(Icons.Rounded.Keyboard to config.range.toPair().toList().joinToString(" - "))
+            add(
+              Icons.Rounded.Replay to
+                (config.rotateEveryQuestions?.let { "Rotate every $it" } ?: "No rotation")
+            )
+            add(
+              Icons.Rounded.LibraryMusic to (l.context?.let { it.name ?: "Context" } ?: "No context")
+            )
+            add(Icons.Rounded.Bookmark to sourceLabel(l.source))
+          }
+
+        is LevelConfig.Melodies.Midi ->
+          buildList {
+            add(Icons.Rounded.FolderOpen to config.fileName)
+            add(
+              Icons.Rounded.Tune to
+                if (config.useOriginalVelocities) "Original velocities" else "Full velocity"
+            )
+            add(
+              Icons.Rounded.LibraryMusic to (l.context?.let { it.name ?: "Context" } ?: "No context")
+            )
+            add(Icons.Rounded.Bookmark to sourceLabel(l.source))
+          }
+      }
+    }
+  }
+
+@Composable
+private fun ParameterChips(parameters: List<Pair<ImageVector, String>>) {
+  BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+    val compact = maxWidth < 420.dp
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+      parameters.chunked(if (compact) 2 else 3).forEach { row ->
+        Row(
+          modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+          row.forEach { (icon, text) ->
+            ParameterChip(icon, text, Modifier.weight(1f))
+          }
+          repeat((if (compact) 2 else 3) - row.size) {
+            Box(Modifier.weight(1f))
           }
         }
       }
@@ -413,10 +603,14 @@ private fun ParameterChip(
   }
 }
 
+// endregion
+
+// region Actions
+
 @Composable
 private fun CompletionActions(
   onRetryLevel: () -> Unit,
-  onNextLevel: () -> Unit,
+  onLevelSelect: () -> Unit,
 ) {
   Column(
     modifier = Modifier.fillMaxWidth(),
@@ -430,9 +624,9 @@ private fun CompletionActions(
       filled = true,
     )
     CompactCompletionButton(
-      text = "NEXT LEVEL 3",
+      text = "LEVEL SELECT",
       icon = Icons.Rounded.ChevronRight,
-      onClick = onNextLevel,
+      onClick = onLevelSelect,
       filled = false,
     )
   }
@@ -472,4 +666,20 @@ private fun CompactCompletionButton(
       overflow = TextOverflow.Ellipsis,
     )
   }
+}
+
+// endregion
+
+/** "1:32" — total time spent in the session. */
+private fun formatDuration(millis: Long): String {
+  val totalSeconds = millis / 1000
+  val minutes = totalSeconds / 60
+  val seconds = totalSeconds % 60
+  return "$minutes:${seconds.toString().padStart(2, '0')}"
+}
+
+/** "2.8s" — mean time to answer a question. */
+private fun formatSeconds(millis: Long): String {
+  val tenths = (millis / 100).toInt()
+  return "${tenths / 10}.${tenths % 10}s"
 }
