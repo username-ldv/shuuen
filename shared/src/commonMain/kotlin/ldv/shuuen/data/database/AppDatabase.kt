@@ -28,7 +28,7 @@ import ldv.shuuen.data.database.entity.TrainingSessionDbEntity
     ContextDbEntity::class,
     TrainingSessionDbEntity::class,
   ],
-  version = 6,
+  version = 7,
 )
 @TypeConverters(
   GeneralTypeConverter::class,

@@ -284,6 +284,7 @@ class SinglesPlayScreenViewModel(
       durationMillis = sessionStartMark?.elapsedNow()?.inWholeMilliseconds ?: 0L,
       avgAnswerMillis =
         answerTimesMillis.takeIf { it.isNotEmpty() }?.let { it.sum() / it.size },
+      avgDeltaMillis = null,
       bestStreak = longestCleanRun(answered, missedQuestions.map { it - 1 }.toSet()),
       keysPracticed = rootsPracticed.size,
       questionResults =

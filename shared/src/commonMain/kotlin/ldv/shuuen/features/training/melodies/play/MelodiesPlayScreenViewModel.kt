@@ -220,6 +220,14 @@ class MelodiesPlayScreenViewModel(
   private var rewindCount = 0
   private var sessionSaved = false
 
+  // Answer-delta tracking: how far behind the first full hearing the answers land (0 = real time).
+  /** When the current question's sequence finished its first complete playback pass. */
+  private var questionPlaybackEndMark: TimeSource.Monotonic.ValueTimeMark? = null
+  /** Endless stream: when each note first started sounding, keyed by note index. */
+  private val noteStartMarks = mutableMapOf<Int, TimeSource.Monotonic.ValueTimeMark>()
+  /** One delta per finished unit: a sequence in finite Random mode, a note in the endless stream. */
+  private val answerDeltasMillis = mutableListOf<Long>()
+
   // Setup-melody highlights and answer feedback are both transient flashes driven by the screen
   // through the input component's state. The VM only emits which key/color to flash as the
   // context's setup melody plays.
@@ -508,6 +516,11 @@ class MelodiesPlayScreenViewModel(
               }
               if (playbackRunId == runId) sequenceIndex = index + 1
             }
+            // The first pass that plays through to the end is the delta reference: the melody has
+            // now been fully heard once. Rewound passes finishing later don't move it.
+            if (playbackRunId == runId && questionPlaybackEndMark == null) {
+              questionPlaybackEndMark = TimeSource.Monotonic.markNow()
+            }
           }
         } finally {
           if (playbackRunId == runId) {
@@ -554,6 +567,7 @@ class MelodiesPlayScreenViewModel(
       viewModelScope.launch {
         previous?.cancelAndJoin()
         cancelSequencePlayback()
+        questionPlaybackEndMark = null
 
         val nextQuestion = _state.value.questionNumber + 1
         val questionsNumber = _state.value.questionsNumber
@@ -639,6 +653,9 @@ class MelodiesPlayScreenViewModel(
               val melodyNote = _state.value.notes.getOrNull(index) ?: break
               _state.update { it.copy(sequencePlaybackIndex = index) }
               maxStartedIndex = maxOf(maxStartedIndex, index)
+              // Delta reference per note: rewound notes keep their first-sounded time, so waiting
+              // through a rewind still counts against the answer delta.
+              noteStartMarks.getOrPut(index) { TimeSource.Monotonic.markNow() }
               val activeNote = ActivePlaybackNote(runId, melodyNote.note)
               activePlaybackNote = activeNote
               try {
@@ -783,7 +800,16 @@ class MelodiesPlayScreenViewModel(
       }
     }
 
+    if (isCorrect && current.isEndless) {
+      // Note delta: from the note first sounding to its correct answer.
+      noteStartMarks[current.answerIndex]?.let {
+        answerDeltasMillis += it.elapsedNow().inWholeMilliseconds
+      }
+    }
     if (isCorrect && sequenceFinished && current.mode == MelodiesPlayMode.Random) {
+      // Question delta: from the sequence's first full hearing to its last correct answer. A
+      // sequence answered entirely before its playback even finished is real-time — delta 0.
+      answerDeltasMillis += questionPlaybackEndMark?.elapsedNow()?.inWholeMilliseconds ?: 0L
       advanceToNextQuestion()
     } else if (isCorrect && current.mode == MelodiesPlayMode.Midi && _state.value.isQuizComplete) {
       viewModelScope.launch { completeSession(finishedEarly = false) }
@@ -816,6 +842,17 @@ class MelodiesPlayScreenViewModel(
       return
     }
 
+    val durationMillis = sessionStartMark?.elapsedNow()?.inWholeMilliseconds ?: 0L
+    val avgDeltaMillis =
+      if (state.mode == MelodiesPlayMode.Midi) {
+        // The file is the session's one question: the delta is the whole extra time beyond the
+        // melody's own length. Meaningless for a partially answered file.
+        (durationMillis - (state.lengthSeconds * 1000).toLong())
+          .coerceAtLeast(0L)
+          .takeUnless { finishedEarly }
+      } else {
+        answerDeltasMillis.takeIf { it.isNotEmpty() }?.let { it.sum() / it.size }
+      }
     val session = TrainingSession(
       id = Uuid.generateV7().toString(),
       flow = TrainingFlow.Melodies,
@@ -828,10 +865,11 @@ class MelodiesPlayScreenViewModel(
       correctNotes = state.correctAnswers,
       missedNotes = results.sumOf { it.missedCount },
       replays = rewindCount,
-      durationMillis = sessionStartMark?.elapsedNow()?.inWholeMilliseconds ?: 0L,
-      // A melody answer overlaps with listening to the rest of the sequence, so a per-answer time
-      // would not mean much; only the total duration is kept.
+      durationMillis = durationMillis,
+      // A melody answer overlaps with listening to the rest of the sequence; the delta below is
+      // the meaningful timing metric here.
       avgAnswerMillis = null,
+      avgDeltaMillis = avgDeltaMillis,
       bestStreak = bestStreak(state),
       keysPracticed = rootsPracticed.size,
       questionResults = results,

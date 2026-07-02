@@ -25,6 +25,7 @@ data class TrainingSessionDbEntity(
   val replays: Int,
   val durationMillis: Long,
   val avgAnswerMillis: Long?,
+  val avgDeltaMillis: Long?,
   val bestStreak: Int,
   val keysPracticed: Int,
   val questionResults: List<QuestionResult>,

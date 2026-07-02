@@ -36,8 +36,14 @@ data class TrainingSession(
   /** Repeat-note presses (Singles) or rewinds (Melodies). */
   val replays: Int,
   val durationMillis: Long,
-  /** Mean time from hearing a question to answering it; null where it isn't meaningful (Melodies). */
+  /** Mean time from hearing a question to answering it; Singles only. */
   val avgAnswerMillis: Long?,
+  /**
+   * Melodies only: mean extra time per question spent answering beyond the first full hearing of
+   * its melody (per sequence in Random mode, per note in the endless stream, whole file for MIDI).
+   * 0 means real-time transcription — the answers kept up with the notes.
+   */
+  val avgDeltaMillis: Long?,
   /** Longest run of consecutive first-try-correct notes. */
   val bestStreak: Int,
   /** Distinct tonics practiced; 0 when the level has no tracked key (MIDI melodies). */

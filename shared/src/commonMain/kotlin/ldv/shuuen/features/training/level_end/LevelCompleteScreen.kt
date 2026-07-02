@@ -23,7 +23,6 @@ import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Keyboard
-import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -62,7 +61,11 @@ import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.SoftControl
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.SurfaceCard
+import ldv.shuuen.core.music.DegreeContext
 import ldv.shuuen.features.training.common.TrainingFlow
+import ldv.shuuen.features.training.common.components.ContextDetails
+import ldv.shuuen.features.training.common.components.DetailLabel
+import ldv.shuuen.features.training.common.components.DetailRow
 import ldv.shuuen.features.training.common.components.sourceLabel
 import ldv.shuuen.features.training.common.toBoxedItems
 import ldv.shuuen.features.training.domain.LevelConfig
@@ -254,20 +257,22 @@ private fun ScoreHero(session: TrainingSession) {
 private fun ScoreRing(accuracy: Float) {
   Box(modifier = Modifier.size(116.dp), contentAlignment = Alignment.Center) {
     Canvas(Modifier.size(116.dp)) {
-      val stroke = 7.dp.toPx()
+      // Flat caps and a thin stroke keep the gap readable near 100%: rounded caps would swallow a
+      // small gap and make a near-perfect score look broken instead of nearly full.
+      val stroke = 5.dp.toPx()
       drawArc(
         color = Color.White.copy(alpha = 0.10f),
         startAngle = 0f,
         sweepAngle = 360f,
         useCenter = false,
-        style = Stroke(stroke, cap = StrokeCap.Round),
+        style = Stroke(stroke, cap = StrokeCap.Butt),
       )
       drawArc(
         color = ShuuenUi.Text,
         startAngle = -90f,
         sweepAngle = 360f * accuracy.coerceIn(0f, 1f),
         useCenter = false,
-        style = Stroke(stroke, cap = StrokeCap.Round),
+        style = Stroke(stroke, cap = StrokeCap.Butt),
       )
     }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -361,6 +366,10 @@ private fun statCells(session: TrainingSession): List<StatCellData> = buildList 
   )
   session.avgAnswerMillis?.let {
     add(StatCellData(Icons.Rounded.Timer, formatSeconds(it), "AVG TIME"))
+  }
+  // How far behind the first full hearing the answers landed; 0 = real-time transcription.
+  session.avgDeltaMillis?.let {
+    add(StatCellData(Icons.Rounded.Timer, formatDelta(it), "DELTA"))
   }
   add(StatCellData(Icons.Rounded.Schedule, formatDuration(session.durationMillis), "TOTAL TIME"))
   add(StatCellData(Icons.Rounded.LocalFireDepartment, "${session.bestStreak}", "BEST STREAK"))
@@ -496,6 +505,23 @@ private fun LevelParameters(level: CompletedLevel) {
           is LevelConfig.Melodies.Midi -> Unit
         }
     }
+    LevelContext(
+      when (level) {
+        is CompletedLevel.Singles -> level.level.context
+        is CompletedLevel.Melodies -> level.level.context
+      }
+    )
+  }
+}
+
+/** The level's degree context, node by node — the same detail block the level cards expand to. */
+@Composable
+private fun LevelContext(context: DegreeContext?) {
+  if (context != null) {
+    DetailLabel("CONTEXT")
+    ContextDetails(context)
+  } else {
+    DetailRow("CONTEXT", "None")
   }
 }
 
@@ -514,7 +540,6 @@ private fun parameterChips(level: CompletedLevel): List<Pair<ImageVector, String
           Icons.Rounded.Replay to
             (l.levelConfig.rotateEveryQuestions?.let { "Rotate every $it" } ?: "No rotation")
         )
-        add(Icons.Rounded.LibraryMusic to (l.context?.let { it.name ?: "Context" } ?: "No context"))
         add(Icons.Rounded.Bookmark to sourceLabel(l.source))
       }
     }
@@ -540,9 +565,6 @@ private fun parameterChips(level: CompletedLevel): List<Pair<ImageVector, String
               Icons.Rounded.Replay to
                 (config.rotateEveryQuestions?.let { "Rotate every $it" } ?: "No rotation")
             )
-            add(
-              Icons.Rounded.LibraryMusic to (l.context?.let { it.name ?: "Context" } ?: "No context")
-            )
             add(Icons.Rounded.Bookmark to sourceLabel(l.source))
           }
 
@@ -552,9 +574,6 @@ private fun parameterChips(level: CompletedLevel): List<Pair<ImageVector, String
             add(
               Icons.Rounded.Tune to
                 if (config.useOriginalVelocities) "Original velocities" else "Full velocity"
-            )
-            add(
-              Icons.Rounded.LibraryMusic to (l.context?.let { it.name ?: "Context" } ?: "No context")
             )
             add(Icons.Rounded.Bookmark to sourceLabel(l.source))
           }
@@ -683,3 +702,7 @@ private fun formatSeconds(millis: Long): String {
   val tenths = (millis / 100).toInt()
   return "${tenths / 10}.${tenths % 10}s"
 }
+
+/** Sub-minute deltas as "2.8s"; longer ones (a whole MIDI file) as "1:32". */
+private fun formatDelta(millis: Long): String =
+  if (millis < 60_000) formatSeconds(millis) else formatDuration(millis)
