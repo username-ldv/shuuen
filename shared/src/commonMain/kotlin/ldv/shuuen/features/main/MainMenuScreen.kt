@@ -49,6 +49,7 @@ fun MainMenuScreen(
   onOpenFreePlay: () -> Unit,
   onOpenMelodies: () -> Unit,
   onOpenSingles: () -> Unit,
+  onOpenChords: () -> Unit,
   onOpenSettings: () -> Unit,
 ) {
   StaticScreenFrame(
@@ -87,6 +88,7 @@ fun MainMenuScreen(
     ExerciseList(
       onOpenSingles = onOpenSingles,
       onOpenMelodies = onOpenMelodies,
+      onOpenChords = onOpenChords,
       onOpenFreePlay = onOpenFreePlay,
     )
 
@@ -149,6 +151,7 @@ private fun ContinueCard() {
 private fun ExerciseList(
   onOpenSingles: () -> Unit,
   onOpenMelodies: () -> Unit,
+  onOpenChords: () -> Unit,
   onOpenFreePlay: () -> Unit,
 ) {
   SurfaceCard(
@@ -173,6 +176,7 @@ private fun ExerciseList(
       title = "CHORDS",
       subtitle = "Identify single chords.",
       icon = Icons.Rounded.GraphicEq,
+      onClick = onOpenChords,
     )
     Hairline(Modifier.padding(horizontal = 18.dp))
     ExerciseRow(

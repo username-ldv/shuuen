@@ -28,6 +28,21 @@ sealed interface LevelConfig {
   }
 
   @Serializable
+  sealed interface Chords {
+    val rotateEveryQuestions: Int?
+
+    @Serializable
+    data class Absolute(
+      val scales: List<ScaleConfig.AbsoluteScaleConfig>, override val rotateEveryQuestions: Int? = null
+    ) : Chords
+
+    @Serializable
+    data class Relative(
+      val scaleConfig: ScaleConfig.RelativeScaleConfig, override val rotateEveryQuestions: Int? = 10
+    ) : Chords
+  }
+
+  @Serializable
   sealed interface Melodies {
     /** Randomly generated melodies from a scale; all quiz parameters live here. */
     @Serializable

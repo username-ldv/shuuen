@@ -22,6 +22,7 @@ import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.MusicNote
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.TrackChanges
 import androidx.compose.material.icons.rounded.Tune
@@ -207,6 +209,7 @@ private fun sessionSubtitle(session: TrainingSession, level: CompletedLevel?): S
     when (session.flow) {
       TrainingFlow.Singles -> "Singles"
       TrainingFlow.Melodies -> "Melodies"
+      TrainingFlow.Chords -> "Chords"
     }
   val keyLabel =
     when (level) {
@@ -225,6 +228,12 @@ private fun sessionSubtitle(session: TrainingSession, level: CompletedLevel?): S
             }
 
           is LevelConfig.Melodies.Midi -> "MIDI melody"
+        }
+
+      is CompletedLevel.Chords ->
+        when (val config = level.level.levelConfig) {
+          is LevelConfig.Chords.Absolute -> scaleLabel(config.scales.first())
+          is LevelConfig.Chords.Relative -> "Random keys (${config.scaleConfig.scaleType})"
         }
 
       null -> null
@@ -330,6 +339,10 @@ private fun scoreDescription(session: TrainingSession): String =
       } else {
         "${session.questionsAnswered} sequences • ${session.notesTotal} notes"
       }
+
+    TrainingFlow.Chords ->
+      "${session.questionsAnswered} " +
+        (if (session.questionsAnswered == 1) "chord" else "chords") + " answered"
   }
 
 // endregion
@@ -379,7 +392,7 @@ private fun statCells(session: TrainingSession): List<StatCellData> = buildList 
     StatCellData(
       Icons.Rounded.Replay,
       "${session.replays}",
-      if (session.flow == TrainingFlow.Singles) "REPLAYS" else "REWINDS",
+      if (session.flow == TrainingFlow.Melodies) "REWINDS" else "REPLAYS",
     )
   )
   add(StatCellData(Icons.Rounded.Close, "${session.missedNotes}", "MISSED"))
@@ -506,11 +519,21 @@ private fun LevelParameters(level: CompletedLevel) {
 
           is LevelConfig.Melodies.Midi -> Unit
         }
+
+      is CompletedLevel.Chords ->
+        when (val config = level.level.levelConfig) {
+          is LevelConfig.Chords.Absolute ->
+            BoxedItemRow(config.scales.first().pitchStates.toBoxedItems(), itemSize = 32.dp)
+
+          is LevelConfig.Chords.Relative ->
+            BoxedItemRow(config.scaleConfig.degreeStates.toBoxedItems(), itemSize = 32.dp)
+        }
     }
     LevelContext(
       when (level) {
         is CompletedLevel.Singles -> level.level.context
         is CompletedLevel.Melodies -> level.level.context
+        is CompletedLevel.Chords -> level.level.context
       }
     )
   }
@@ -579,6 +602,25 @@ private fun parameterChips(level: CompletedLevel): List<Pair<ImageVector, String
             )
             add(Icons.Rounded.Bookmark to sourceLabel(l.source))
           }
+      }
+    }
+
+    is CompletedLevel.Chords -> {
+      val l = level.level
+      buildList {
+        add(Icons.Rounded.GraphicEq to "${l.chordSize} notes")
+        add(
+          Icons.AutoMirrored.Rounded.HelpOutline to
+            (l.questionsNumber?.let { "$it questions" } ?: "Unlimited")
+        )
+        add(Icons.Rounded.Keyboard to l.range.toPair().toList().joinToString(" - "))
+        add(
+          Icons.Rounded.Replay to
+            (l.levelConfig.rotateEveryQuestions?.let { "Rotate every $it" } ?: "No rotation")
+        )
+        add(Icons.Rounded.Tune to if (l.sustainNotes) "Sustained" else "Timed")
+        add(Icons.Rounded.SwapVert to l.answerOrder.label)
+        add(Icons.Rounded.Bookmark to sourceLabel(l.source))
       }
     }
   }

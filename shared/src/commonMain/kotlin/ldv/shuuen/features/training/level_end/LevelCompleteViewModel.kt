@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ldv.shuuen.core.result.ResponseState
+import ldv.shuuen.features.training.chords.domain.ChordsLevel
+import ldv.shuuen.features.training.chords.domain.ChordsLocalLevelRepository
 import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.level_end.domain.TrainingSession
 import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
@@ -21,6 +23,8 @@ sealed interface CompletedLevel {
   data class Singles(val level: SinglesLevel) : CompletedLevel
 
   data class Melodies(val level: MelodiesLevel) : CompletedLevel
+
+  data class Chords(val level: ChordsLevel) : CompletedLevel
 }
 
 data class LevelCompleteState(
@@ -34,6 +38,7 @@ class LevelCompleteViewModel(
   sessionRepository: TrainingSessionRepository,
   private val singlesLevelRepository: SinglesLocalLevelRepository,
   private val melodiesLevelRepository: MelodiesLocalLevelRepository,
+  private val chordsLevelRepository: ChordsLocalLevelRepository,
 ) : ViewModel() {
   private val _state = MutableStateFlow(LevelCompleteState())
   val state = _state.asStateFlow()
@@ -67,6 +72,19 @@ class LevelCompleteViewModel(
           when (response) {
             is ResponseState.Success ->
               _state.update { it.copy(level = CompletedLevel.Melodies(response.result)) }
+
+            is ResponseState.Error ->
+              Napier.w(response.throwable) { "Couldn't load the completed level" }
+
+            is ResponseState.Loading -> Unit
+          }
+        }
+
+      TrainingFlow.Chords ->
+        chordsLevelRepository.getLevelById(session.levelId).collect { response ->
+          when (response) {
+            is ResponseState.Success ->
+              _state.update { it.copy(level = CompletedLevel.Chords(response.result)) }
 
             is ResponseState.Error ->
               Napier.w(response.throwable) { "Couldn't load the completed level" }

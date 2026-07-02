@@ -18,9 +18,13 @@ sealed interface AppRoute : NavKey {
 
   @Serializable data object MelodiesLevelSelect : AppRoute
 
+  @Serializable data object ChordsLevelSelect : AppRoute
+
   @Serializable data class SinglesLevelComplete(val levelId: String, val sessionId: String) : AppRoute
 
   @Serializable data class MelodiesLevelComplete(val levelId: String, val sessionId: String) : AppRoute
+
+  @Serializable data class ChordsLevelComplete(val levelId: String, val sessionId: String) : AppRoute
 
   @Serializable data object SinglesSetup : AppRoute
 
@@ -29,4 +33,8 @@ sealed interface AppRoute : NavKey {
   @Serializable data object MelodiesSetup : AppRoute
 
   @Serializable data class MelodiesPlay(val levelId: String) : AppRoute
+
+  @Serializable data object ChordsSetup : AppRoute
+
+  @Serializable data class ChordsPlay(val levelId: String) : AppRoute
 }
