@@ -13,6 +13,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.setMain
 import ldv.shuuen.core.audio.engine.LoadedMelody
 import ldv.shuuen.core.audio.engine.MidiEngine
@@ -71,6 +72,29 @@ class MelodiesPlayScreenViewModelTest {
 
     assertEquals(4, engine.playedNotes.size)
   }
+
+  @Test
+  fun rewindingFiniteSequenceImmediatelyStopsCurrentNoteAndStartsRewoundNote() =
+    runTest(dispatcher) {
+      val engine = FakeMidiEngine()
+      val viewModel =
+        MelodiesPlayScreenViewModel(
+          levelId = TestLevelId,
+          levelRepository = FakeMelodiesRepository(finiteRandomLevel(notesPerSequence = 6)),
+          midiEngine = engine,
+          player = FakeMidiFilePlayer(),
+          settingsRepository = FakeSettingsRepository(),
+        )
+      runCurrent()
+      assertEquals(listOf("play:C4"), engine.events)
+
+      viewModel.rewindSequence()
+
+      assertEquals(listOf("play:C4", "stop:C4", "play:C4"), engine.events)
+      runCurrent()
+      assertEquals(listOf("play:C4", "stop:C4", "play:C4"), engine.events)
+      advanceUntilIdle()
+    }
 }
 
 private const val TestLevelId = "level"
@@ -132,16 +156,21 @@ private class FakeSettingsRepository : SettingsRepository {
 }
 
 private class FakeMidiEngine : MidiEngine {
+  val events = mutableListOf<String>()
   val playedNotes = mutableListOf<Pair<Note, MidiChannel>>()
 
   override suspend fun initialize(): MidiEngineStatus = MidiEngineStatus.Ready
 
   override fun playNote(note: Note, channel: MidiChannel, velocity: Int): Boolean {
+    events += "play:${note.name}"
     playedNotes += note to channel
     return true
   }
 
-  override fun stopNote(note: Note, channel: MidiChannel): Boolean = true
+  override fun stopNote(note: Note, channel: MidiChannel): Boolean {
+    events += "stop:${note.name}"
+    return true
+  }
 
   override fun playChord(chord: Chord, channel: MidiChannel, velocity: Int): Boolean = true
 

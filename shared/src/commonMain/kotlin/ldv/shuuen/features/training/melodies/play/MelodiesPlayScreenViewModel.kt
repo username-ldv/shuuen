@@ -6,6 +6,7 @@ import io.github.aakira.napier.Napier
 import io.github.vinceglb.filekit.readBytes
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.BufferOverflow
@@ -29,6 +30,7 @@ import ldv.shuuen.core.audio.engine.MidiEngineStatus
 import ldv.shuuen.core.audio.engine.MidiFilePlaybackOptions
 import ldv.shuuen.core.audio.engine.MidiFilePlayer
 import ldv.shuuen.core.music.Degree
+import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.ScaleAccidentalType
 import ldv.shuuen.core.music.decideAccidentalType
@@ -149,6 +151,8 @@ private const val RewindNotes = 4
 /** How many upcoming notes the endless stream keeps generated ahead of playback. */
 private const val StreamLookahead = 12
 
+private data class ActivePlaybackNote(val runId: Int, val note: Note)
+
 class MelodiesPlayScreenViewModel(
   levelId: String,
   levelRepository: MelodiesLocalLevelRepository,
@@ -183,6 +187,9 @@ class MelodiesPlayScreenViewModel(
 
   /** Finite-sequence cursor; ends at notes.size after playback and moves back on rewind. */
   private var sequenceIndex = 0
+
+  private var playbackRunId = 0
+  private var activePlaybackNote: ActivePlaybackNote? = null
 
   /** Endless stream cursor; survives pause/resume and moves back on rewind. */
   private var streamIndex = 0
@@ -449,10 +456,10 @@ class MelodiesPlayScreenViewModel(
   /** Plays the current finite sequence as quarter notes at the level tempo. Restarts on re-entry. */
   private fun playSequence(startIndex: Int = 0) {
     val tempo = randomConfig?.tempo ?: return
-    val previous = sequenceJob
+    cancelSequencePlayback(updateState = false)
+    val runId = ++playbackRunId
     sequenceJob =
-      viewModelScope.launch {
-        previous?.cancelAndJoin()
+      viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
         val notes = _state.value.notes
         if (notes.isEmpty()) return@launch
         val firstIndex = startIndex.coerceIn(0, notes.lastIndex)
@@ -464,17 +471,21 @@ class MelodiesPlayScreenViewModel(
               val melodyNote = notes[index]
               _state.update { it.copy(sequencePlaybackIndex = index) }
               maxStartedIndex = maxOf(maxStartedIndex, index)
+              val activeNote = ActivePlaybackNote(runId, melodyNote.note)
+              activePlaybackNote = activeNote
               try {
                 midiEngine.playNote(melodyNote.note)
                 delay(quarter())
               } finally {
-                midiEngine.stopNote(melodyNote.note)
+                stopActivePlaybackNote(activeNote)
               }
-              sequenceIndex = index + 1
+              if (playbackRunId == runId) sequenceIndex = index + 1
             }
           }
         } finally {
-          _state.update { it.copy(isPlayingSequence = false, sequencePlaybackIndex = -1) }
+          if (playbackRunId == runId) {
+            _state.update { it.copy(isPlayingSequence = false, sequencePlaybackIndex = -1) }
+          }
         }
       }
   }
@@ -514,7 +525,7 @@ class MelodiesPlayScreenViewModel(
     advanceJob =
       viewModelScope.launch {
         previous?.cancelAndJoin()
-        sequenceJob?.cancelAndJoin()
+        cancelSequencePlayback()
 
         val nextQuestion = _state.value.questionNumber + 1
         val questionsNumber = _state.value.questionsNumber
@@ -586,31 +597,35 @@ class MelodiesPlayScreenViewModel(
    */
   private fun startStream() {
     val tempo = randomConfig?.tempo ?: return
-    val previous = sequenceJob
+    cancelSequencePlayback(updateState = false)
+    val runId = ++playbackRunId
     sequenceJob =
-      viewModelScope.launch {
-        previous?.cancelAndJoin()
+      viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
         _state.update { it.copy(isPlayingSequence = true) }
         try {
           withTiming(tempo) {
-            while (isActive) {
+            while (isActive && playbackRunId == runId) {
               val index = streamIndex
               ensureGeneratedUpTo(index + StreamLookahead)
               val melodyNote = _state.value.notes.getOrNull(index) ?: break
               _state.update { it.copy(sequencePlaybackIndex = index) }
               maxStartedIndex = maxOf(maxStartedIndex, index)
+              val activeNote = ActivePlaybackNote(runId, melodyNote.note)
+              activePlaybackNote = activeNote
               try {
                 midiEngine.playNote(melodyNote.note)
                 delay(quarter())
               } finally {
-                midiEngine.stopNote(melodyNote.note)
+                stopActivePlaybackNote(activeNote)
               }
               // A rewind mid-note moved the cursor already; don't overwrite it.
-              if (streamIndex == index) streamIndex = index + 1
+              if (playbackRunId == runId && streamIndex == index) streamIndex = index + 1
             }
           }
         } finally {
-          _state.update { it.copy(isPlayingSequence = false) }
+          if (playbackRunId == runId) {
+            _state.update { it.copy(isPlayingSequence = false, sequencePlaybackIndex = -1) }
+          }
         }
       }
   }
@@ -619,7 +634,7 @@ class MelodiesPlayScreenViewModel(
     if (!_state.value.isEndless) return
     val running = sequenceJob?.isActive == true
     if (running) {
-      sequenceJob?.cancel()
+      cancelSequencePlayback()
     } else {
       startStream()
     }
@@ -627,8 +642,38 @@ class MelodiesPlayScreenViewModel(
 
   private fun rewindStream() {
     if (!_state.value.isEndless) return
+    val wasRunning = sequenceJob?.isActive == true
     streamIndex = (streamIndex - RewindNotes).coerceAtLeast(0)
-    _state.update { it.copy(sequencePlaybackIndex = streamIndex) }
+    if (wasRunning) {
+      startStream()
+    } else {
+      _state.update { it.copy(sequencePlaybackIndex = streamIndex) }
+    }
+  }
+
+  private fun cancelSequencePlayback(updateState: Boolean = true) {
+    val hadPlayback = sequenceJob != null || activePlaybackNote != null
+    sequenceJob?.cancel()
+    sequenceJob = null
+    playbackRunId += 1
+    stopActivePlaybackNote()
+    if (updateState && hadPlayback) {
+      _state.update { it.copy(isPlayingSequence = false, sequencePlaybackIndex = -1) }
+    }
+  }
+
+  private fun stopActivePlaybackNote(activeNote: ActivePlaybackNote) {
+    if (activePlaybackNote == activeNote) {
+      activePlaybackNote = null
+      midiEngine.stopNote(activeNote.note)
+    }
+  }
+
+  private fun stopActivePlaybackNote() {
+    activePlaybackNote?.let { activeNote ->
+      activePlaybackNote = null
+      midiEngine.stopNote(activeNote.note)
+    }
   }
 
   /** Appends generated notes until [lastIndex] exists, so the strip always shows what's ahead. */
@@ -716,7 +761,7 @@ class MelodiesPlayScreenViewModel(
 
   override fun onCleared() {
     pollJob?.cancel()
-    sequenceJob?.cancel()
+    cancelSequencePlayback(updateState = false)
     advanceJob?.cancel()
     contextJob?.cancel()
     setupMelodyIndicationJob?.cancel()
