@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -83,6 +84,8 @@ fun MelodiesPlayScreen(
     // The circle input is full-bleed (it must reach the screen edges to stay tappable there), so
     // the frame adds no horizontal padding; each child below applies its own where needed.
     horizontalPadding = 0.dp,
+    bottomPadding = MelodiesBottomPadding,
+    verticalSpacing = MelodiesVerticalSpacing,
     topBar = {
       ShuuenTopAppBar(
         title = state.title,
@@ -218,6 +221,16 @@ fun MelodiesPlayScreen(
  * so the circle can be full-bleed; padded children re-apply this to keep their usual margins.
  */
 private val ScreenHorizontalPadding = 20.dp
+private val MelodiesVerticalSpacing = 8.dp
+private val MelodiesBottomPadding = 8.dp
+private val MelodyBufferHeight = 56.dp
+private val MelodyCellWidth = 44.dp
+private val MelodyCellHeight = 48.dp
+private val BottomControlHeight = 52.dp
+private val PlayPauseButtonSize = 64.dp
+private val PlayPauseIconSize = 34.dp
+private val TransportIconSize = 32.dp
+private val TransportButtonGap = 28.dp
 
 @Composable
 private fun TrainingStatus(state: MelodiesPlayState, modifier: Modifier = Modifier) {
@@ -308,7 +321,7 @@ private fun MelodyBuffer(
     }
   }
   LazyRow(
-    modifier = modifier.fillMaxWidth().height(64.dp),
+    modifier = modifier.fillMaxWidth().height(MelodyBufferHeight),
     state = listState,
     horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
     verticalAlignment = Alignment.CenterVertically,
@@ -361,8 +374,8 @@ private fun MelodyCell(
     }
   Column(
     modifier =
-      Modifier.width(46.dp)
-        .height(56.dp)
+      Modifier.width(MelodyCellWidth)
+        .height(MelodyCellHeight)
         .clip(shape)
         .background(
           when {
@@ -373,9 +386,9 @@ private fun MelodyCell(
           }
         )
         .border(1.dp, borderColor, shape)
-        .padding(vertical = 6.dp),
+        .padding(vertical = 4.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.spacedBy(2.dp),
+    verticalArrangement = Arrangement.SpaceBetween,
   ) {
     Text(
       "$position",
@@ -383,15 +396,13 @@ private fun MelodyCell(
       style = MaterialTheme.typography.labelSmall,
       maxLines = 1,
     )
-    Spacer(Modifier.weight(1f))
     Text(
       text = label,
       color = textColor,
-      style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+      style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
       maxLines = 1,
       overflow = TextOverflow.Ellipsis,
     )
-    Spacer(Modifier.weight(1f))
     Box(
       modifier =
         Modifier
@@ -447,9 +458,9 @@ private fun TransportBar(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
   ) {
-    TransportIcon(Icons.Rounded.FastRewind, "Rewind", size = 32.dp, onClick = onRewind)
+    TransportIcon(Icons.Rounded.FastRewind, "Rewind", size = TransportIconSize, onClick = onRewind)
     PlayPauseButton(isPlaying = isPlaying, onClick = onTogglePlay)
-    TransportIcon(Icons.Rounded.FastForward, "Forward", size = 32.dp, onClick = onForward)
+    TransportIcon(Icons.Rounded.FastForward, "Forward", size = TransportIconSize, onClick = onForward)
   }
 }
 
@@ -460,13 +471,21 @@ private fun EndlessTransportBar(
   onRewind: () -> Unit,
   onTogglePlay: () -> Unit,
 ) {
-  Row(
-    modifier = Modifier.fillMaxWidth(),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
+  Box(
+    modifier = Modifier.fillMaxWidth().height(PlayPauseButtonSize),
+    contentAlignment = Alignment.Center,
   ) {
-    TransportIcon(Icons.Rounded.FastRewind, "Rewind", size = 32.dp, onClick = onRewind)
     PlayPauseButton(isPlaying = isPlaying, onClick = onTogglePlay)
+    TransportIcon(
+      icon = Icons.Rounded.FastRewind,
+      contentDescription = "Rewind",
+      size = TransportIconSize,
+      modifier =
+        Modifier
+          .align(Alignment.Center)
+          .offset(x = -(PlayPauseButtonSize / 2f + TransportButtonGap + TransportIconSize / 2f)),
+      onClick = onRewind,
+    )
   }
 }
 
@@ -482,7 +501,7 @@ private fun RewindBar(onRewind: () -> Unit, onRepeatMelody: () -> Unit) {
     horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     SoftControl(
-      modifier = Modifier.weight(1.8f).height(60.dp),
+      modifier = Modifier.weight(1.8f).height(BottomControlHeight),
       onClick = onRewind,
     ) {
       Icon(
@@ -501,7 +520,7 @@ private fun RewindBar(onRewind: () -> Unit, onRepeatMelody: () -> Unit) {
       )
     }
     SoftControl(
-      modifier = Modifier.width(80.dp).height(60.dp),
+      modifier = Modifier.width(80.dp).height(BottomControlHeight),
       onClick = onRepeatMelody,
     ) {
       Icon(
@@ -518,7 +537,7 @@ private fun RewindBar(onRewind: () -> Unit, onRepeatMelody: () -> Unit) {
 private fun PlayPauseButton(isPlaying: Boolean, onClick: () -> Unit) {
   Box(
     modifier =
-      Modifier.size(68.dp)
+      Modifier.size(PlayPauseButtonSize)
         .clip(CircleShape)
         .background(ShuuenUi.Inverse)
         .clickable(onClick = onClick),
@@ -528,7 +547,7 @@ private fun PlayPauseButton(isPlaying: Boolean, onClick: () -> Unit) {
       imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
       contentDescription = if (isPlaying) "Pause" else "Play",
       tint = ShuuenUi.OnInverse,
-      modifier = Modifier.size(36.dp),
+      modifier = Modifier.size(PlayPauseIconSize),
     )
   }
 }
@@ -538,13 +557,14 @@ private fun TransportIcon(
   icon: ImageVector,
   contentDescription: String,
   size: Dp,
+  modifier: Modifier = Modifier,
   onClick: () -> Unit,
 ) {
   Icon(
     imageVector = icon,
     contentDescription = contentDescription,
     tint = ShuuenUi.Text,
-    modifier = Modifier.size(size).clip(CircleShape).clickable(onClick = onClick),
+    modifier = modifier.size(size).clip(CircleShape).clickable(onClick = onClick),
   )
 }
 
