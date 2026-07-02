@@ -21,9 +21,24 @@ enum class ChordAnswerOrder(val label: String) {
 }
 
 /**
- * How many notes each question's chord has, chosen uniformly per question. Notes always have
- * distinct pitch classes (the inputs answer by pitch class, so a doubled octave would be
- * unanswerable), which caps the effective size at the scale's active pitch count.
+ * How many extra same-pitch-class copies a chord of [size] notes may contain when answered in
+ * [ChordAnswerOrder.Any] mode: a pair stays all-distinct, 3–4 notes allow one duplicate (a class
+ * at most twice), 5–7 allow two extras (at most three of a kind), 8–10 allow three (at most four).
+ * Ordered answering is exempt — each octave copy is named in turn, so duplicates stay unrestricted.
+ */
+fun chordRepeatBudget(size: Int): Int =
+  when {
+    size <= 2 -> 0
+    size <= 4 -> 1
+    size <= 7 -> 2
+    else -> 3
+  }
+
+/**
+ * How many notes each question's chord has, chosen uniformly per question among the sizes the
+ * scale and range can actually produce. A chord may repeat a pitch class across octaves: freely
+ * with ordered answering, within [chordRepeatBudget] with [ChordAnswerOrder.Any] (where one press
+ * resolves every copy of the class at once).
  */
 @Serializable
 data class ChordSizeRange(val min: Int, val max: Int) {

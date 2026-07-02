@@ -14,11 +14,16 @@ import ldv.shuuen.core.music.generator.ChordNotesGenerator
 import ldv.shuuen.core.music.generator.NaiveRandomChordGenerator
 import ldv.shuuen.features.training.chords.domain.ChordAnswerOrder
 import ldv.shuuen.features.training.chords.domain.ChordsLevel
+import ldv.shuuen.features.training.chords.domain.chordRepeatBudget
 import ldv.shuuen.features.training.domain.LevelConfig
 
 data class IncorrectChordsAnswer(val questionNumber: Int, val correctPitches: List<Pitch>)
 
-/** How a single guess landed. [Ignored] is a re-press of an already-found pitch — no feedback. */
+/**
+ * How a single guess landed. [Ignored] is an [ChordAnswerOrder.Any] re-press of an already-found
+ * pitch class — no feedback. Ordered modes never ignore: a repeated class may genuinely be the
+ * next expected note, so every press is judged against it.
+ */
 enum class ChordGuessResult {
   Correct,
   Incorrect,
@@ -31,8 +36,8 @@ data class ChordsQuizState(
   val questionsNumber: Int?,
   /** The chord being asked, lowest note first. */
   val currentChord: List<Note>,
-  /** Chord pitches already answered for the current question. */
-  val foundPitches: Set<Pitch>,
+  /** Indexes into [currentChord] already answered for the current question. */
+  val answeredNotes: Set<Int>,
   val correctAnswers: Int,
   val incorrectAnswers: List<IncorrectChordsAnswer>,
   /** Sharp/flat orientation chosen for [root]; re-decided whenever the root changes. */
@@ -79,7 +84,7 @@ class ChordsLevelQuizzer(
         root,
         currentQuestionNumber = 1,
         currentChord = generator.next(),
-        foundPitches = setOf(),
+        answeredNotes = setOf(),
         correctAnswers = 0,
         incorrectAnswers = listOf(),
         questionsNumber = level.questionsNumber,
@@ -93,31 +98,36 @@ class ChordsLevelQuizzer(
   private fun accidentalTypeFor(root: Pitch): ScaleAccidentalType =
     decideAccidentalType(root.ordinal, scaleType, allowSevenAccidentalKeys, random)
 
-  /**
-   * The chord pitches a guess is currently allowed to hit. With [ChordAnswerOrder.Any] every
-   * unanswered pitch is fair game; the ordered modes only accept the next note from their end.
-   * Ordered modes fill strictly from one end, so the answered notes are always the first (or last)
-   * [ChordsQuizState.foundPitches].size chord notes and the next expected one follows from the count.
-   */
-  private fun acceptedPitches(state: ChordsQuizState): Set<Pitch> {
-    val remainingCount = state.currentChord.size - state.foundPitches.size
-    if (remainingCount <= 0) return emptySet()
-    return when (level.answerOrder) {
-      ChordAnswerOrder.Any ->
-        state.currentChord.map { it.pitch }.toSet() - state.foundPitches
-
-      ChordAnswerOrder.FromBottom ->
-        setOf(state.currentChord[state.foundPitches.size].pitch)
-
-      ChordAnswerOrder.FromTop ->
-        setOf(state.currentChord[remainingCount - 1].pitch)
-    }
-  }
-
   fun check(pitch: Pitch): ChordGuessResult {
     val current = quizState.value
-    if (pitch in current.foundPitches) return ChordGuessResult.Ignored
-    if (pitch !in acceptedPitches(current)) {
+    val chord = current.currentChord
+
+    // Which chord notes this press answers. [ChordAnswerOrder.Any] resolves every octave copy of
+    // the pitch class at once (copies are all-or-nothing, so checking one is checking all); the
+    // ordered modes accept only the next note from their end — answered notes fill contiguously
+    // from that end, so the expected index follows from the answered count.
+    val answeredByPress: List<Int> =
+      when (level.answerOrder) {
+        ChordAnswerOrder.Any -> {
+          val copies = chord.indices.filter { chord[it].pitch == pitch }
+          if (copies.isNotEmpty() && copies.first() in current.answeredNotes) {
+            return ChordGuessResult.Ignored
+          }
+          copies
+        }
+
+        ChordAnswerOrder.FromBottom -> {
+          val next = current.answeredNotes.size
+          if (next < chord.size && chord[next].pitch == pitch) listOf(next) else emptyList()
+        }
+
+        ChordAnswerOrder.FromTop -> {
+          val next = chord.size - 1 - current.answeredNotes.size
+          if (next >= 0 && chord[next].pitch == pitch) listOf(next) else emptyList()
+        }
+      }
+
+    if (answeredByPress.isEmpty()) {
       _quizState.update {
         val isDupe =
           it.incorrectAnswers.any { answer -> answer.questionNumber == it.currentQuestionNumber }
@@ -132,9 +142,9 @@ class ChordsLevelQuizzer(
       return ChordGuessResult.Incorrect
     }
 
-    val found = current.foundPitches + pitch
-    if (found.size < current.currentChord.size) {
-      _quizState.update { it.copy(foundPitches = found) }
+    val answered = current.answeredNotes + answeredByPress
+    if (answered.size < chord.size) {
+      _quizState.update { it.copy(answeredNotes = answered) }
       return ChordGuessResult.Correct
     }
 
@@ -154,7 +164,7 @@ class ChordsLevelQuizzer(
         correctAnswers = quizState.correctAnswers + count,
         currentQuestionNumber = nextQuestionNumber,
         currentChord = generator.next(),
-        foundPitches = setOf(),
+        answeredNotes = setOf(),
         accidentalType = nextAccidentalType,
       )
     }
@@ -193,6 +203,15 @@ class ChordsLevelQuizzer(
       allowedNotes = allowedNotes,
       minSize = level.chordSize.min,
       maxSize = level.chordSize.max,
+      maxRepeatsForSize =
+        when (level.answerOrder) {
+          // One press resolves every copy of a class at once, so Any caps how many octave
+          // duplicates a chord may hide.
+          ChordAnswerOrder.Any -> ::chordRepeatBudget
+          // Ordered answering names each octave copy in turn, so duplicates stay unrestricted —
+          // a small scale can still fill a large chord across octaves.
+          ChordAnswerOrder.FromBottom, ChordAnswerOrder.FromTop -> null
+        },
       random = random,
     )
   }

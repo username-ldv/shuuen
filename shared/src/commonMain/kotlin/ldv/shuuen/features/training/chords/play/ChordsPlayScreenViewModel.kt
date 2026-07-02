@@ -211,13 +211,16 @@ class ChordsPlayScreenViewModel(
   fun userGuessed(pitch: Pitch): ChordGuessResult? {
     val quizzer = quizzer ?: return null
 
+    // The question's start mark must be captured before check() advances the question: the
+    // quiz-state collector can resume inline on the main dispatcher and re-arm the mark for the
+    // next question before this function reads it again (which made every answer time ~0).
     val questionBefore = quizzer.quizState.value.currentQuestionNumber
+    val startMark = questionStartMark
     val result = quizzer.check(pitch)
     // The guess that completes the chord advances the question; that's when the answer time lands.
     // It runs from the first time the question's chord sounded, so wrong tries and repeats count.
     if (quizzer.quizState.value.currentQuestionNumber != questionBefore) {
-      questionStartMark?.let { answerTimesMillis += it.elapsedNow().inWholeMilliseconds }
-      questionStartMark = null
+      startMark?.let { answerTimesMillis += it.elapsedNow().inWholeMilliseconds }
     }
     return result
   }

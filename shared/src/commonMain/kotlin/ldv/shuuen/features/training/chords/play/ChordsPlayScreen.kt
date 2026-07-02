@@ -1,8 +1,8 @@
 package ldv.shuuen.features.training.chords.play
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,7 +12,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.MusicNote
@@ -29,12 +30,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.core.settings.InputComponent
+import ldv.shuuen.core.settings.InputMode
+import ldv.shuuen.core.settings.MusicLabelSettings
 import ldv.shuuen.core.ui.components.LinearTrainingProgress
 import ldv.shuuen.core.ui.components.ShuuenTopAppBar
 import ldv.shuuen.core.ui.components.ShuuenTopAppBarType
@@ -46,9 +50,11 @@ import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboard
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
 import ldv.shuuen.core.ui.components.music.inputs.rememberFifthsCircleState
 import ldv.shuuen.core.ui.components.music.inputs.rememberPianoKeyboardState
+import ldv.shuuen.features.training.chords.domain.ChordAnswerOrder
 import ldv.shuuen.features.training.common.components.CircleCenterIconButton
 import ldv.shuuen.features.training.common.components.circleItemNames
 import ldv.shuuen.features.training.common.components.circleTopItem
+import ldv.shuuen.features.training.common.components.inputLabelForPitch
 import ldv.shuuen.features.training.common.components.pitchToItemIndex
 
 @Composable
@@ -103,10 +109,12 @@ fun ChordsPlayScreen(
           it.questionsNumber,
           modifier = Modifier.padding(horizontal = ScreenHorizontalPadding),
       )
-      ChordNotesProgress(
-          total = it.currentChord.size,
-          found = it.foundPitches.size,
-          modifier = Modifier.padding(horizontal = ScreenHorizontalPadding, vertical = 4.dp),
+      ChordBuffer(
+          quizState = it,
+          answerOrder = (screenState.levelData as? ResponseState.Success)?.result?.answerOrder,
+          inputMode = inputMethod.mode,
+          musicLabels = musicLabels,
+          modifier = Modifier.padding(horizontal = ScreenHorizontalPadding),
       )
     }
 
@@ -220,30 +228,97 @@ fun ChordsPlayScreen(
  */
 private val ScreenHorizontalPadding = 20.dp
 
-/** One dot per chord note, filling up as the notes are found. */
+private val ChordBufferHeight = 56.dp
+private val ChordCellWidth = 44.dp
+private val ChordCellHeight = 48.dp
+
+/**
+ * The chord as a row of note cells (lowest note first), styled like the melodies buffer. An
+ * answered cell shows its note's label in the active input vocabulary; in an ordered level the
+ * next expected cell is highlighted, while "any" order highlights nothing. The lazy row keeps
+ * wide chords scrollable on narrow screens; small ones sit centered within it.
+ */
 @Composable
-private fun ChordNotesProgress(
-    total: Int,
-    found: Int,
+private fun ChordBuffer(
+    quizState: ChordsQuizState,
+    answerOrder: ChordAnswerOrder?,
+    inputMode: InputMode,
+    musicLabels: MusicLabelSettings,
     modifier: Modifier = Modifier,
 ) {
-  Row(
-      modifier = modifier.fillMaxWidth(),
+  val chord = quizState.currentChord
+  val targetIndex =
+      when (answerOrder) {
+        ChordAnswerOrder.FromBottom -> quizState.answeredNotes.size
+        ChordAnswerOrder.FromTop -> chord.size - 1 - quizState.answeredNotes.size
+        else -> -1
+      }
+  LazyRow(
+      modifier = modifier.fillMaxWidth().height(ChordBufferHeight),
+      horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
   ) {
-    repeat(total) { i ->
-      Box(
-          modifier =
-              Modifier.size(10.dp)
-                  .clip(CircleShape)
-                  .background(if (i < found) ShuuenUi.Correct else Color.White.copy(alpha = 0.12f)),
+    itemsIndexed(chord) { index, note ->
+      val answered = index in quizState.answeredNotes
+      val label =
+          if (answered) {
+            inputLabelForPitch(
+                pitch = note.pitch,
+                mode = inputMode,
+                root = quizState.root,
+                accidentalType = quizState.accidentalType,
+                musicLabels = musicLabels,
+            )
+          } else "-"
+      ChordCell(
+          position = index + 1,
+          label = label,
+          answered = answered,
+          target = index == targetIndex,
       )
     }
+  }
+}
+
+@Composable
+private fun ChordCell(
+    position: Int,
+    label: String,
+    answered: Boolean,
+    target: Boolean,
+) {
+  val shape = ShuuenUi.ControlShape
+  val borderColor = if (target) ShuuenUi.HairlineStrong else ShuuenUi.Hairline
+  val textColor = if (answered || target) ShuuenUi.Text else ShuuenUi.Muted
+  Column(
+      modifier =
+          Modifier.width(ChordCellWidth)
+              .height(ChordCellHeight)
+              .clip(shape)
+              .background(
+                  when {
+                    target -> Color.White.copy(alpha = 0.08f)
+                    answered -> Color.White.copy(alpha = 0.04f)
+                    else -> Color.Transparent
+                  }
+              )
+              .border(1.dp, borderColor, shape)
+              .padding(vertical = 4.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+  ) {
     Text(
-        text = "$found/$total",
+        "$position",
         color = ShuuenUi.Dim,
-        style = MaterialTheme.typography.labelMedium,
+        style = MaterialTheme.typography.labelSmall,
+        maxLines = 1,
+    )
+    Text(
+        text = label,
+        color = textColor,
+        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
     )
   }
 }
