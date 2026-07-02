@@ -62,6 +62,7 @@ import ldv.shuuen.core.ui.components.SoftControl
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.SurfaceCard
 import ldv.shuuen.core.music.DegreeContext
+import ldv.shuuen.core.util.toRoundedString
 import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.common.components.ContextDetails
 import ldv.shuuen.features.training.common.components.DetailLabel
@@ -73,6 +74,7 @@ import ldv.shuuen.features.training.domain.ScaleConfig
 import ldv.shuuen.features.training.level_end.domain.AccuracyBucket
 import ldv.shuuen.features.training.level_end.domain.TrainingSession
 import ldv.shuuen.features.training.level_end.domain.accuracyBuckets
+import kotlin.math.round
 
 @Composable
 fun LevelCompleteScreen(
@@ -277,7 +279,7 @@ private fun ScoreRing(accuracy: Float) {
     }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
       Text(
-        text = "${(accuracy * 100).roundToInt()}%",
+        text = "${(accuracy * 100).toRoundedString(1)}%",
         color = ShuuenUi.Text,
         style = MaterialTheme.typography.displayLarge.copy(
           fontSize = 32.sp, fontWeight = FontWeight.Bold
