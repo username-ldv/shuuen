@@ -1,4 +1,4 @@
-package ldv.shuuen.features.training.melodies.setup
+package ldv.shuuen.features.training.common.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,7 +14,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -26,22 +25,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ldv.shuuen.core.music.generator.MelodyStyle
-import ldv.shuuen.core.music.generator.MelodyStyles
+import ldv.shuuen.core.music.generator.StylePreset
 import ldv.shuuen.core.music.generator.StyleTier
 import ldv.shuuen.core.ui.components.ShuuenUi
 
 /**
- * Rhythm style picker: the predefined [MelodyStyles.presets] grouped by tier. Tapping a style
- * selects it; a custom style editor will join these presets later.
+ * Generation-style picker shared by the training setups: [presets] grouped by tier, tapping one
+ * selects it. Works for any [StylePreset] flavor (melody rhythm styles, chord styles, …); custom
+ * style editors will join the predefined presets later.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RhythmStyleSheet(
-  selected: MelodyStyle,
-  onSelect: (MelodyStyle) -> Unit,
+fun <T : StylePreset> StylePickerSheet(
+  title: String,
+  subtitle: String,
+  icon: ImageVector,
+  presets: List<T>,
+  selectedId: String,
+  onSelect: (T) -> Unit,
   onDismiss: () -> Unit,
 ) {
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -68,14 +72,9 @@ fun RhythmStyleSheet(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
       ) {
-        Icon(
-          Icons.Rounded.MusicNote,
-          contentDescription = null,
-          tint = ShuuenUi.Text,
-          modifier = Modifier.size(22.dp),
-        )
+        Icon(icon, contentDescription = null, tint = ShuuenUi.Text, modifier = Modifier.size(22.dp))
         Text(
-          text = "RHYTHM",
+          text = title.uppercase(),
           color = ShuuenUi.Text,
           style = MaterialTheme.typography.titleMedium.copy(
             fontWeight = FontWeight.SemiBold,
@@ -84,15 +83,15 @@ fun RhythmStyleSheet(
         )
       }
       Text(
-        text = "How the random notes flow: each style mixes rhythm figures with a weighted note picker, from plain quarters to livelier, more melodic lines.",
+        text = subtitle,
         color = ShuuenUi.Dim,
         style = MaterialTheme.typography.bodyMedium,
         modifier = Modifier.padding(bottom = 4.dp),
       )
 
       StyleTier.entries.forEach { tier ->
-        val styles = MelodyStyles.presets.filter { it.tier == tier }
-        if (styles.isEmpty()) return@forEach
+        val tierPresets = presets.filter { it.tier == tier }
+        if (tierPresets.isEmpty()) return@forEach
         Text(
           text = tier.label.uppercase(),
           color = ShuuenUi.Muted,
@@ -102,11 +101,11 @@ fun RhythmStyleSheet(
           ),
           modifier = Modifier.padding(top = 8.dp),
         )
-        styles.forEach { style ->
+        tierPresets.forEach { preset ->
           StyleRow(
-            style = style,
-            selected = style.id == selected.id,
-            onClick = { onSelect(style) },
+            preset = preset,
+            selected = preset.id == selectedId,
+            onClick = { onSelect(preset) },
           )
         }
       }
@@ -116,7 +115,7 @@ fun RhythmStyleSheet(
 
 @Composable
 private fun StyleRow(
-  style: MelodyStyle,
+  preset: StylePreset,
   selected: Boolean,
   onClick: () -> Unit,
 ) {
@@ -135,14 +134,14 @@ private fun StyleRow(
       verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
       Text(
-        text = style.name,
+        text = preset.name,
         color = if (selected) ShuuenUi.OnInverse else ShuuenUi.Text,
         style = MaterialTheme.typography.titleSmall.copy(
           fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
         ),
       )
       Text(
-        text = style.description,
+        text = preset.description,
         color = if (selected) ShuuenUi.OnInverse.copy(alpha = 0.65f) else ShuuenUi.Muted,
         style = MaterialTheme.typography.bodySmall,
       )

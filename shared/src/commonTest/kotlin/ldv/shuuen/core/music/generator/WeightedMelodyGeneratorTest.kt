@@ -118,4 +118,86 @@ class WeightedMelodyGeneratorTest {
 
     assertFailsWith<NoSuchElementException> { generator.nextFigure() }
   }
+
+  @Test
+  fun chordToneBoostPullsTheMelodyOntoTheActiveChord() {
+    val boosted =
+      MelodyStyle(
+        id = "test-boost",
+        name = "Boost",
+        description = "",
+        tier = StyleTier.Beginner,
+        figures = listOf(WeightedFigure(RhythmFigure(listOf(NoteValue.Quarter)), 1.0)),
+        noteWeights = NoteWeights(chordToneBoost = 8.0),
+      )
+    val generator = generator(boosted)
+    generator.setActiveChord(setOf(Pitch.C, Pitch.E, Pitch.G))
+
+    val generated = notes(generator, atLeast = 600)
+
+    val chordShare =
+      generated.count { it.note.pitch in setOf(Pitch.C, Pitch.E, Pitch.G) } /
+        generated.size.toDouble()
+    // Uniform picking over C major would land on C/E/G about 43% of the time (4 of 8 ladder
+    // notes, C twice); an 8x boost should push it far above that.
+    assertTrue(chordShare > 0.6, "Expected chord tones to dominate, got $chordShare.")
+  }
+
+  @Test
+  fun chordLadderContoursWalkOnlyChordTones() {
+    val arpeggios =
+      MelodyStyle(
+        id = "test-arpeggio",
+        name = "Arpeggio",
+        description = "",
+        tier = StyleTier.Beginner,
+        figures =
+          listOf(
+            WeightedFigure(
+              RhythmFigure(
+                values = List(3) { NoteValue.Quarter },
+                contour = listOf(1, 1),
+                ladder = FigureLadder.Chord,
+              ),
+              weight = 1.0,
+            )
+          ),
+        noteWeights = NoteWeights.Uniform,
+      )
+    val generator = generator(arpeggios)
+    generator.setActiveChord(setOf(Pitch.C, Pitch.E, Pitch.G))
+
+    val generated = notes(generator, atLeast = 90)
+
+    // Each figure's first note is a free pick; the two contour notes must be chord tones.
+    generated.chunked(3).forEach { figure ->
+      figure.drop(1).forEach { timed ->
+        assertTrue(
+          timed.note.pitch in setOf(Pitch.C, Pitch.E, Pitch.G),
+          "Chord-ladder contour left the chord: ${timed.note}",
+        )
+      }
+    }
+  }
+
+  @Test
+  fun droneChordIsIgnored() {
+    val boosted =
+      MelodyStyle(
+        id = "test-drone",
+        name = "Drone",
+        description = "",
+        tier = StyleTier.Beginner,
+        figures = listOf(WeightedFigure(RhythmFigure(listOf(NoteValue.Quarter)), 1.0)),
+        noteWeights = NoteWeights(chordToneBoost = 50.0),
+      )
+    val generator = generator(boosted)
+    // A single-pitch "chord" (a drone) must not hijack the whole melody.
+    generator.setActiveChord(setOf(Pitch.C))
+
+    val generated = notes(generator, atLeast = 300)
+
+    val cShare = generated.count { it.note.pitch == Pitch.C } / generated.size.toDouble()
+    assertTrue(cShare < 0.5, "A drone should not dominate the melody, C share was $cShare.")
+  }
 }

@@ -26,6 +26,7 @@ import ldv.shuuen.core.music.RelativeMelody
 import ldv.shuuen.core.music.SetupMelody
 import ldv.shuuen.core.music.SetupMelodyRepeat
 import ldv.shuuen.core.music.Sustain
+import ldv.shuuen.core.music.toChord
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DegreeContextPlayerTest {
@@ -61,6 +62,36 @@ class DegreeContextPlayerTest {
       assertEquals(listOf(0L, 100L, 0L, 100L, 0L, 100L, 0L, 100L), transitionTimes)
       assertEquals(1, engine.playedNotes.size)
       assertEquals(5, engine.playedChords.size)
+    } finally {
+      startJob.cancel()
+    }
+  }
+
+  @Test
+  fun exposesTheSoundingNodeChordAndFollowsNodeChanges() = runTest {
+    val engine = FakeMidiEngine()
+    val context = rolloverContext()
+    val player =
+      DegreeContextPlayer(
+        midiEngine = engine,
+        context = context,
+        startingRoot = Pitch.C,
+        endlessPreMelody = 200.milliseconds,
+        endlessAfterMelody = 300.milliseconds,
+        beforeNotes = 100.milliseconds,
+      )
+
+    val startJob = launch { player.start() }
+    try {
+      advanceUntilIdle()
+      assertEquals(context.nodes[0].toChord(Pitch.C), player.currentChord.value)
+
+      // Each node lasts two questions: after two advances the frame is the second node's chord.
+      repeat(2) {
+        launch { player.questionAdvanced() }
+        advanceUntilIdle()
+      }
+      assertEquals(context.nodes[1].toChord(Pitch.C), player.currentChord.value)
     } finally {
       startJob.cancel()
     }

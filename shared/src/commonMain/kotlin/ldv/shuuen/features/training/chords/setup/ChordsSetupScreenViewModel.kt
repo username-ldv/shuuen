@@ -13,6 +13,7 @@ import ldv.shuuen.core.music.NoteRange
 import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.Scale
 import ldv.shuuen.core.music.ScaleType
+import ldv.shuuen.core.music.generator.ChordStyle
 import ldv.shuuen.core.music.toNoteRange
 import ldv.shuuen.features.training.chords.domain.ChordAnswerOrder
 import ldv.shuuen.features.training.chords.domain.ChordSizeRange
@@ -84,6 +85,17 @@ class ChordsSetupScreenViewModel(val levelRepository: ChordsLocalLevelRepository
     _chordsLevelState.update { it.copy(answerOrder = v) }
   }
 
+  fun changeChordStyle(v: ChordStyle) {
+    _chordsLevelState.update {
+      val levelConfig =
+          when (val config = it.levelConfig) {
+            is LevelConfig.Chords.Absolute -> config.copy(chordStyle = v)
+            is LevelConfig.Chords.Relative -> config.copy(chordStyle = v)
+          }
+      it.copy(levelConfig = levelConfig)
+    }
+  }
+
   fun changeScale(scaleConfig: ScaleConfig) {
     _chordsLevelState.update {
       val levelConfig =
@@ -91,12 +103,14 @@ class ChordsSetupScreenViewModel(val levelRepository: ChordsLocalLevelRepository
             is ScaleConfig.AbsoluteScaleConfig ->
                 LevelConfig.Chords.Absolute(
                     scales = listOf(scaleConfig),
+                    chordStyle = it.levelConfig.chordStyle,
                 )
 
             is ScaleConfig.RelativeScaleConfig ->
                 LevelConfig.Chords.Relative(
                     scaleConfig = scaleConfig,
                     rotateEveryQuestions = it.levelConfig.rotateEveryQuestions,
+                    chordStyle = it.levelConfig.chordStyle,
                 )
           }
       it.copy(levelConfig = levelConfig)

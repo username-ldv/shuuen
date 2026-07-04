@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.HelpOutline
+import androidx.compose.material.icons.rounded.Casino
 import androidx.compose.material.icons.rounded.Create
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
@@ -41,6 +42,7 @@ import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.SurfaceCard
 import ldv.shuuen.features.training.chords.domain.ChordsLevel
+import ldv.shuuen.features.training.common.components.ChordStyleSummary
 import ldv.shuuen.features.training.common.components.ContextDetails
 import ldv.shuuen.features.training.common.components.DetailLabel
 import ldv.shuuen.features.training.common.components.DetailRow
@@ -166,6 +168,7 @@ private fun LevelParameterRow(
           "${level.chordSize} notes" to Icons.Rounded.GraphicEq,
           (level.questionsNumber?.let { "$it questions" } ?: "Unlimited") to
               Icons.AutoMirrored.Rounded.HelpOutline,
+          level.levelConfig.chordStyle.name to Icons.Rounded.Casino,
           level.range.toPair().toList().joinToString(" - ") to Icons.Rounded.Keyboard,
       )
 
@@ -187,6 +190,10 @@ private fun LevelDetails(level: ChordsLevel) {
 
     DetailRow("PLAYBACK", if (level.sustainNotes) "Sustained" else "Timed")
     DetailRow("ANSWER ORDER", level.answerOrder.label)
+
+    val style = level.levelConfig.chordStyle
+    DetailRow("CHORD SHAPES", "${style.name} · ${style.tier.label}")
+    ChordStyleSummary(style)
 
     val context = level.context
     val hasContext = context != null

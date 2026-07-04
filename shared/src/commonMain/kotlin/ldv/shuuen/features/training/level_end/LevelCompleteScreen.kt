@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.rounded.AllInclusive
 import androidx.compose.material.icons.rounded.Bookmark
+import androidx.compose.material.icons.rounded.Casino
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.FolderOpen
@@ -66,9 +67,11 @@ import ldv.shuuen.core.ui.components.SurfaceCard
 import ldv.shuuen.core.music.DegreeContext
 import ldv.shuuen.core.util.toRoundedString
 import ldv.shuuen.features.training.common.TrainingFlow
+import ldv.shuuen.features.training.common.components.ChordStyleSummary
 import ldv.shuuen.features.training.common.components.ContextDetails
 import ldv.shuuen.features.training.common.components.DetailLabel
 import ldv.shuuen.features.training.common.components.DetailRow
+import ldv.shuuen.features.training.common.components.MelodyStyleSummary
 import ldv.shuuen.features.training.common.components.sourceLabel
 import ldv.shuuen.features.training.common.toBoxedItems
 import ldv.shuuen.features.training.domain.LevelConfig
@@ -529,6 +532,7 @@ private fun LevelParameters(level: CompletedLevel) {
             BoxedItemRow(config.scaleConfig.degreeStates.toBoxedItems(), itemSize = 32.dp)
         }
     }
+    LevelStyle(level)
     LevelContext(
       when (level) {
         is CompletedLevel.Singles -> level.level.context
@@ -536,6 +540,26 @@ private fun LevelParameters(level: CompletedLevel) {
         is CompletedLevel.Chords -> level.level.context
       }
     )
+  }
+}
+
+/** The generation style the level played with, mirroring the level cards' expanded details. */
+@Composable
+private fun LevelStyle(level: CompletedLevel) {
+  when (level) {
+    is CompletedLevel.Melodies -> {
+      val config = level.level.config as? LevelConfig.Melodies.Random ?: return
+      DetailRow("RHYTHM", "${config.melodyStyle.name} · ${config.melodyStyle.tier.label}")
+      MelodyStyleSummary(config.melodyStyle)
+    }
+
+    is CompletedLevel.Chords -> {
+      val style = level.level.levelConfig.chordStyle
+      DetailRow("CHORD SHAPES", "${style.name} · ${style.tier.label}")
+      ChordStyleSummary(style)
+    }
+
+    is CompletedLevel.Singles -> Unit
   }
 }
 
@@ -585,6 +609,7 @@ private fun parameterChips(level: CompletedLevel): List<Pair<ImageVector, String
               add(Icons.Rounded.MusicNote to "$notesPerSequence-note sequences")
             }
             add(Icons.Rounded.Speed to "${config.tempo} BPM")
+            add(Icons.Rounded.Casino to config.melodyStyle.name)
             add(Icons.Rounded.Keyboard to config.range.toPair().toList().joinToString(" - "))
             add(
               Icons.Rounded.Replay to
@@ -609,6 +634,7 @@ private fun parameterChips(level: CompletedLevel): List<Pair<ImageVector, String
       val l = level.level
       buildList {
         add(Icons.Rounded.GraphicEq to "${l.chordSize} notes")
+        add(Icons.Rounded.Casino to l.levelConfig.chordStyle.name)
         add(
           Icons.AutoMirrored.Rounded.HelpOutline to
             (l.questionsNumber?.let { "$it questions" } ?: "Unlimited")

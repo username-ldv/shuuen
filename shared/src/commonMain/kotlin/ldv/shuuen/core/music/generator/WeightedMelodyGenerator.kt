@@ -16,6 +16,10 @@ data class TimedNote(val note: Note, val value: NoteValue)
  * (melodic interval x degree weights against the previous note), contour positions by walking
  * the allowed notes stepwise. The generator remembers the last note it produced, so consecutive
  * figures connect into one line.
+ *
+ * A context-aware style additionally reacts to the chord set via [setActiveChord]: chord tones
+ * get the style's [NoteWeights.chordToneBoost] in the picker, and [FigureLadder.Chord] contours
+ * walk only the chord's tones (arpeggios).
  */
 class WeightedMelodyGenerator(
   private val style: MelodyStyle,
@@ -24,7 +28,7 @@ class WeightedMelodyGenerator(
   allowedPitches: List<Pitch>,
   private val random: Random = Random.Default,
 ) {
-  /** Every allowed note in the range, low to high; contours step along this ladder. */
+  /** Every allowed note in the range, low to high; scale contours step along this ladder. */
   private val ladder: List<Note> =
     (range.from..range.to).filter { note -> allowedPitches.any { it == note.pitch } }
 
@@ -32,14 +36,37 @@ class WeightedMelodyGenerator(
 
   private var previous: Note? = null
 
+  /** Pitch classes of the sounding context chord, when it can actually steer the melody. */
+  private var chordPitches: Set<Pitch>? = null
+
+  /** The ladder's notes restricted to [chordPitches]; empty when no chord is active. */
+  private var chordLadder: List<Note> = emptyList()
+
+  /**
+   * Sets (or clears, with null) the context chord the melody should lean toward. A chord of
+   * fewer than two distinct pitch classes — a bare drone — is ignored: the base degree weights
+   * already handle tonic gravity.
+   */
+  fun setActiveChord(pitches: Set<Pitch>?) {
+    val effective = pitches?.takeIf { it.size >= 2 }
+    chordPitches = effective
+    chordLadder =
+      if (effective == null) emptyList() else ladder.filter { it.pitch in effective }
+  }
+
   /** The next figure's notes. Throws [NoSuchElementException] when no notes are allowed at all. */
   fun nextFigure(): List<TimedNote> {
     val figure = pickFigure()
+    val contourLadder =
+      when {
+        figure.ladder == FigureLadder.Chord && chordLadder.size >= 2 -> chordLadder
+        else -> ladder
+      }
     return figure.values.mapIndexed { i, value ->
       val note =
         when (val step = if (i == 0) null else figure.contour.getOrNull(i - 1)) {
           null -> pickWeighted()
-          else -> stepAlongLadder(previous ?: pickWeighted(), step)
+          else -> stepAlong(contourLadder, previous ?: pickWeighted(), step)
         }
       previous = note
       TimedNote(note, value)
@@ -57,11 +84,17 @@ class WeightedMelodyGenerator(
 
   private fun pickWeighted(): Note {
     if (ladder.isEmpty()) throw NoSuchElementException("No allowed notes to generate from.")
-    val prev = previous ?: return pickBy { style.noteWeights.degreeWeight(it.degree(root)) }
+    val prev = previous ?: return pickBy { baseWeight(it) }
     return pickBy { candidate ->
       style.noteWeights.intervalWeight(abs(candidate.midiIndex - prev.midiIndex)) *
-        style.noteWeights.degreeWeight(candidate.degree(root))
+        baseWeight(candidate)
     }
+  }
+
+  private fun baseWeight(candidate: Note): Double {
+    val chordFactor =
+      if (chordPitches?.contains(candidate.pitch) == true) style.noteWeights.chordToneBoost else 1.0
+    return style.noteWeights.degreeWeight(candidate.degree(root)) * chordFactor
   }
 
   private fun pickBy(weightOf: (Note) -> Double): Note {
@@ -76,16 +109,21 @@ class WeightedMelodyGenerator(
     return ladder.last()
   }
 
-  /** Moves [step] ladder positions from [from], reflecting off the range edges to stay inside. */
-  private fun stepAlongLadder(from: Note, step: Int): Note {
-    val index = ladder.indexOf(from).coerceAtLeast(0)
+  /**
+   * Moves [step] positions along [walkLadder] from [from], reflecting off the edges to stay
+   * inside. [from] may not be a member (e.g. a passing tone before an arpeggio figure); the
+   * walk then starts from the nearest position at or below it.
+   */
+  private fun stepAlong(walkLadder: List<Note>, from: Note, step: Int): Note {
+    val exact = walkLadder.indexOfLast { it.midiIndex <= from.midiIndex }
+    val index = exact.coerceAtLeast(0)
     val target = index + step
     val reflected =
       when {
         target < 0 -> -target
-        target > ladder.lastIndex -> 2 * ladder.lastIndex - target
+        target > walkLadder.lastIndex -> 2 * walkLadder.lastIndex - target
         else -> target
       }
-    return ladder[reflected.coerceIn(0, ladder.lastIndex)]
+    return walkLadder[reflected.coerceIn(0, walkLadder.lastIndex)]
   }
 }

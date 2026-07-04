@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.rounded.AllInclusive
+import androidx.compose.material.icons.rounded.Casino
 import androidx.compose.material.icons.rounded.Create
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
@@ -47,6 +48,7 @@ import ldv.shuuen.features.training.common.components.ContextDetails
 import ldv.shuuen.features.training.common.components.DetailLabel
 import ldv.shuuen.features.training.common.components.DetailRow
 import ldv.shuuen.features.training.common.components.LevelParametersFlow
+import ldv.shuuen.features.training.common.components.MelodyStyleSummary
 import ldv.shuuen.features.training.common.components.sourceLabel
 import ldv.shuuen.features.training.common.toBoxedItems
 import ldv.shuuen.features.training.domain.LevelConfig
@@ -208,6 +210,7 @@ private fun LevelParameterRow(
             add("$notesPerSequence-note sequences" to Icons.Rounded.MusicNote)
           }
           add("${config.tempo} BPM" to Icons.Rounded.Speed)
+          add(config.melodyStyle.name to Icons.Rounded.Casino)
           add(config.range.toPair().toList().joinToString(" - ") to Icons.Rounded.Keyboard)
         }
 
@@ -233,6 +236,9 @@ private fun LevelDetails(level: MelodiesLevel) {
         val rotationLabel =
           config.rotateEveryQuestions?.let { "Every $it questions" } ?: "Off"
         DetailRow("SCALE ROTATION", rotationLabel)
+
+        DetailRow("RHYTHM", "${config.melodyStyle.name} · ${config.melodyStyle.tier.label}")
+        MelodyStyleSummary(config.melodyStyle)
       }
 
       is LevelConfig.Melodies.Midi -> {

@@ -7,6 +7,7 @@ import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.NoteRange
 import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.ScaleType
+import ldv.shuuen.core.music.generator.ChordStyles
 import ldv.shuuen.features.training.chords.domain.ChordAnswerOrder
 import ldv.shuuen.features.training.chords.domain.ChordSizeRange
 import ldv.shuuen.features.training.chords.domain.ChordsLevel
@@ -85,6 +86,58 @@ class ChordsLevelQuizzerTest {
     assertEquals(2, quizzer.quizState.value.currentQuestionNumber)
     // The wrong first press marked the question missed.
     assertEquals(0, quizzer.quizState.value.correctAnswers)
+  }
+
+  @Test
+  fun rootTriadsStyleProducesStackedDiatonicTriads() {
+    // The user-reported regression: C major, 3-note chords, "Root triads" — every chord must be
+    // scale notes stacked in thirds (ladder offsets 0, 2, 4), e.g. C-E-G or D-F-A, never a
+    // random pile like A2-C4-C5.
+    val cMajor = listOf(Pitch.C, Pitch.D, Pitch.E, Pitch.F, Pitch.G, Pitch.A, Pitch.B)
+    val range = NoteRange(Note(Pitch.C, 2), Note(Pitch.C, 7))
+    val ladder = (range.from..range.to).filter { it.pitch in cMajor }
+    val level =
+      ChordsLevel(
+        id = "triads",
+        name = "triads",
+        levelConfig =
+          LevelConfig.Chords.Absolute(
+            scales =
+              listOf(
+                ScaleConfig.AbsoluteScaleConfig(
+                  root = Pitch.C,
+                  scaleType = ScaleType.Major,
+                  pitchStates =
+                    Pitch.entries.map {
+                      ScaleConfig.ScaleItemState.ScalePitchState(it, active = it in cMajor)
+                    },
+                )
+              ),
+            chordStyle = ChordStyles.RootTriads,
+          ),
+        context = null,
+        source = LevelSource.User,
+        questionsNumber = 20,
+        range = range,
+        chordSize = ChordSizeRange(3, 3),
+        sustainNotes = false,
+        answerOrder = ChordAnswerOrder.Any,
+      )
+    val quizzer = ChordsLevelQuizzer(level, random = Random(7))
+
+    repeat(15) {
+      val chord = quizzer.quizState.value.currentChord
+      val indexes = chord.map { note -> ladder.indexOf(note) }
+      assertEquals(
+        listOf(2, 2),
+        indexes.zipWithNext().map { (a, b) -> b - a },
+        "Not a stacked diatonic triad: $chord",
+      )
+      // Answer the whole chord to advance to the next question.
+      chord.map { note -> note.pitch }.distinct().forEach { pitch ->
+        assertEquals(ChordGuessResult.Correct, quizzer.check(pitch))
+      }
+    }
   }
 
   @Test

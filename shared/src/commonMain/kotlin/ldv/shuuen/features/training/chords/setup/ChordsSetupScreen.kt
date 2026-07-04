@@ -9,13 +9,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -34,10 +38,12 @@ import ldv.shuuen.core.ui.components.ShuuenTopAppBarType
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.SoftControl
 import ldv.shuuen.core.ui.components.StaticScreenFrame
+import ldv.shuuen.core.music.generator.ChordStyles
 import ldv.shuuen.core.ui.components.music.NoteRow
 import ldv.shuuen.features.training.chords.domain.ChordAnswerOrder
 import ldv.shuuen.features.training.chords.domain.ChordSizeRange
 import ldv.shuuen.features.training.common.components.ScaleChooser
+import ldv.shuuen.features.training.common.components.StylePickerSheet
 import ldv.shuuen.features.training.domain.LevelConfig
 
 @Composable
@@ -119,7 +125,32 @@ fun ChordsSetupScreen(
 
     Hairline()
 
-    FlatSection(label = "5 · PLAYBACK") {
+    var showStyleSheet by remember { mutableStateOf(false) }
+    NavigationSectionRow(
+        label = "5 · CHORD SHAPES",
+        supporting =
+            "${saveableScreenState.levelConfig.chordStyle.name} · ${saveableScreenState.levelConfig.chordStyle.tier.label}",
+        onClick = { showStyleSheet = true },
+    )
+    if (showStyleSheet) {
+      StylePickerSheet(
+          title = "Chord shapes",
+          subtitle =
+              "How the random chords are built: from strictly diatonic stacks to fully free note piles. Shapes that don't fit the chord-size range above are skipped.",
+          icon = Icons.Rounded.MusicNote,
+          presets = ChordStyles.presets,
+          selectedId = saveableScreenState.levelConfig.chordStyle.id,
+          onSelect = { style ->
+            viewModel.changeChordStyle(style)
+            showStyleSheet = false
+          },
+          onDismiss = { showStyleSheet = false },
+      )
+    }
+
+    Hairline()
+
+    FlatSection(label = "6 · PLAYBACK") {
       SoftControl(
           modifier = Modifier.fillMaxWidth(),
           selected = saveableScreenState.sustainNotes,
@@ -148,7 +179,7 @@ fun ChordsSetupScreen(
     Hairline()
 
     FlatSection(
-        label = "6 · ANSWER ORDER",
+        label = "7 · ANSWER ORDER",
         supporting = "Which order the chord's notes must be answered in.",
     ) {
       Row(
@@ -169,7 +200,7 @@ fun ChordsSetupScreen(
     Hairline()
 
     FlatSection(
-        label = "7 · RANGE",
+        label = "8 · RANGE",
         supporting = "Select the note range.",
     ) {
       Text(

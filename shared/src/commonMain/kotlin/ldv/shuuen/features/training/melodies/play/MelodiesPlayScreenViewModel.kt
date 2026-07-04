@@ -450,6 +450,12 @@ class MelodiesPlayScreenViewModel(
 
     // The context (if any) sets the tonal ground first; the notes start once it settles.
     contextPlayer?.ready?.first { it }
+    // A context-aware style draws its notes from the now-known first chord; the notes generated
+    // above for validation and display were chord-blind, so redraw them.
+    if (contextPlayer != null && config.melodyStyle.isContextAware) {
+      generateNotes(generator, notesPerSequence ?: StreamLookahead, startIndex = 0)
+        ?.let { redrawn -> _state.update { it.copy(notes = redrawn) } }
+    }
     rootsPracticed += root
     sessionStartMark = TimeSource.Monotonic.markNow()
     if (isEndless) startStream() else playSequence()
@@ -488,6 +494,11 @@ class MelodiesPlayScreenViewModel(
    */
   private fun generateFigures(generator: WeightedMelodyGenerator, count: Int): List<TimedNote>? =
     runCatching {
+      // The melody leans toward whatever chord the context frames right now. A no-op for
+      // styles without chord awareness, levels without a context, and bare drones.
+      generator.setActiveChord(
+        contextPlayer?.currentChord?.value?.notes?.map { it.pitch }?.toSet()
+      )
       val notes = mutableListOf<TimedNote>()
       while (notes.size < count) notes += generator.nextFigure()
       notes
@@ -613,6 +624,14 @@ class MelodiesPlayScreenViewModel(
           rootsPracticed += newRoot
         }
         val generator = generator ?: return@launch
+
+        // A context-aware style must know the chord of the node accompanying THIS question, so
+        // the context advances (and settles) before the notes are drawn. Other styles keep the
+        // original order: notes appear the moment the last answer lands, context settles after.
+        // Passing the new root replays the context for it (and lets finite nodes rotate);
+        // questionAdvanced waits until the context is ready again.
+        val contextAware = config.melodyStyle.isContextAware
+        if (contextAware) contextPlayer?.questionAdvanced(newRoot)
         val sequence = generateNotes(generator, notesPerSequence, startIndex = 0) ?: return@launch
 
         _state.update {
@@ -628,10 +647,7 @@ class MelodiesPlayScreenViewModel(
         maxStartedIndex = -1
         sequenceIndex = 0
 
-        // Passing the new root replays the context for it (and lets finite nodes rotate);
-        // questionAdvanced waits until the context is ready again. No extra pause beyond that —
-        // the next sequence should be heard the moment the last answer lands (like Singles).
-        contextPlayer?.questionAdvanced(newRoot)
+        if (!contextAware) contextPlayer?.questionAdvanced(newRoot)
         playSequence()
       }
   }

@@ -51,6 +51,14 @@ class DegreeContextPlayer(
   val ready = _ready.asStateFlow()
   private val _setupMelodyNotes = MutableStateFlow<Note?>(null)
   val setupMelodyNotes = _setupMelodyNotes.asStateFlow()
+
+  /**
+   * The chord of the context node currently framing the harmony. Kept through a finite node's
+   * silence after its sound stops (the harmonic frame lasts until the next node plays) and
+   * replaced whenever a node starts, including after a key change.
+   */
+  private val _currentChord = MutableStateFlow<Chord?>(null)
+  val currentChord = _currentChord.asStateFlow()
   private var setupMelody: SetupMelody? = null
   private var playedSetupMelody: Boolean = false
   private var currentlyPlaying: CurrentlyPlayingNode? = null
@@ -169,6 +177,7 @@ class DegreeContextPlayer(
     val node = c.nodes[currentNodeCount % c.nodes.size]
     val chord = node.toChord(currentRoot.value)
     Napier.v { "node's chord: $chord" }
+    _currentChord.value = chord
     val channel =
         when (node.sustain) {
           is Sustain.Endless -> MidiChannel.Drone

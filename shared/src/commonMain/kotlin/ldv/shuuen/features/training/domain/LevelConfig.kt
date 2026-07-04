@@ -7,6 +7,8 @@ import ldv.shuuen.core.music.Degree
 import ldv.shuuen.core.music.NoteRange
 import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.ScaleType
+import ldv.shuuen.core.music.generator.ChordStyle
+import ldv.shuuen.core.music.generator.ChordStyles
 import ldv.shuuen.core.music.generator.MelodyStyle
 import ldv.shuuen.core.music.generator.MelodyStyles
 
@@ -31,14 +33,26 @@ sealed interface LevelConfig {
   sealed interface Chords {
     val rotateEveryQuestions: Int?
 
+    /**
+     * Weighted chord figures shaping the generated chords. Lives inside the config (stored as
+     * one JSON column by the Room converter) so it survives the entity round-trip without a
+     * schema change. The default matches levels saved before styles existed: fully random
+     * note stacks.
+     */
+    val chordStyle: ChordStyle
+
     @Serializable
     data class Absolute(
-      val scales: List<ScaleConfig.AbsoluteScaleConfig>, override val rotateEveryQuestions: Int? = null
+      val scales: List<ScaleConfig.AbsoluteScaleConfig>,
+      override val rotateEveryQuestions: Int? = null,
+      override val chordStyle: ChordStyle = ChordStyles.Default,
     ) : Chords
 
     @Serializable
     data class Relative(
-      val scaleConfig: ScaleConfig.RelativeScaleConfig, override val rotateEveryQuestions: Int? = 10
+      val scaleConfig: ScaleConfig.RelativeScaleConfig,
+      override val rotateEveryQuestions: Int? = 10,
+      override val chordStyle: ChordStyle = ChordStyles.Default,
     ) : Chords
   }
 

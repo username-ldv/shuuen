@@ -11,7 +11,7 @@ import ldv.shuuen.core.music.ScaleAccidentalType
 import ldv.shuuen.core.music.ScaleType
 import ldv.shuuen.core.music.decideAccidentalType
 import ldv.shuuen.core.music.generator.ChordNotesGenerator
-import ldv.shuuen.core.music.generator.NaiveRandomChordGenerator
+import ldv.shuuen.core.music.generator.WeightedChordGenerator
 import ldv.shuuen.features.training.chords.domain.ChordAnswerOrder
 import ldv.shuuen.features.training.chords.domain.ChordsLevel
 import ldv.shuuen.features.training.chords.domain.chordRepeatBudget
@@ -199,8 +199,9 @@ class ChordsLevelQuizzer(
           }
         }
       }
-    return NaiveRandomChordGenerator(
+    return WeightedChordGenerator(
       allowedNotes = allowedNotes,
+      style = level.levelConfig.chordStyle,
       minSize = level.chordSize.min,
       maxSize = level.chordSize.max,
       maxRepeatsForSize =

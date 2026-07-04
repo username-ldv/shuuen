@@ -48,8 +48,11 @@ object MelodyStyles {
         ),
     )
 
-  private fun figure(vararg values: NoteValue, contour: List<Int?> = emptyList()) =
-    RhythmFigure(values.toList(), contour)
+  private fun figure(
+    vararg values: NoteValue,
+    contour: List<Int?> = emptyList(),
+    ladder: FigureLadder = FigureLadder.Scale,
+  ) = RhythmFigure(values.toList(), contour, ladder)
 
   private fun RhythmFigure.weighing(weight: Double) = WeightedFigure(this, weight)
 
@@ -185,6 +188,70 @@ object MelodyStyles {
       noteWeights = Singable,
     )
 
+  // Context-aware styles: these react to the chord the context plays underneath — its tones
+  // pull the note picker, and chord-ladder figures arpeggiate it. Without a context (or under a
+  // bare drone) they gracefully fall back to their scale-based behavior.
+
+  val ChordTones =
+    MelodyStyle(
+      id = "chord-tones",
+      name = "Chord tones",
+      description =
+        "Singable quarters drawn to the notes of the chord the context is playing underneath.",
+      tier = StyleTier.Beginner,
+      figures = listOf(quarter.weighing(5.0), half.weighing(1.0)),
+      noteWeights = Singable.copy(chordToneBoost = 4.0),
+    )
+
+  val ArpeggioEchoes =
+    MelodyStyle(
+      id = "arpeggio-echoes",
+      name = "Arpeggio echoes",
+      description =
+        "The melody outlines the context chord: arpeggio runs over its tones, stepwise quarters in between.",
+      tier = StyleTier.Intermediate,
+      figures =
+        listOf(
+          quarter.weighing(3.0),
+          figure(Quarter, Quarter, Quarter, contour = listOf(1, 1), ladder = FigureLadder.Chord)
+            .weighing(1.2),
+          figure(Quarter, Quarter, Quarter, contour = listOf(-1, -1), ladder = FigureLadder.Chord)
+            .weighing(1.2),
+          figure(Eighth, Eighth, contour = listOf(1), ladder = FigureLadder.Chord).weighing(0.8),
+          figure(Eighth, Eighth, contour = listOf(-1), ladder = FigureLadder.Chord).weighing(0.8),
+          half.weighing(0.8),
+        ),
+      noteWeights = Singable.copy(chordToneBoost = 3.0),
+    )
+
+  val ChordsAndPassingTones =
+    MelodyStyle(
+      id = "chords-and-passing-tones",
+      name = "Chords & passing tones",
+      description =
+        "Eighth-note lines weaving chord arpeggios and scale steps around the context's changes.",
+      tier = StyleTier.Advanced,
+      figures =
+        listOf(
+          quarter.weighing(2.0),
+          figure(
+            Eighth, Eighth, Eighth, Eighth,
+            contour = listOf(1, 1, 1),
+            ladder = FigureLadder.Chord,
+          ).weighing(1.0),
+          figure(
+            Eighth, Eighth, Eighth, Eighth,
+            contour = listOf(-1, -1, -1),
+            ladder = FigureLadder.Chord,
+          ).weighing(1.0),
+          figure(Eighth, Eighth, Eighth, Eighth, contour = listOf(1, 1, -1)).weighing(0.7),
+          figure(Eighth, Eighth, Eighth, Eighth, contour = listOf(-1, -1, 1)).weighing(0.7),
+          figure(DottedQuarter, Eighth).weighing(0.6),
+          half.weighing(0.6),
+        ),
+      noteWeights = Singable.copy(chordToneBoost = 2.2),
+    )
+
   /** Matches the behavior levels had before styles existed; also the default for new levels. */
   val Default = SteadyQuarters
 
@@ -194,9 +261,12 @@ object MelodyStyles {
       SmoothSteps,
       RoomToBreathe,
       DashOfEighths,
+      ChordTones,
       WalkingLines,
       EighthRuns,
+      ArpeggioEchoes,
       DottedDrive,
       Quicksilver,
+      ChordsAndPassingTones,
     )
 }

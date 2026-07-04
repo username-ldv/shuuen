@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Casino
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -51,8 +52,10 @@ import ldv.shuuen.core.ui.components.ShuuenTopAppBarType
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.SoftControl
 import ldv.shuuen.core.ui.components.StaticScreenFrame
+import ldv.shuuen.core.music.generator.MelodyStyles
 import ldv.shuuen.core.ui.components.music.NoteRow
 import ldv.shuuen.features.training.common.components.ScaleChooser
+import ldv.shuuen.features.training.common.components.StylePickerSheet
 import ldv.shuuen.features.training.domain.ScaleConfig
 
 @Composable
@@ -499,8 +502,13 @@ private fun RhythmSection(
     )
   }
   if (showSheet) {
-    RhythmStyleSheet(
-      selected = state.melodyStyle,
+    StylePickerSheet(
+      title = "Rhythm",
+      subtitle =
+        "How the random notes flow: each style mixes rhythm figures with a weighted note picker. Context-aware styles also follow the chord the context is playing.",
+      icon = Icons.Rounded.MusicNote,
+      presets = MelodyStyles.presets,
+      selectedId = state.melodyStyle.id,
       onSelect = { style ->
         viewModel.changeMelodyStyle(style)
         showSheet = false
