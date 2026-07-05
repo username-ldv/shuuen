@@ -172,8 +172,6 @@ class SinglesPlayScreenViewModel(
 
       val c = level.context
 
-      require(c != null) { "context is null, but need context for now" }
-
       quizzer?.quizState?.collect { quizState ->
         _state.update { it.copy(quizState = quizState) }
 
@@ -197,8 +195,13 @@ class SinglesPlayScreenViewModel(
         Napier.v { "After questionAdvanced()" }
 
         if (isNewRoot) {
-          val player: DegreeContextPlayer = degreeContextPlayer ?: startContext(c, quizState.root)
-          if (degreeContextPlayer == null) degreeContextPlayer = player
+          if (c != null) {
+            val player: DegreeContextPlayer = degreeContextPlayer ?: startContext(c, quizState.root)
+            if (degreeContextPlayer == null) degreeContextPlayer = player
+          } else {
+            // immediately ready
+            _state.update { it.copy(phase = QuizPhase.AwaitingAnswer) }
+          }
           //          readyStatusJob?.cancel()
           //          degreeContextJob?.cancel()
           //          setupMelodyNotesIndicationJob?.cancel()
