@@ -1,6 +1,7 @@
 package ldv.shuuen.core.ui.components.music
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,18 +15,23 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Backspace
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ldv.shuuen.core.music.Degree
@@ -47,12 +53,32 @@ fun DegreeChip(
   label: String,
   modifier: Modifier = Modifier,
   inverted: Boolean = false,
+  selected: Boolean = false,
   onClick: (() -> Unit)? = null,
 ) {
+  val shape = ShuuenUi.ControlShape
+  val currentOnClick by rememberUpdatedState(onClick)
   Box(
-    modifier = modifier.height(34.dp).widthIn(min = 38.dp).clip(ShuuenUi.ControlShape)
+    modifier = modifier.height(34.dp).widthIn(min = 38.dp).clip(shape)
       .background(if (inverted) ShuuenUi.Inverse else Color.White.copy(alpha = 0.05f))
-      .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+      .then(
+        if (selected) {
+          Modifier.border(
+            width = 1.dp,
+            color = if (inverted) ShuuenUi.OnInverse.copy(alpha = 0.28f) else ShuuenUi.Text,
+            shape = shape,
+          )
+        } else {
+          Modifier
+        }
+      )
+      .then(
+        if (onClick != null) {
+          Modifier.clickable { currentOnClick?.invoke() }
+        } else {
+          Modifier
+        }
+      ),
     contentAlignment = Alignment.Center,
   ) {
     Text(
@@ -64,13 +90,14 @@ fun DegreeChip(
   }
 }
 
-/** All twelve degrees in chromatic order; tapping one appends it to the sequence. */
+/** All twelve degrees in chromatic order; callers decide whether a pick appends or edits. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DegreePalette(
   onPick: (Degree) -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val currentOnPick by rememberUpdatedState(onPick)
   FlowRow(
     modifier = modifier.fillMaxWidth(),
     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -79,7 +106,7 @@ fun DegreePalette(
     Degree.chromaticOrder.forEach { degree ->
       DegreeChip(
         label = degree.label,
-        onClick = { onPick(degree) },
+        onClick = { currentOnPick(degree) },
       )
     }
   }
@@ -87,7 +114,7 @@ fun DegreePalette(
 
 /**
  * The built sequence rendered as inverted chips, with an optional backspace control.
- * When [onChipClick] is set, individual chips become tappable (e.g. to flip direction).
+ * When [selectedIndex] is set, only that chip is inverted so editors can show replacement focus.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -95,9 +122,13 @@ fun DegreeSequenceChips(
   labels: List<String>,
   modifier: Modifier = Modifier,
   emptyPlaceholder: String = "—",
+  selectedIndex: Int? = null,
+  insertAfterSelected: Boolean = false,
   onChipClick: ((index: Int) -> Unit)? = null,
+  onInsertAfterSelected: (() -> Unit)? = null,
   onBackspace: (() -> Unit)? = null,
 ) {
+  val selectedChipIndex = selectedIndex?.takeIf { it in labels.indices }
   Row(
     modifier = modifier.fillMaxWidth(),
     verticalAlignment = Alignment.CenterVertically,
@@ -112,28 +143,54 @@ fun DegreeSequenceChips(
         DegreeChip(label = emptyPlaceholder)
       } else {
         labels.forEachIndexed { index, label ->
+          val selected = selectedChipIndex == index
           DegreeChip(
             label = label,
-            inverted = true,
+            inverted = selectedChipIndex == null || selected,
+            selected = selected,
             onClick = onChipClick?.let { { it(index) } },
           )
         }
       }
     }
-    if (onBackspace != null) {
-      Box(
-        modifier = Modifier.size(34.dp).clip(ShuuenUi.ControlShape)
-          .background(Color.White.copy(alpha = 0.05f)).clickable(onClick = onBackspace),
-        contentAlignment = Alignment.Center,
-      ) {
-        Icon(
-          imageVector = Icons.AutoMirrored.Rounded.Backspace,
-          contentDescription = "Remove last degree",
-          tint = ShuuenUi.Muted,
-          modifier = Modifier.size(18.dp),
-        )
-      }
+    if (onInsertAfterSelected != null) {
+      SequenceIconButton(
+        imageVector = Icons.Rounded.Add,
+        contentDescription = "Insert after selected degree",
+        selected = insertAfterSelected,
+        onClick = onInsertAfterSelected,
+      )
     }
+    if (onBackspace != null) {
+      SequenceIconButton(
+        imageVector = Icons.AutoMirrored.Rounded.Backspace,
+        contentDescription = "Remove degree",
+        onClick = onBackspace,
+      )
+    }
+  }
+}
+
+@Composable
+private fun SequenceIconButton(
+  imageVector: ImageVector,
+  contentDescription: String,
+  selected: Boolean = false,
+  onClick: () -> Unit,
+) {
+  val currentOnClick by rememberUpdatedState(onClick)
+  Box(
+    modifier = Modifier.size(34.dp).clip(ShuuenUi.ControlShape)
+      .background(if (selected) ShuuenUi.Inverse else Color.White.copy(alpha = 0.05f))
+      .clickable { currentOnClick() },
+    contentAlignment = Alignment.Center,
+  ) {
+    Icon(
+      imageVector = imageVector,
+      contentDescription = contentDescription,
+      tint = if (selected) ShuuenUi.OnInverse else ShuuenUi.Muted,
+      modifier = Modifier.size(18.dp),
+    )
   }
 }
 
@@ -162,8 +219,8 @@ fun DegreeSequenceEditor(
 
 /**
  * Inline editor for a directed degree sequence (setup melodies that can move up and down).
- * The ↑/↓ toggle picks the direction applied to newly added degrees; tapping a placed
- * chip flips that step's direction. The first step is the anchor and has no direction.
+ * The ↑/↓ toggle picks the direction applied to newly added degrees or updates the selected step.
+ * The first step is the anchor and has no direction.
  */
 @Composable
 fun DirectedDegreeSequenceEditor(
@@ -172,34 +229,50 @@ fun DirectedDegreeSequenceEditor(
   modifier: Modifier = Modifier,
 ) {
   var inputDirection by remember { mutableStateOf(DegreeDirection.Up) }
+  var selectedIndex by rememberSaveable { mutableStateOf<Int?>(null) }
+  var insertAfterSelected by rememberSaveable { mutableStateOf(false) }
+  val labels = steps?.stepLabels() ?: listOf()
+  val selectedStepIndex = selectedIndex?.takeIf { it in labels.indices }
+  val selectedDirection =
+    selectedStepIndex?.takeIf { it > 0 }?.let { index ->
+      steps?.extraDegrees?.getOrNull(index - 1)?.direction
+    }
 
   Column(
     modifier = modifier.fillMaxWidth(),
     verticalArrangement = Arrangement.spacedBy(10.dp),
   ) {
     DegreeSequenceChips(
-      labels = steps?.stepLabels() ?: listOf(),
+      labels = labels,
+      selectedIndex = selectedStepIndex,
+      insertAfterSelected = insertAfterSelected,
       onChipClick = {
-        if (it > 0) {
-          val index = it - 1
-          steps?.let { melody ->
-            onChange(
-              melody.copy(
-                extraDegrees = melody.extraDegrees.toMutableList()
-                  .also { it[index] = it[index].copy(direction = it[index].direction.flipped()) })
-            )
-          }
-        }
+        selectedIndex = if (selectedStepIndex == it) null else it
+        insertAfterSelected = false
       },
+      onInsertAfterSelected =
+        steps?.let {
+          {
+            selectedIndex = selectedStepIndex ?: labels.lastIndex
+            insertAfterSelected = !insertAfterSelected
+          }
+        },
       onBackspace = {
         steps?.let { melody ->
-          onChange(
-            if (steps.extraDegrees.isEmpty()) null else melody.copy(
-              extraDegrees = melody.extraDegrees.dropLast(
-                1
-              )
-            )
-          )
+          val selected = selectedStepIndex
+          val updated =
+            when {
+              melody.extraDegrees.isEmpty() -> null
+              selected != null && selected > 0 ->
+                melody.copy(
+                  extraDegrees =
+                    melody.extraDegrees.toMutableList().also { it.removeAt(selected - 1) }
+                )
+              else -> melody.copy(extraDegrees = melody.extraDegrees.dropLast(1))
+          }
+          onChange(updated)
+          selectedIndex = selectedIndex?.coerceAtMost((updated?.extraDegrees?.size ?: 0))
+          insertAfterSelected = false
         }
       },
     )
@@ -211,32 +284,72 @@ fun DirectedDegreeSequenceEditor(
       DegreeDirection.entries.forEach { direction ->
         DegreeChip(
           label = direction.arrow,
-          inverted = direction == inputDirection,
-          onClick = { inputDirection = direction },
+          inverted = direction == (selectedDirection ?: inputDirection),
+          onClick = {
+            val selected = selectedStepIndex
+            if (selected != null && selected > 0 && steps != null) {
+              onChange(
+                steps.copy(
+                  extraDegrees =
+                    steps.extraDegrees.toMutableList().also {
+                      it[selected - 1] = it[selected - 1].copy(direction = direction)
+                    }
+                )
+              )
+            } else {
+              inputDirection = direction
+            }
+          },
         )
       }
       Text(
-        text = "Direction for added degrees. Tap a placed degree to flip it.",
+        text = "Direction for added or selected degrees.",
         color = ShuuenUi.Dim,
         style = MaterialTheme.typography.bodySmall,
         modifier = Modifier.weight(1f),
       )
     }
-    DegreePalette(
-      onPick = { degree ->
-        if (steps == null) {
-          onChange(RelativeMelody(firstDegree = DegreeWithOctave(degree, 3)))
-        } else {
-          onChange(
-            steps.copy(
-              extraDegrees = steps.extraDegrees + DirectedDegree(
-                degree, inputDirection
-              )
-            )
-          )
-        }
-      },
-    )
+    key(selectedStepIndex, insertAfterSelected, labels.size, inputDirection) {
+      DegreePalette(
+        onPick = { degree ->
+          if (steps == null) {
+            onChange(RelativeMelody(firstDegree = DegreeWithOctave(degree, 3)))
+            insertAfterSelected = false
+          } else {
+            val selected = selectedStepIndex
+            val updated =
+              when {
+                insertAfterSelected && selected != null -> {
+                  val insertIndex = selected
+                  steps.copy(
+                    extraDegrees =
+                      steps.extraDegrees.toMutableList().also {
+                        it.add(insertIndex, DirectedDegree(degree, inputDirection))
+                      }
+                  )
+                }
+                selected == 0 -> steps.copy(firstDegree = steps.firstDegree.copy(degree = degree))
+                selected != null && selected > 0 ->
+                  steps.copy(
+                    extraDegrees =
+                      steps.extraDegrees.toMutableList().also {
+                        it[selected - 1] = it[selected - 1].copy(degree = degree)
+                      }
+                  )
+                else ->
+                  steps.copy(
+                    extraDegrees = steps.extraDegrees + DirectedDegree(degree, inputDirection)
+                  )
+              }
+            onChange(updated)
+            if (insertAfterSelected && selected != null) {
+              selectedIndex = selected + 1
+              insertAfterSelected = false
+            }
+          }
+        },
+      )
+    }
   }
 }
 

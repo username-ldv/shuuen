@@ -22,8 +22,8 @@ import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.SetupMelody
 import ldv.shuuen.core.music.SetupMelodyRepeat
 import ldv.shuuen.core.music.Sustain
+import ldv.shuuen.core.music.chordAt
 import ldv.shuuen.core.music.constructSetupMelodyFlow
-import ldv.shuuen.core.music.toChord
 
 private data class CurrentlyPlayingNode(
     val chord: Chord,
@@ -174,8 +174,9 @@ class DegreeContextPlayer(
     Napier.v {
       "While loop q: ${questionEvent.currentQuestion}, new root: ${questionEvent.newRoot}"
     }
-    val node = c.nodes[currentNodeCount % c.nodes.size]
-    val chord = node.toChord(currentRoot.value)
+    val nodeIndex = currentNodeCount % c.nodes.size
+    val node = c.nodes[nodeIndex]
+    val chord = c.chordAt(currentRoot.value, nodeIndex)
     Napier.v { "node's chord: $chord" }
     _currentChord.value = chord
     val channel =

@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ldv.shuuen.core.music.ContextDuration
+import ldv.shuuen.core.music.DegreeContextNode
 import ldv.shuuen.core.music.DegreeContext
 import ldv.shuuen.core.music.SetupMelodyRepeat
 import ldv.shuuen.core.music.Sustain
@@ -133,7 +134,7 @@ fun ContextDetails(context: DegreeContext) {
             color = ShuuenUi.Dim,
             style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.2.sp),
         )
-        val labels = listOf(node.firstDegree.toString()) + node.extraDegrees.map { it.label }
+        val labels = node.degreeLabels(index)
         DegreeSequenceChips(labels = labels)
       }
       node.setupMelody?.let { setupMelody ->
@@ -172,3 +173,13 @@ private fun repeatLabel(repeat: SetupMelodyRepeat): String =
       SetupMelodyRepeat.Once -> "Once"
       SetupMelodyRepeat.EveryTime -> "Every time"
     }
+
+private fun DegreeContextNode.degreeLabels(index: Int): List<String> {
+  val first =
+      if (index == 0) {
+        firstDegree.toString()
+      } else {
+        "${firstDegree.degree.label} ${relativeDirection.arrow}"
+      }
+  return listOf(first) + extraDegrees.map { it.label }
+}

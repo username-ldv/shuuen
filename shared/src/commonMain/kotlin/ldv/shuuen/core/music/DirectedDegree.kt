@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
  * of the degree above ([Up]) or below ([Down]) it. Mirrors how the player resolves
  * setup melodies (currently ascending-only via Note.next; Down is the planned extension).
  */
+@Serializable
 enum class DegreeDirection(val arrow: String) {
   Up("↑"), Down("↓");
 

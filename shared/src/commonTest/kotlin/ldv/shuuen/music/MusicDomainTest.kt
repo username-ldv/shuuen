@@ -1,7 +1,9 @@
 package ldv.shuuen.music
 
 import ldv.shuuen.core.music.Chord
+import ldv.shuuen.core.music.ContextDuration
 import ldv.shuuen.core.music.Degree
+import ldv.shuuen.core.music.DegreeContextNode
 import ldv.shuuen.core.music.DegreeDirection
 import ldv.shuuen.core.music.DegreeWithOctave
 import ldv.shuuen.core.music.DirectedDegree
@@ -9,7 +11,9 @@ import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.RelativeMelody
 import ldv.shuuen.core.music.Scale
+import ldv.shuuen.core.music.Sustain
 import ldv.shuuen.core.music.constructSetupMelodyFlow
+import ldv.shuuen.core.music.toChords
 import ldv.shuuen.core.music.withTiming
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
@@ -83,10 +87,104 @@ class MusicDomainTest {
   }
 
   @Test
+  fun resolvesContextNodesRelativeToThePreviousNode() {
+    val nodes =
+      listOf(
+        contextNode(DegreeWithOctave(Degree.D1, 3), listOf(Degree.D3, Degree.D5)),
+        contextNode(
+          DegreeWithOctave(Degree.D7, 3),
+          listOf(Degree.D2, Degree.D4),
+          relativeDirection = DegreeDirection.Up,
+        ),
+        contextNode(
+          DegreeWithOctave(Degree.D1, 3),
+          listOf(Degree.D3, Degree.D5),
+          relativeDirection = DegreeDirection.Down,
+        ),
+      )
+
+    assertEquals(
+      listOf(
+        listOf(48, 52, 55),
+        listOf(59, 62, 65),
+        listOf(48, 52, 55),
+      ),
+      nodes.toChords(Pitch.C).map { chord -> chord.notes.map { it.midiIndex } },
+    )
+  }
+
+  @Test
+  fun resolvesAmbiguousSameOctaveProgressionFromPreviousNodeBass() {
+    val firstNode = contextNode(DegreeWithOctave(Degree.D1, 3), listOf(Degree.D3, Degree.D5))
+    val secondNodeAbove =
+      contextNode(
+        DegreeWithOctave(Degree.D5, 3),
+        listOf(Degree.D7, Degree.D2),
+        relativeDirection = DegreeDirection.Up,
+      )
+    val secondNodeBelow =
+      contextNode(
+        DegreeWithOctave(Degree.D5, 3),
+        listOf(Degree.D7, Degree.D2),
+        relativeDirection = DegreeDirection.Down,
+      )
+
+    assertEquals(
+      listOf(
+        listOf(48, 52, 55),
+        listOf(55, 59, 62),
+      ),
+      listOf(firstNode, secondNodeAbove).toChords(Pitch.C).map { chord ->
+        chord.notes.map { it.midiIndex }
+      },
+    )
+    assertEquals(
+      listOf(
+        listOf(55, 59, 62),
+        listOf(50, 54, 57),
+      ),
+      listOf(firstNode, secondNodeBelow).toChords(Pitch.G).map { chord ->
+        chord.notes.map { it.midiIndex }
+      },
+    )
+  }
+
+  @Test
+  fun firstContextNodeUsesItsAnchorOctaveEvenWithDirection() {
+    val nodes =
+      listOf(
+        contextNode(
+          DegreeWithOctave(Degree.D1, 3),
+          listOf(Degree.D3, Degree.D5),
+          relativeDirection = DegreeDirection.Down,
+        )
+      )
+
+    assertEquals(
+      listOf(48, 52, 55),
+      nodes.toChords(Pitch.C).single().notes.map { it.midiIndex },
+    )
+  }
+
+  @Test
   fun calculatesTimingValues() {
     withTiming(120) {
       assertEquals(500.milliseconds, quarter())
       assertEquals(250.milliseconds, eighth())
     }
   }
+
+  private fun contextNode(
+    firstDegree: DegreeWithOctave,
+    extraDegrees: List<Degree>,
+    relativeDirection: DegreeDirection = DegreeDirection.Up,
+  ): DegreeContextNode =
+    DegreeContextNode(
+      firstDegree = firstDegree,
+      extraDegrees = extraDegrees,
+      sustain = Sustain.Endless,
+      duration = ContextDuration.Endless,
+      setupMelody = null,
+      relativeDirection = relativeDirection,
+    )
 }

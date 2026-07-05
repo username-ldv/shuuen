@@ -28,10 +28,11 @@ data class DegreeContextNode(
     val sustain: Sustain,
     val duration: ContextDuration,
     val setupMelody: SetupMelody?,
+    val relativeDirection: DegreeDirection = DegreeDirection.Up,
 )
 
-fun DegreeContextNode.toChord(root: Pitch): Chord {
-  val first = Note(this.firstDegree.degree.pitch(root), this.firstDegree.octave)
+fun DegreeContextNode.toChord(root: Pitch, previousChord: Chord? = null): Chord {
+  val first = firstNote(root, previousChord)
   val notes =
       listOf(first) +
           this.extraDegrees.fold(
@@ -42,6 +43,29 @@ fun DegreeContextNode.toChord(root: Pitch): Chord {
               },
           )
   return notes.chord()
+}
+
+fun List<DegreeContextNode>.toChords(root: Pitch): List<Chord> {
+  var previousChord: Chord? = null
+  return map { node ->
+    node.toChord(root, previousChord).also { previousChord = it }
+  }
+}
+
+fun DegreeContext.chordAt(root: Pitch, nodeIndex: Int): Chord {
+  require(nodes.isNotEmpty()) { "context can't be empty" }
+  return nodes.toChords(root)[nodeIndex.floorMod(nodes.size)]
+}
+
+private fun DegreeContextNode.firstNote(root: Pitch, previousChord: Chord?): Note {
+  val pitch = firstDegree.degree.pitch(root)
+  if (previousChord == null) {
+    return Note(pitch, firstDegree.octave)
+  }
+  return when (relativeDirection) {
+    DegreeDirection.Up -> previousChord.notes.first().next(pitch)
+    DegreeDirection.Down -> previousChord.notes.first().previous(pitch)
+  }
 }
 
 @Serializable

@@ -22,7 +22,7 @@ import ldv.shuuen.core.music.RelativeMelody
 import ldv.shuuen.core.music.Sustain
 import ldv.shuuen.core.music.Timing
 import ldv.shuuen.core.music.constructSetupMelodyFlow
-import ldv.shuuen.core.music.toChord
+import ldv.shuuen.core.music.toChords
 
 private const val PreviewTempo = 90
 private val PreviewRoot = Pitch.C
@@ -69,7 +69,7 @@ class ContextViewModel(
     }
   }
 
-  fun toggleNodePreview(number: Int, node: DegreeContextNode) {
+  fun toggleNodePreview(number: Int, nodes: List<DegreeContextNode>) {
     val current = activeNodePreview
     if (fullSequencePreviewJob?.isActive != true && current?.number == number) {
       stopNodePreview()
@@ -84,6 +84,7 @@ class ContextViewModel(
       stopActiveNodePreview()
       if (!ensureAudioReady()) return@launch
 
+      val node = nodes[number - 1]
       val channel =
           when (node.sustain) {
             is Sustain.Endless -> MidiChannel.Drone
@@ -92,7 +93,7 @@ class ContextViewModel(
       val preview =
           PlayingNodePreview(
               number = number,
-              chord = node.toChord(PreviewRoot),
+              chord = nodes.toChords(PreviewRoot)[number - 1],
               channel = channel,
           )
 
@@ -162,8 +163,9 @@ class ContextViewModel(
   }
 
   private suspend fun playFullSequence(nodes: List<DegreeContextNode>) {
+    val chords = nodes.toChords(PreviewRoot)
     nodes.forEachIndexed { index, node ->
-      val preview = playNodeChord(number = index + 1, node = node)
+      val preview = playNodeChord(number = index + 1, node = node, chord = chords[index])
 
       when (val sustain = node.sustain) {
         is Sustain.Finite -> {
@@ -193,7 +195,11 @@ class ContextViewModel(
     }
   }
 
-  private fun playNodeChord(number: Int, node: DegreeContextNode): PlayingNodePreview {
+  private fun playNodeChord(
+      number: Int,
+      node: DegreeContextNode,
+      chord: Chord,
+  ): PlayingNodePreview {
     val channel =
         when (node.sustain) {
           is Sustain.Endless -> MidiChannel.Drone
@@ -202,7 +208,7 @@ class ContextViewModel(
     val preview =
         PlayingNodePreview(
             number = number,
-            chord = node.toChord(PreviewRoot),
+            chord = chord,
             channel = channel,
         )
 

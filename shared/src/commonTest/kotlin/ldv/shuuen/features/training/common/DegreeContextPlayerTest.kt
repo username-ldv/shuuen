@@ -19,6 +19,7 @@ import ldv.shuuen.core.music.ContextSource
 import ldv.shuuen.core.music.Degree
 import ldv.shuuen.core.music.DegreeContext
 import ldv.shuuen.core.music.DegreeContextNode
+import ldv.shuuen.core.music.DegreeDirection
 import ldv.shuuen.core.music.DegreeWithOctave
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.Pitch
@@ -26,7 +27,7 @@ import ldv.shuuen.core.music.RelativeMelody
 import ldv.shuuen.core.music.SetupMelody
 import ldv.shuuen.core.music.SetupMelodyRepeat
 import ldv.shuuen.core.music.Sustain
-import ldv.shuuen.core.music.toChord
+import ldv.shuuen.core.music.chordAt
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DegreeContextPlayerTest {
@@ -84,14 +85,14 @@ class DegreeContextPlayerTest {
     val startJob = launch { player.start() }
     try {
       advanceUntilIdle()
-      assertEquals(context.nodes[0].toChord(Pitch.C), player.currentChord.value)
+      assertEquals(context.chordAt(Pitch.C, 0), player.currentChord.value)
 
       // Each node lasts two questions: after two advances the frame is the second node's chord.
       repeat(2) {
         launch { player.questionAdvanced() }
         advanceUntilIdle()
       }
-      assertEquals(context.nodes[1].toChord(Pitch.C), player.currentChord.value)
+      assertEquals(context.chordAt(Pitch.C, 1), player.currentChord.value)
     } finally {
       startJob.cancel()
     }
@@ -113,9 +114,21 @@ private fun rolloverContext(): DegreeContext =
               repeat = SetupMelodyRepeat.Once,
             ),
         ),
-        contextNode(firstDegree = Degree.D4, extraDegrees = listOf(Degree.D6, Degree.D1)),
-        contextNode(firstDegree = Degree.D5, extraDegrees = listOf(Degree.D7, Degree.D2)),
-        contextNode(firstDegree = Degree.D1, extraDegrees = listOf(Degree.D3, Degree.D5)),
+        contextNode(
+          firstDegree = Degree.D4,
+          extraDegrees = listOf(Degree.D6, Degree.D1),
+          relativeDirection = DegreeDirection.Up,
+        ),
+        contextNode(
+          firstDegree = Degree.D5,
+          extraDegrees = listOf(Degree.D7, Degree.D2),
+          relativeDirection = DegreeDirection.Up,
+        ),
+        contextNode(
+          firstDegree = Degree.D1,
+          extraDegrees = listOf(Degree.D3, Degree.D5),
+          relativeDirection = DegreeDirection.Up,
+        ),
       ),
   )
 
@@ -123,6 +136,7 @@ private fun contextNode(
   firstDegree: Degree,
   extraDegrees: List<Degree>,
   setupMelody: SetupMelody? = null,
+  relativeDirection: DegreeDirection = DegreeDirection.Up,
 ): DegreeContextNode =
   DegreeContextNode(
     firstDegree = DegreeWithOctave(firstDegree, 2),
@@ -130,6 +144,7 @@ private fun contextNode(
     sustain = Sustain.Endless,
     duration = ContextDuration.Finite(durationInQuestions = 2),
     setupMelody = setupMelody,
+    relativeDirection = relativeDirection,
   )
 
 private class FakeMidiEngine : MidiEngine {

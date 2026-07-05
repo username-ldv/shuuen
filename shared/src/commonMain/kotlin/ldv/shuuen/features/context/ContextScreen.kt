@@ -36,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -77,6 +78,7 @@ import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.SoftControl
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.SurfaceCard
+import ldv.shuuen.core.ui.components.music.DegreeChip
 import ldv.shuuen.core.ui.components.music.DegreePalette
 import ldv.shuuen.core.ui.components.music.DegreeSequenceChips
 import ldv.shuuen.core.ui.components.music.DirectedDegreeSequenceEditor
@@ -95,6 +97,7 @@ private fun sequenceNode(
     sustain: Sustain = Sustain.Endless,
     duration: ContextDuration = ContextDuration.SameAsScaleRotation,
     setupMelody: SetupMelody? = null,
+    relativeDirection: DegreeDirection = DegreeDirection.Up,
 ) =
     DegreeContextNode(
         firstDegree = firstDegree,
@@ -102,6 +105,7 @@ private fun sequenceNode(
         sustain = sustain,
         duration = duration,
         setupMelody = setupMelody,
+        relativeDirection = relativeDirection,
     )
 
 private data class SequencePreset(val label: String, val nodes: List<DegreeContextNode>)
@@ -148,18 +152,21 @@ private val sequencePresets =
                         listOf(Degree.D6, Degree.D1),
                         Sustain.Finite(Timing(standardTempo).quarter()),
                         duration = ContextDuration.Immediate,
+                        relativeDirection = DegreeDirection.Up,
                     ),
                     sequenceNode(
                         DegreeWithOctave(Degree.D5, 3),
                         listOf(Degree.D7, Degree.D2),
                         Sustain.Finite(Timing(standardTempo).quarter()),
                         duration = ContextDuration.Immediate,
+                        relativeDirection = DegreeDirection.Up,
                     ),
                     sequenceNode(
                         DegreeWithOctave(Degree.D1, 3),
                         listOf(Degree.D3, Degree.D5),
                         Sustain.Finite(Timing(standardTempo).half()),
                         duration = ContextDuration.SameAsScaleRotation,
+                        relativeDirection = DegreeDirection.Down,
                     ),
                 ),
         ),
@@ -178,12 +185,14 @@ private val sequencePresets =
                         listOf(Degree.D7, Degree.D2),
                         Sustain.Finite(Timing(standardTempo).quarter()),
                         duration = ContextDuration.Immediate,
+                        relativeDirection = DegreeDirection.Up,
                     ),
                     sequenceNode(
                         DegreeWithOctave(Degree.D1, 3),
                         listOf(Degree.D3, Degree.D5),
                         Sustain.Finite(Timing(standardTempo).half()),
                         duration = ContextDuration.SameAsScaleRotation,
+                        relativeDirection = DegreeDirection.Up,
                     ),
                 ),
         ),
@@ -247,21 +256,20 @@ fun ContextScreen(
             number = index + 1,
             isLast = index == nodes.lastIndex,
             node = node,
-            onNodeChange = { updated ->
+            onNodeChange = { update ->
               viewModel.stopFullSequencePreview()
-              context = context.copy(nodes = nodes.toMutableList().also { it[index] = updated })
+              context = context.withUpdatedNode(index, update)
             },
             onDelete =
                 if (nodes.size > 1) {
                   {
                     viewModel.stopPreviewsUsingSequenceNodes()
-                    context =
-                        context.copy(nodes = nodes.toMutableList().also { it.removeAt(index) })
+                    context = context.withDeletedNode(index)
                   }
                 } else null,
             nodePlaying = playingNodeNumber == index + 1,
             setupMelodyPlaying = playingMelody,
-            onPreviewNode = { viewModel.toggleNodePreview(index + 1, node) },
+            onPreviewNode = { viewModel.toggleNodePreview(index + 1, nodes) },
             onPreviewSetupMelody = viewModel::previewSetupMelody,
         )
       }
@@ -269,7 +277,10 @@ fun ContextScreen(
           text = "ADD NODE",
           onClick = {
             viewModel.stopFullSequencePreview()
-            context = context.copy(nodes = nodes + sequenceNode())
+            context =
+                context.copy(
+                    nodes = context.nodes + sequenceNode(relativeDirection = DegreeDirection.Up)
+                )
           },
       )
     }
@@ -286,6 +297,19 @@ fun ContextScreen(
         modifier = Modifier.padding(bottom = 18.dp),
     )
   }
+}
+
+private fun DegreeContext.withUpdatedNode(
+    index: Int,
+    update: (DegreeContextNode) -> DegreeContextNode,
+): DegreeContext {
+  if (index !in nodes.indices) return this
+  return copy(nodes = nodes.toMutableList().also { it[index] = update(it[index]) })
+}
+
+private fun DegreeContext.withDeletedNode(index: Int): DegreeContext {
+  if (nodes.size <= 1 || index !in nodes.indices) return this
+  return copy(nodes = nodes.toMutableList().also { it.removeAt(index) })
 }
 
 @Composable
@@ -345,7 +369,7 @@ private fun SequenceNodeCard(
     number: Int,
     isLast: Boolean,
     node: DegreeContextNode,
-    onNodeChange: (DegreeContextNode) -> Unit,
+    onNodeChange: ((DegreeContextNode) -> DegreeContextNode) -> Unit,
     onDelete: (() -> Unit)?,
     nodePlaying: Boolean,
     setupMelodyPlaying: Boolean,
@@ -397,32 +421,32 @@ private fun SequenceNodeCard(
       Column(
 //        verticalArrangement = Arrangement.spacedBy(14.dp),
       ) {
-        NodeDegreesEditor(node = node, onNodeChange = onNodeChange)
+        NodeDegreesEditor(number = number, node = node, onNodeChange = onNodeChange)
         Spacer(modifier = Modifier.height(spacing))
         SustainRow(
           sustain = sustainEnabled,
           onChange = { enabled ->
-            val updatedDuration =
-                if (enabled && node.duration == ContextDuration.Immediate) {
-                  ContextDuration.SameAsScaleRotation
-                } else {
-                  node.duration
-                }
+            onNodeChange { current ->
+              val updatedDuration =
+                  if (enabled && current.duration == ContextDuration.Immediate) {
+                    ContextDuration.SameAsScaleRotation
+                  } else {
+                    current.duration
+                  }
 
-            onNodeChange(
-              node.copy(
-                sustain =
-                  if (enabled) Sustain.Endless
-                  else Sustain.Finite(Timing(standardTempo).quarter()),
-                duration = updatedDuration,
+              current.copy(
+                  sustain =
+                      if (enabled) Sustain.Endless
+                      else Sustain.Finite(Timing(standardTempo).quarter()),
+                  duration = updatedDuration,
               )
-            )
+            }
           },
         )
         Spacer(modifier = Modifier.height(spacing))
         SetupMelodyRow(
           setupMelody = node.setupMelody,
-          onChange = { onNodeChange(node.copy(setupMelody = it)) },
+          onChange = { setupMelody -> onNodeChange { it.copy(setupMelody = setupMelody) } },
           playing = setupMelodyPlaying,
           onPreview = onPreviewSetupMelody,
         )
@@ -432,7 +456,7 @@ private fun SequenceNodeCard(
         DurationPicker(
             duration = node.duration,
             immediateVisible = !sustainEnabled,
-            onDurationChange = { onNodeChange(node.copy(duration = it)) },
+            onDurationChange = { duration -> onNodeChange { it.copy(duration = duration) } },
         )
         AnimatedVisibility(
             visible = node.duration is ContextDuration.Finite,
@@ -442,7 +466,9 @@ private fun SequenceNodeCard(
             InlineCounter(
               label = if (isLast) "QUESTIONS BEFORE RESTART" else "QUESTIONS BEFORE NEXT",
               value = (node.duration as? ContextDuration.Finite)?.durationInQuestions ?: 4,
-              onChange = { onNodeChange(node.copy(duration = ContextDuration.Finite(it))) },
+              onChange = { value ->
+                onNodeChange { it.copy(duration = ContextDuration.Finite(value)) }
+              },
             )
           }
         }
@@ -548,48 +574,138 @@ private fun DurationSegment(
 }
 
 /**
- * Degree editor for a node: the first degree picks its own octave; further degrees are appended
- * above it in ascending order (e.g. first 5·oct3 + 1 3 5 → G3 C4 E4 G4 in C major).
+ * Degree editor for a node: node 1 picks the shared octave anchor, while later nodes place their
+ * first degree above or below the previous node. Further degrees stack upward from the bass.
  */
 @Composable
 private fun NodeDegreesEditor(
+    number: Int,
     node: DegreeContextNode,
-    onNodeChange: (DegreeContextNode) -> Unit,
+    onNodeChange: ((DegreeContextNode) -> DegreeContextNode) -> Unit,
 ) {
+  var selectedIndex by rememberSaveable(number) { mutableStateOf<Int?>(null) }
+  var insertAfterSelected by rememberSaveable(number) { mutableStateOf(false) }
+  val labels =
+      listOf(
+          if (number == 1) {
+            "${node.firstDegree.degree.label} · ${node.firstDegree.octave}"
+          } else {
+            node.firstDegree.degree.label
+          }
+      ) + node.extraDegrees.map { it.label }
+  val selectedDegreeIndex = selectedIndex?.takeIf { it in labels.indices }
+
+  fun updateSelectedDegree(degree: Degree) {
+    val selected = selectedDegreeIndex
+    onNodeChange { current ->
+      when {
+        insertAfterSelected && selected != null -> {
+          val insertIndex = selected.coerceIn(0, current.extraDegrees.size)
+          current.copy(
+              extraDegrees =
+                  current.extraDegrees.toMutableList().also { it.add(insertIndex, degree) }
+          )
+        }
+        selected == 0 -> current.copy(firstDegree = current.firstDegree.copy(degree = degree))
+        selected != null && selected > 0 && selected - 1 in current.extraDegrees.indices ->
+            current.copy(
+                extraDegrees =
+                    current.extraDegrees.toMutableList().also { it[selected - 1] = degree }
+            )
+        else -> current.copy(extraDegrees = current.extraDegrees + degree)
+      }
+    }
+    if (insertAfterSelected && selected != null) {
+      selectedIndex = selected + 1
+      insertAfterSelected = false
+    }
+  }
+
   Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-    GroupLabel("FIRST DEGREE")
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-      DegreeChooser(
-          node.firstDegree.degree,
-          { onNodeChange(node.copy(firstDegree = node.firstDegree.copy(degree = it))) },
-          modifier = Modifier.weight(1f),
-      )
+    GroupLabel(
+        if (number == 1) "FIRST DEGREE" else "FIRST DEGREE, RELATIVE TO NODE ${number - 1}"
+    )
+    if (number == 1) {
       OctaveStepper(
           node.firstDegree.octave,
-          { onNodeChange(node.copy(firstDegree = node.firstDegree.copy(octave = it))) },
+          { octave -> onNodeChange { it.copy(firstDegree = it.firstDegree.copy(octave = octave)) } },
+      )
+    } else {
+      RelativeDirectionPicker(
+          direction = node.relativeDirection,
+          onChange = { direction -> onNodeChange { it.copy(relativeDirection = direction) } },
       )
     }
 
     GroupLabel("THEN, ASCENDING")
     DegreeSequenceChips(
-        labels =
-            listOf("${node.firstDegree.degree.label} · ${node.firstDegree.octave}") +
-                node.extraDegrees.map { it.label },
+        labels = labels,
+        selectedIndex = selectedDegreeIndex,
+        insertAfterSelected = insertAfterSelected,
+        onChipClick = {
+          selectedIndex = if (selectedDegreeIndex == it) null else it
+          insertAfterSelected = false
+        },
+        onInsertAfterSelected = {
+          selectedIndex = selectedDegreeIndex ?: labels.lastIndex
+          insertAfterSelected = !insertAfterSelected
+        },
         onBackspace = {
-          if (node.extraDegrees.isNotEmpty()) {
-            onNodeChange(node.copy(extraDegrees = node.extraDegrees.dropLast(1)))
+          val selected = selectedDegreeIndex
+          onNodeChange { current ->
+            val removeIndex =
+                if (selected != null && selected > 0 && selected - 1 in current.extraDegrees.indices) {
+                  selected - 1
+                } else {
+                  current.extraDegrees.lastIndex
+                }
+            if (removeIndex !in current.extraDegrees.indices) {
+              current
+            } else {
+              current.copy(
+                  extraDegrees =
+                      current.extraDegrees.toMutableList().also { it.removeAt(removeIndex) }
+              )
+            }
           }
+          selectedIndex = selectedIndex?.coerceAtMost((labels.lastIndex - 1).coerceAtLeast(0))
+          insertAfterSelected = false
         },
     )
-    DegreePalette(
-        onPick = { onNodeChange(node.copy(extraDegrees = node.extraDegrees + it)) },
-    )
+    key(selectedDegreeIndex, insertAfterSelected, labels.size) {
+      DegreePalette(
+          onPick = { degree -> updateSelectedDegree(degree) },
+      )
+    }
   }
 }
+
+@Composable
+private fun RelativeDirectionPicker(
+    direction: DegreeDirection,
+    onChange: (DegreeDirection) -> Unit,
+) {
+  Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    DegreeDirection.entries.forEach { option ->
+      DegreeChip(
+          label = "${option.arrow} ${option.relativeLabel.uppercase()}",
+          inverted = option == direction,
+          onClick = { onChange(option) },
+          modifier = Modifier.weight(1f),
+      )
+    }
+  }
+}
+
+private val DegreeDirection.relativeLabel: String
+  get() =
+      when (this) {
+        DegreeDirection.Up -> "above"
+        DegreeDirection.Down -> "below"
+      }
 
 @Composable
 fun DegreeChooser(
@@ -929,9 +1045,9 @@ private fun SequenceInfoBlock() {
       )
       Text(
           text =
-              "A node's first degree sets the starting octave; added degrees stack above it in " +
-                  "ascending order. Example: first degree 5 · oct 3 plus 1 3 5 plays G3 C4 E4 G4 in C major. " +
-                  "Sustained nodes hold like a drone; others play as timed chords.",
+              "Node 1 sets the context octave. Later nodes place their first degree above or below " +
+                  "the previous node, then added degrees stack upward from that bass. Sustained nodes " +
+                  "hold like a drone; others play as timed chords.",
           color = ShuuenUi.Muted,
           style = MaterialTheme.typography.bodyMedium,
           modifier = Modifier.weight(1f),
