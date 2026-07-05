@@ -182,6 +182,27 @@ object Bass {
   fun freeSoundFont(soundFontHandle: Int): Boolean =
     BassPlatform.freeSoundFont(soundFontHandle)
 
+  /** Whether this platform's BASSMIDI build offers MIDI input (it does not on Android). */
+  val midiInputSupported: Boolean
+    get() = BassPlatform.midiInputSupported
+
+  /** Info on MIDI input device number [device] (0 = first), or null past the end of the list. */
+  fun midiInGetDeviceInfo(device: Int): BassMidiInputDeviceInfo? =
+    BassPlatform.midiInGetDeviceInfo(device)
+
+  /**
+   * Initializes MIDI input device [device]. [onData] receives the raw MIDI bytes as they arrive,
+   * on an internal BASS thread — it must hand the data off quickly and never block.
+   */
+  fun midiInInit(device: Int, onData: (ByteArray) -> Unit): Boolean =
+    BassPlatform.midiInInit(device, onData)
+
+  fun midiInStart(device: Int): Boolean = BassPlatform.midiInStart(device)
+
+  fun midiInStop(device: Int): Boolean = BassPlatform.midiInStop(device)
+
+  fun midiInFree(device: Int): Boolean = BassPlatform.midiInFree(device)
+
   fun makeWord(low: Int, high: Int): Int = (low and 0xff) or ((high and 0xff) shl 8)
 }
 

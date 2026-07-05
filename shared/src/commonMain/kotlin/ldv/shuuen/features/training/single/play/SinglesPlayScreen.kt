@@ -30,9 +30,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.core.settings.InputComponent
 import ldv.shuuen.core.ui.components.LinearTrainingProgress
+import ldv.shuuen.core.ui.components.MidiKeyboardBadge
 import ldv.shuuen.core.ui.components.ShuuenTopAppBar
 import ldv.shuuen.core.ui.components.ShuuenTopAppBarType
 import ldv.shuuen.core.ui.components.ShuuenUi
@@ -88,6 +90,7 @@ fun SinglesPlayScreen(
             trailingIcon =
                 if (circleInput && screenState.quizState != null) Icons.Rounded.Flag else null,
             onTrailingClick = { viewModel.finishEarly() },
+            statusContent = { MidiKeyboardBadge() },
             type = ShuuenTopAppBarType.Simple,
         )
       },
@@ -112,14 +115,27 @@ fun SinglesPlayScreen(
     val currentRoot by rememberUpdatedState(screenState.quizState?.root)
 
     LaunchedEffect(Unit) {
-      viewModel.setupMelodyFlashes.collect { req ->
-        val method = currentInputMethod
-        val index = pitchToItemIndex(req.pitch, method.mode, currentRoot)
-        when (method.component) {
-          InputComponent.Piano ->
-              keyboardState.flash(index, req.color, holdMillis = 520, attackMillis = 80, releaseMillis = 300)
-          InputComponent.Circle ->
-              circleState.flash(index, req.color, holdMillis = 520, attackMillis = 80, releaseMillis = 300)
+      launch {
+        viewModel.setupMelodyFlashes.collect { req ->
+          val method = currentInputMethod
+          val index = pitchToItemIndex(req.pitch, method.mode, currentRoot)
+          when (method.component) {
+            InputComponent.Piano ->
+                keyboardState.flash(index, req.color, holdMillis = 520, attackMillis = 80, releaseMillis = 300)
+            InputComponent.Circle ->
+                circleState.flash(index, req.color, holdMillis = 520, attackMillis = 80, releaseMillis = 300)
+          }
+        }
+      }
+      // MIDI keyboard guesses flash like taps: default (short) flash timings.
+      launch {
+        viewModel.midiGuessFlashes.collect { req ->
+          val method = currentInputMethod
+          val index = pitchToItemIndex(req.pitch, method.mode, currentRoot)
+          when (method.component) {
+            InputComponent.Piano -> keyboardState.flash(index, req.color)
+            InputComponent.Circle -> circleState.flash(index, req.color)
+          }
         }
       }
     }

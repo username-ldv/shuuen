@@ -49,6 +49,10 @@ class KStoreSettingsRepository(
     store.update { it?.copy(inputMethod = inputMethod) }
   }
 
+  override suspend fun setMidiRespectOctaves(value: Boolean) {
+    store.update { it?.copy(midiRespectOctaves = value) }
+  }
+
   override suspend fun setAllowSevenAccidentalKeys(value: Boolean) {
     store.update { it?.copy(allowSevenAccidentalKeys = value) }
   }

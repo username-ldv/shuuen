@@ -24,6 +24,10 @@ data class SettingsUiState(
   val selectedVolumes: ChannelVolumes = ChannelVolumes(),
   val melodyOriginalVolumeBoost: Int = 0,
   val inputMethod: InputMethod = InputMethod(),
+  /** Names of the connected hardware MIDI keyboards; empty when none. */
+  val midiKeyboardDevices: List<String> = emptyList(),
+  /** MIDI keyboard answers must match the asked note's exact octave (off = octave independent). */
+  val midiRespectOctaves: Boolean = false,
   val allowSevenAccidentalKeys: Boolean = false,
   val musicLabels: MusicLabelSettings = MusicLabelSettings(),
   /** The category whose picker sheet is currently open, or null when closed. */
@@ -47,6 +51,8 @@ enum class LabelEditor {
 
 sealed interface SettingsAction {
   data class SelectInputMethod(val inputMethod: InputMethod) : SettingsAction
+
+  data class SetMidiRespectOctaves(val value: Boolean) : SettingsAction
 
   data class SetAllowSevenAccidentalKeys(val value: Boolean) : SettingsAction
 

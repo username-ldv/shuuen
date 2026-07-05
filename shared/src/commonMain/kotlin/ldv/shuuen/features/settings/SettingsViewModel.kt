@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ldv.shuuen.core.audio.engine.MidiEngine
 import ldv.shuuen.core.audio.engine.MidiEngineStatus
+import ldv.shuuen.core.audio.input.MidiKeyboardInput
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.music.Chord
@@ -23,6 +24,7 @@ import kotlin.time.Duration.Companion.milliseconds
 class SettingsViewModel(
     private val midiEngine: MidiEngine,
     private val settingsRepository: SettingsRepository,
+    midiKeyboardInput: MidiKeyboardInput,
 ) : ViewModel() {
   private val mutableState = MutableStateFlow(SettingsUiState())
   val state: StateFlow<SettingsUiState> = mutableState.asStateFlow()
@@ -38,10 +40,16 @@ class SettingsViewModel(
             selectedVolumes = settings.volumes,
             melodyOriginalVolumeBoost = settings.melodyOriginalVolumeBoost,
             inputMethod = settings.inputMethod,
+            midiRespectOctaves = settings.midiRespectOctaves,
             allowSevenAccidentalKeys = settings.allowSevenAccidentalKeys,
             musicLabels = settings.musicLabels,
           )
         }
+      }
+    }
+    viewModelScope.launch {
+      midiKeyboardInput.connectedDevices.collect { devices ->
+        mutableState.update { it.copy(midiKeyboardDevices = devices) }
       }
     }
     viewModelScope.launch {
@@ -79,6 +87,10 @@ class SettingsViewModel(
 
       is SettingsAction.SetAllowSevenAccidentalKeys -> {
         viewModelScope.launch { settingsRepository.setAllowSevenAccidentalKeys(action.value) }
+      }
+
+      is SettingsAction.SetMidiRespectOctaves -> {
+        viewModelScope.launch { settingsRepository.setMidiRespectOctaves(action.value) }
       }
 
       is SettingsAction.OpenLabelEditor ->

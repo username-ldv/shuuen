@@ -35,6 +35,8 @@ import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
 import ldv.shuuen.features.training.level_end.domain.longestCleanRun
 import ldv.shuuen.core.audio.engine.MidiEngine
 import ldv.shuuen.core.audio.engine.MidiEngineStatus
+import ldv.shuuen.core.audio.input.MidiKeyboardEvent
+import ldv.shuuen.core.audio.input.MidiKeyboardInput
 import ldv.shuuen.core.music.Degree
 import ldv.shuuen.core.music.DegreeContext
 import ldv.shuuen.core.music.Note
@@ -79,6 +81,7 @@ class SinglesPlayScreenViewModel(
     val midiEngine: MidiEngine,
     settingsRepository: SettingsRepository,
     private val trainingSessionRepository: TrainingSessionRepository,
+    midiKeyboardInput: MidiKeyboardInput,
 ) : ViewModel() {
   private val _state = MutableStateFlow(SinglesPlayScreenState())
   val state = _state.asStateFlow()
@@ -93,6 +96,12 @@ class SinglesPlayScreenViewModel(
       settingsRepository.settings
           .map { it.musicLabels }
           .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MusicLabelSettings())
+
+  // Read at the moment a MIDI key lands, so it must always hold the latest value: Eagerly.
+  private val midiRespectOctaves: StateFlow<Boolean> =
+      settingsRepository.settings
+          .map { it.midiRespectOctaves }
+          .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
   private var degreeContextPlayer: DegreeContextPlayer? = null
 
@@ -123,8 +132,23 @@ class SinglesPlayScreenViewModel(
       )
   val setupMelodyFlashes: SharedFlow<KeyFlashRequest> = _setupMelodyFlashes.asSharedFlow()
 
+  // Answer feedback for MIDI keyboard guesses: the screen flashes the input item matching the
+  // played key's pitch class, exactly like it does for its own taps.
+  private val _midiGuessFlashes =
+      MutableSharedFlow<KeyFlashRequest>(
+          extraBufferCapacity = 8,
+          onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
+  val midiGuessFlashes: SharedFlow<KeyFlashRequest> = _midiGuessFlashes.asSharedFlow()
+
   init {
     Napier.v { "Started level with id: $levelId" }
+
+    viewModelScope.launch {
+      midiKeyboardInput.events.collect { event ->
+        if (event is MidiKeyboardEvent.NoteOn) midiKeyPressed(event.midiIndex)
+      }
+    }
 
     viewModelScope.launch {
       when (midiEngine.initialize()) {
@@ -217,20 +241,39 @@ class SinglesPlayScreenViewModel(
 
   /**
    * Returns whether the guess was correct, or null if no quiz is active (caller should not flash).
+   * [exactMidiIndex] is set for MIDI keyboard guesses when octaves are respected: the guess must
+   * then also match the asked note's octave, not just its pitch class.
    */
-  fun userGuessed(pitch: Pitch): Boolean? {
+  fun userGuessed(pitch: Pitch, exactMidiIndex: Int? = null): Boolean? {
     val quizzer = quizzer ?: return null
 
     // Correctness must be read before check() advances the question.
-    val isCorrect = quizzer.quizState.value.currentNote.pitch == pitch
+    val currentNote = quizzer.quizState.value.currentNote
+    val isCorrect =
+        currentNote.pitch == pitch &&
+            (exactMidiIndex == null || currentNote.midiIndex == exactMidiIndex)
     if (isCorrect) {
       // Time to answer counts wrong tries and repeats: it runs from the first time the question's
       // note sounded until the correct answer landed.
       questionStartMark?.let { answerTimesMillis += it.elapsedNow().inWholeMilliseconds }
       questionStartMark = null
     }
-    quizzer.check(pitch)
+    quizzer.check(pitch, exactMidiIndex)
     return isCorrect
+  }
+
+  /**
+   * A key pressed on a connected MIDI keyboard answers like a tap on the input item of the key's
+   * pitch class, regardless of the on-screen input method. With the respect-octaves setting on,
+   * the exact key (octave included) must match the asked note.
+   */
+  private fun midiKeyPressed(midiIndex: Int) {
+    if (_state.value.phase != QuizPhase.AwaitingAnswer) return
+    val pitch = Pitch.fromOrdinal(midiIndex)
+    val exactMidiIndex = midiIndex.takeIf { midiRespectOctaves.value }
+    val correct = userGuessed(pitch, exactMidiIndex) ?: return
+    val color = if (correct) AnswerColors.Correct.color else AnswerColors.Incorrect.color
+    _midiGuessFlashes.tryEmit(KeyFlashRequest(pitch, color))
   }
 
   fun repeatNote() {

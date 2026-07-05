@@ -19,6 +19,7 @@ import ldv.shuuen.core.music.chromaticSpellingByOrdinal
 import ldv.shuuen.core.music.customLabel
 import ldv.shuuen.core.music.effectiveDegreeNames
 import ldv.shuuen.core.settings.MusicLabelSettings
+import ldv.shuuen.core.ui.components.MidiKeyboardBadge
 import ldv.shuuen.core.ui.components.ShuuenTopAppBar
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.StaticScreenFrame
@@ -48,6 +49,7 @@ fun FreePlayScreen(
       ShuuenTopAppBar(
         title = "FREE PLAY",
         onBack = onNavigateBack,
+        statusContent = { MidiKeyboardBadge() },
       )
     },
   ) {

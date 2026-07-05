@@ -28,6 +28,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ldv.shuuen.core.audio.engine.MidiEngine
 import ldv.shuuen.core.audio.engine.MidiEngineStatus
+import ldv.shuuen.core.audio.input.MidiKeyboardEvent
+import ldv.shuuen.core.audio.input.MidiKeyboardInput
 import ldv.shuuen.core.music.Chord
 import ldv.shuuen.core.music.Degree
 import ldv.shuuen.core.music.DegreeContext
@@ -38,6 +40,7 @@ import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.InputMode
 import ldv.shuuen.core.settings.MusicLabelSettings
 import ldv.shuuen.core.settings.SettingsRepository
+import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
 import ldv.shuuen.features.training.chords.domain.ChordsLevel
 import ldv.shuuen.features.training.chords.domain.ChordsLocalLevelRepository
@@ -73,6 +76,7 @@ class ChordsPlayScreenViewModel(
     val midiEngine: MidiEngine,
     settingsRepository: SettingsRepository,
     private val trainingSessionRepository: TrainingSessionRepository,
+    midiKeyboardInput: MidiKeyboardInput,
 ) : ViewModel() {
   private val _state = MutableStateFlow(ChordsPlayScreenState())
   val state = _state.asStateFlow()
@@ -87,6 +91,12 @@ class ChordsPlayScreenViewModel(
       settingsRepository.settings
           .map { it.musicLabels }
           .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MusicLabelSettings())
+
+  // Read at the moment a MIDI key lands, so it must always hold the latest value: Eagerly.
+  private val midiRespectOctaves: StateFlow<Boolean> =
+      settingsRepository.settings
+          .map { it.midiRespectOctaves }
+          .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
   private var degreeContextPlayer: DegreeContextPlayer? = null
 
@@ -118,8 +128,23 @@ class ChordsPlayScreenViewModel(
       )
   val setupMelodyFlashes: SharedFlow<KeyFlashRequest> = _setupMelodyFlashes.asSharedFlow()
 
+  // Answer feedback for MIDI keyboard guesses: the screen flashes the input item matching the
+  // played key's pitch class, exactly like it does for its own taps.
+  private val _midiGuessFlashes =
+      MutableSharedFlow<KeyFlashRequest>(
+          extraBufferCapacity = 8,
+          onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
+  val midiGuessFlashes: SharedFlow<KeyFlashRequest> = _midiGuessFlashes.asSharedFlow()
+
   init {
     Napier.v { "Started chords level with id: $levelId" }
+
+    viewModelScope.launch {
+      midiKeyboardInput.events.collect { event ->
+        if (event is MidiKeyboardEvent.NoteOn) midiKeyPressed(event.midiIndex)
+      }
+    }
 
     viewModelScope.launch {
       when (midiEngine.initialize()) {
@@ -207,8 +232,10 @@ class ChordsPlayScreenViewModel(
 
   /**
    * Returns how the guess landed, or null if no quiz is active (caller should not flash).
+   * [exactMidiIndex] is set for MIDI keyboard guesses when octaves are respected: the guess must
+   * then also match a chord note's octave, not just its pitch class.
    */
-  fun userGuessed(pitch: Pitch): ChordGuessResult? {
+  fun userGuessed(pitch: Pitch, exactMidiIndex: Int? = null): ChordGuessResult? {
     val quizzer = quizzer ?: return null
 
     // The question's start mark must be captured before check() advances the question: the
@@ -216,13 +243,31 @@ class ChordsPlayScreenViewModel(
     // next question before this function reads it again (which made every answer time ~0).
     val questionBefore = quizzer.quizState.value.currentQuestionNumber
     val startMark = questionStartMark
-    val result = quizzer.check(pitch)
+    val result = quizzer.check(pitch, exactMidiIndex)
     // The guess that completes the chord advances the question; that's when the answer time lands.
     // It runs from the first time the question's chord sounded, so wrong tries and repeats count.
     if (quizzer.quizState.value.currentQuestionNumber != questionBefore) {
       startMark?.let { answerTimesMillis += it.elapsedNow().inWholeMilliseconds }
     }
     return result
+  }
+
+  /**
+   * A key pressed on a connected MIDI keyboard answers like a tap on the input item of the key's
+   * pitch class, regardless of the on-screen input method. With the respect-octaves setting on,
+   * the exact key (octave included) must match a chord note.
+   */
+  private fun midiKeyPressed(midiIndex: Int) {
+    if (_state.value.phase != ChordsQuizPhase.AwaitingAnswer) return
+    val pitch = Pitch.fromOrdinal(midiIndex)
+    val exactMidiIndex = midiIndex.takeIf { midiRespectOctaves.value }
+    val color =
+        when (userGuessed(pitch, exactMidiIndex)) {
+          ChordGuessResult.Correct -> ShuuenUi.Correct
+          ChordGuessResult.Incorrect -> ShuuenUi.Incorrect
+          ChordGuessResult.Ignored, null -> return
+        }
+    _midiGuessFlashes.tryEmit(KeyFlashRequest(pitch, color))
   }
 
   fun repeatChord() {

@@ -189,6 +189,44 @@ internal actual object BassPlatform {
 
   actual fun freeSoundFont(soundFontHandle: Int): Boolean =
     libraries.midi.BASS_MIDI_FontFree(soundFontHandle)
+
+  actual val midiInputSupported: Boolean = true
+
+  actual fun midiInGetDeviceInfo(device: Int): BassMidiInputDeviceInfo? {
+    val info = BassMidiDeviceInfo()
+    if (!libraries.midi.BASS_MIDI_InGetDeviceInfo(device, info)) return null
+    info.read()
+    return BassMidiInputDeviceInfo(
+      device = device,
+      name = info.name?.getString(0) ?: "MIDI device $device",
+      enabled = info.flags and BassDeviceEnabled != 0,
+      initialized = info.flags and BassDeviceInit != 0,
+    )
+  }
+
+  actual fun midiInInit(device: Int, onData: (ByteArray) -> Unit): Boolean {
+    val proc = MidiInProc { _, _, buffer, length, _ ->
+      if (length > 0) onData(buffer.getByteArray(0, length))
+    }
+    // The callback must stay strongly referenced while the device is open, or the JVM could
+    // collect it under BASS's feet.
+    midiInCallbacks[device] = proc
+    val initialized = libraries.midi.BASS_MIDI_InInit(device, proc, null)
+    if (!initialized) midiInCallbacks.remove(device)
+    return initialized
+  }
+
+  actual fun midiInStart(device: Int): Boolean = libraries.midi.BASS_MIDI_InStart(device)
+
+  actual fun midiInStop(device: Int): Boolean = libraries.midi.BASS_MIDI_InStop(device)
+
+  actual fun midiInFree(device: Int): Boolean {
+    val freed = libraries.midi.BASS_MIDI_InFree(device)
+    if (freed) midiInCallbacks.remove(device)
+    return freed
+  }
+
+  private val midiInCallbacks = mutableMapOf<Int, MidiInProc>()
 }
 
 private data class NativeLibraries(
@@ -270,6 +308,11 @@ private interface BassMidiNative : Library {
 
   fun BASS_MIDI_FontInit(file: String, flags: Int): Int
   fun BASS_MIDI_FontFree(handle: Int): Boolean
+  fun BASS_MIDI_InGetDeviceInfo(device: Int, info: BassMidiDeviceInfo): Boolean
+  fun BASS_MIDI_InInit(device: Int, proc: MidiInProc?, user: Pointer?): Boolean
+  fun BASS_MIDI_InStart(device: Int): Boolean
+  fun BASS_MIDI_InStop(device: Int): Boolean
+  fun BASS_MIDI_InFree(device: Int): Boolean
   fun BASS_MIDI_StreamSetFonts(handle: Int, fonts: Pointer, count: Int): Boolean
   fun BASS_MIDI_StreamEvent(handle: Int, chan: Int, event: Int, param: Int): Boolean
   fun BASS_MIDI_FontGetInfo(handle: Int, info: BassMidiFontInfo): Boolean
@@ -333,6 +376,29 @@ private fun interface MidiFilterProc : StdCallLibrary.StdCallCallback {
     user: Pointer?,
   ): Boolean
 }
+
+/** BASS_MIDI_DEVICEINFO: { char* name; DWORD id; DWORD flags } */
+class BassMidiDeviceInfo : Structure() {
+  @JvmField
+  var name: Pointer? = null
+
+  @JvmField
+  var id: Int = 0
+
+  @JvmField
+  var flags: Int = 0
+
+  override fun getFieldOrder(): List<String> = listOf("name", "id", "flags")
+}
+
+/** MIDIINPROC: void CALLBACK (DWORD device, double time, const BYTE* buffer, DWORD length, void* user) */
+fun interface MidiInProc : StdCallLibrary.StdCallCallback {
+  fun invoke(device: Int, time: Double, buffer: Pointer, length: Int, user: Pointer?)
+}
+
+// BASS_MIDI_DEVICEINFO status flags (BASS_DEVICE_* in bass.h).
+private const val BassDeviceEnabled = 1
+private const val BassDeviceInit = 4
 
 private fun extractLibrary(resourcePath: String): Path {
   val target = libraryCachePath(resourcePath)

@@ -34,6 +34,8 @@ import ldv.shuuen.core.audio.engine.MidiEngine
 import ldv.shuuen.core.audio.engine.MidiEngineStatus
 import ldv.shuuen.core.audio.engine.MidiFilePlaybackOptions
 import ldv.shuuen.core.audio.engine.MidiFilePlayer
+import ldv.shuuen.core.audio.input.MidiKeyboardEvent
+import ldv.shuuen.core.audio.input.MidiKeyboardInput
 import ldv.shuuen.core.music.Degree
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.Pitch
@@ -47,6 +49,7 @@ import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.InputMode
 import ldv.shuuen.core.settings.MusicLabelSettings
 import ldv.shuuen.core.settings.SettingsRepository
+import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
 import ldv.shuuen.features.training.common.DegreeContextPlayer
 import ldv.shuuen.features.training.common.TrainingFlow
@@ -175,6 +178,7 @@ class MelodiesPlayScreenViewModel(
   private val player: MidiFilePlayer,
   private val settingsRepository: SettingsRepository,
   private val trainingSessionRepository: TrainingSessionRepository,
+  midiKeyboardInput: MidiKeyboardInput,
 ) : ViewModel() {
   private val _state = MutableStateFlow(MelodiesPlayState())
   val state = _state.asStateFlow()
@@ -189,6 +193,12 @@ class MelodiesPlayScreenViewModel(
     settingsRepository.settings
       .map { it.musicLabels }
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MusicLabelSettings())
+
+  // Read at the moment a MIDI key lands, so it must always hold the latest value: Eagerly.
+  private val midiRespectOctaves: StateFlow<Boolean> =
+    settingsRepository.settings
+      .map { it.midiRespectOctaves }
+      .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
   private var pollJob: Job? = null
   private var sequenceJob: Job? = null
@@ -237,7 +247,22 @@ class MelodiesPlayScreenViewModel(
     )
   val setupMelodyFlashes: SharedFlow<KeyFlashRequest> = _setupMelodyFlashes.asSharedFlow()
 
+  // Answer feedback for MIDI keyboard guesses: the screen flashes the input item matching the
+  // played key's pitch class, exactly like it does for its own taps.
+  private val _midiGuessFlashes =
+    MutableSharedFlow<KeyFlashRequest>(
+      extraBufferCapacity = 8,
+      onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+  val midiGuessFlashes: SharedFlow<KeyFlashRequest> = _midiGuessFlashes.asSharedFlow()
+
   init {
+    viewModelScope.launch {
+      midiKeyboardInput.events.collect { event ->
+        if (event is MidiKeyboardEvent.NoteOn) midiKeyPressed(event.midiIndex)
+      }
+    }
+
     viewModelScope.launch {
       when (val status = midiEngine.initialize()) {
         MidiEngineStatus.Ready -> Napier.v { "MIDI engine ready for melodies player" }
@@ -796,16 +821,23 @@ class MelodiesPlayScreenViewModel(
    * Checks the guessed pitch against the awaited note. A correct guess advances to the next note
    * (and in Random mode to the next question after the last note); a wrong guess records at most
    * one miss per note and stays on it. Returns null when no quiz is active (caller should not
-   * flash).
+   * flash). [exactMidiIndex] is set for MIDI keyboard guesses when octaves are respected: the
+   * guess must then also match the awaited note's octave, not just its pitch class.
    */
-  fun userGuessed(pitch: Pitch): Boolean? {
+  fun userGuessed(pitch: Pitch, exactMidiIndex: Int? = null): Boolean? {
+    val matchesGuess: (Note) -> Boolean =
+      if (exactMidiIndex != null) {
+        { note -> note.midiIndex == exactMidiIndex }
+      } else {
+        { note -> note.pitch == pitch }
+      }
     val current = _state.value
     if (current.isLoading || current.error != null || current.isQuizComplete) return null
     // The endless stream reveals notes as they sound; there is nothing to answer past the last
     // note that has started playing.
     if (current.isEndless && current.answerIndex > maxStartedIndex) return null
     val answerNote = current.notes.getOrNull(current.answerIndex) ?: return null
-    val isCorrect = answerNote.note.pitch == pitch
+    val isCorrect = matchesGuess(answerNote.note)
 
     var sequenceFinished = false
     _state.update { state ->
@@ -814,7 +846,7 @@ class MelodiesPlayScreenViewModel(
         state.incorrectAnswers.any {
           it.questionNumber == state.questionNumber && it.noteIndex == state.answerIndex
         }
-      if (note.note.pitch == pitch) {
+      if (matchesGuess(note.note)) {
         val nextAnswerIndex = state.answerIndex + 1
         sequenceFinished = !state.isEndless && nextAnswerIndex >= state.notes.size
         state.copy(
@@ -855,6 +887,20 @@ class MelodiesPlayScreenViewModel(
       viewModelScope.launch { completeSession(finishedEarly = false) }
     }
     return isCorrect
+  }
+
+  /**
+   * A key pressed on a connected MIDI keyboard answers like a tap on the input item of the key's
+   * pitch class, regardless of the on-screen input method. With the respect-octaves setting on,
+   * the exact key (octave included) must match the awaited note.
+   */
+  private fun midiKeyPressed(midiIndex: Int) {
+    val pitch = Pitch.fromOrdinal(midiIndex)
+    val exactMidiIndex = midiIndex.takeIf { midiRespectOctaves.value }
+    val correct = userGuessed(pitch, exactMidiIndex) ?: return
+    _midiGuessFlashes.tryEmit(
+      KeyFlashRequest(pitch, if (correct) ShuuenUi.Correct else ShuuenUi.Incorrect)
+    )
   }
 
   /** Ends the session before its natural end, saving whatever was answered so far. */

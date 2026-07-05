@@ -85,8 +85,15 @@ class SinglesLevelQuizzer(
   private fun accidentalTypeFor(root: Pitch): ScaleAccidentalType =
     decideAccidentalType(root.ordinal, scaleType, allowSevenAccidentalKeys, random)
 
-  fun check(pitch: Pitch): Boolean {
-    val correctNow = quizState.value.currentNote.pitch == pitch
+  /**
+   * Grades a guessed [pitch] against the current note. [exactMidiIndex] is set for MIDI keyboard
+   * guesses with the respect-octaves setting on: the guess must then also be the exact key (same
+   * octave), not just the right pitch class.
+   */
+  fun check(pitch: Pitch, exactMidiIndex: Int? = null): Boolean {
+    val currentNote = quizState.value.currentNote
+    val correctNow =
+      currentNote.pitch == pitch && (exactMidiIndex == null || currentNote.midiIndex == exactMidiIndex)
     if (correctNow) {
       val current = quizState.value
       val nextQuestionNumber = current.currentQuestionNumber + 1

@@ -27,6 +27,7 @@ import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Piano
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.TextFields
@@ -64,6 +65,7 @@ import ldv.shuuen.core.settings.InputMode
 import ldv.shuuen.core.ui.components.FlatSection
 import ldv.shuuen.core.ui.components.Hairline
 import ldv.shuuen.core.ui.components.IconBubble
+import ldv.shuuen.core.ui.components.MidiKeyboardBadge
 import ldv.shuuen.core.ui.components.PillControl
 import ldv.shuuen.core.ui.components.ShuuenSwitch
 import ldv.shuuen.core.ui.components.ShuuenTopAppBar
@@ -86,6 +88,7 @@ fun SettingsScreen(
         title = "SETTINGS",
         onBack = onNavigateBack,
         trailingIcon = Icons.Rounded.Tune,
+        statusContent = { MidiKeyboardBadge() },
         type = ShuuenTopAppBarType.Simple
       )
     },
@@ -106,6 +109,8 @@ fun SettingsScreen(
               selected = state.inputMethod,
               onSelect = { viewModel.onAction(SettingsAction.SelectInputMethod(it)) },
             )
+            Hairline()
+            MidiKeyboardSection(state = state, onAction = viewModel::onAction)
             Hairline()
             GeneralSection(
               state = state,
@@ -128,6 +133,8 @@ fun SettingsScreen(
             selected = state.inputMethod,
             onSelect = { viewModel.onAction(SettingsAction.SelectInputMethod(it)) },
           )
+          Hairline()
+          MidiKeyboardSection(state = state, onAction = viewModel::onAction)
           Hairline()
           SoundfontSection(state = state, onAction = viewModel::onAction)
           Hairline()
@@ -282,6 +289,64 @@ private fun InputMethodSection(
             }
           }
         }
+      }
+    }
+  }
+}
+
+/**
+ * Hardware MIDI keyboard status and options. The keyboard always answers alongside the on-screen
+ * input; the octave choice only appears while one is actually connected.
+ */
+@Composable
+private fun MidiKeyboardSection(
+  state: SettingsUiState,
+  onAction: (SettingsAction) -> Unit,
+) {
+  val connected = state.midiKeyboardDevices.isNotEmpty()
+  FlatSection(
+    label = "MIDI KEYBOARD",
+    supporting = "A connected MIDI keyboard answers alongside the on-screen input.",
+  ) {
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(vertical = 6.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+      Icon(
+        Icons.Rounded.Piano,
+        contentDescription = null,
+        tint = if (connected) ShuuenUi.Correct else ShuuenUi.Muted,
+        modifier = Modifier.size(22.dp),
+      )
+      Column(modifier = Modifier.weight(1f)) {
+        Text(
+          text = if (connected) "Connected" else "Not connected",
+          color = if (connected) ShuuenUi.Text else ShuuenUi.Muted,
+          style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+          text =
+            if (connected) state.midiKeyboardDevices.joinToString()
+            else "Plug in a MIDI keyboard to play answers on it.",
+          color = ShuuenUi.Dim,
+          style = MaterialTheme.typography.bodySmall,
+        )
+      }
+    }
+
+    AnimatedVisibility(connected) {
+      Column {
+        Hairline()
+        SwitchRow(
+          icon = Icons.Rounded.MusicNote,
+          title = "Respect octaves",
+          subtitle = "Answers must match the exact octave; off grades any octave as equal.",
+          checked = state.midiRespectOctaves,
+          onCheckedChange = { onAction(SettingsAction.SetMidiRespectOctaves(it)) },
+        )
       }
     }
   }

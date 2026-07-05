@@ -39,4 +39,10 @@ internal expect object BassPlatform {
   fun getSoundFontPresetName(soundFontHandle: Int, preset: Int, bank: Int): String?
   fun freeStream(streamHandle: Int): Boolean
   fun freeSoundFont(soundFontHandle: Int): Boolean
+  val midiInputSupported: Boolean
+  fun midiInGetDeviceInfo(device: Int): BassMidiInputDeviceInfo?
+  fun midiInInit(device: Int, onData: (ByteArray) -> Unit): Boolean
+  fun midiInStart(device: Int): Boolean
+  fun midiInStop(device: Int): Boolean
+  fun midiInFree(device: Int): Boolean
 }

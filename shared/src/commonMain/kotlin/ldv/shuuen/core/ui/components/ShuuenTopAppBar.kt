@@ -36,6 +36,8 @@ fun ShuuenTopAppBar(
   onBack: (() -> Unit)? = null,
   trailingIcon: ImageVector? = null,
   onTrailingClick: (() -> Unit)? = null,
+  /** Passive status content (e.g. the MIDI-keyboard badge) shown before the trailing icon. */
+  statusContent: @Composable () -> Unit = {},
   type: ldv.shuuen.core.ui.components.ShuuenTopAppBarType = ldv.shuuen.core.ui.components.ShuuenTopAppBarType.Simple
 ) {
   BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
@@ -87,6 +89,7 @@ fun ShuuenTopAppBar(
         }
       },
       actions = {
+        statusContent()
         if (trailingIcon != null) {
           ldv.shuuen.core.ui.components.CircleIconButton(
             icon = trailingIcon,

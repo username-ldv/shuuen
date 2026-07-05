@@ -98,18 +98,31 @@ class ChordsLevelQuizzer(
   private fun accidentalTypeFor(root: Pitch): ScaleAccidentalType =
     decideAccidentalType(root.ordinal, scaleType, allowSevenAccidentalKeys, random)
 
-  fun check(pitch: Pitch): ChordGuessResult {
+  /**
+   * Grades a guessed [pitch] against the current chord. [exactMidiIndex] is set for MIDI keyboard
+   * guesses with the respect-octaves setting on: a chord note then only matches the exact key
+   * (same octave), so in [ChordAnswerOrder.Any] each octave copy must be played individually
+   * instead of one press resolving them all.
+   */
+  fun check(pitch: Pitch, exactMidiIndex: Int? = null): ChordGuessResult {
     val current = quizState.value
     val chord = current.currentChord
+    val matches: (Note) -> Boolean =
+      if (exactMidiIndex != null) {
+        { note -> note.midiIndex == exactMidiIndex }
+      } else {
+        { note -> note.pitch == pitch }
+      }
 
-    // Which chord notes this press answers. [ChordAnswerOrder.Any] resolves every octave copy of
-    // the pitch class at once (copies are all-or-nothing, so checking one is checking all); the
-    // ordered modes accept only the next note from their end — answered notes fill contiguously
-    // from that end, so the expected index follows from the answered count.
+    // Which chord notes this press answers. [ChordAnswerOrder.Any] resolves every matching copy
+    // at once (octave copies of a pitch class are all-or-nothing, so checking one is checking
+    // all — unless octaves are respected, where a match is a single exact note); the ordered
+    // modes accept only the next note from their end — answered notes fill contiguously from
+    // that end, so the expected index follows from the answered count.
     val answeredByPress: List<Int> =
       when (level.answerOrder) {
         ChordAnswerOrder.Any -> {
-          val copies = chord.indices.filter { chord[it].pitch == pitch }
+          val copies = chord.indices.filter { matches(chord[it]) }
           if (copies.isNotEmpty() && copies.first() in current.answeredNotes) {
             return ChordGuessResult.Ignored
           }
@@ -118,12 +131,12 @@ class ChordsLevelQuizzer(
 
         ChordAnswerOrder.FromBottom -> {
           val next = current.answeredNotes.size
-          if (next < chord.size && chord[next].pitch == pitch) listOf(next) else emptyList()
+          if (next < chord.size && matches(chord[next])) listOf(next) else emptyList()
         }
 
         ChordAnswerOrder.FromTop -> {
           val next = chord.size - 1 - current.answeredNotes.size
-          if (next >= 0 && chord[next].pitch == pitch) listOf(next) else emptyList()
+          if (next >= 0 && matches(chord[next])) listOf(next) else emptyList()
         }
       }
 

@@ -21,6 +21,8 @@ interface SettingsRepository {
 
   suspend fun setInputMethod(inputMethod: InputMethod)
 
+  suspend fun setMidiRespectOctaves(value: Boolean)
+
   suspend fun setAllowSevenAccidentalKeys(value: Boolean)
 
   suspend fun setNoteNames(names: List<String>)
@@ -48,6 +50,12 @@ data class AppSettings(
   @SerialName("melodyOriginalVelocityBoost")
   val melodyOriginalVolumeBoost: Int = 0,
   val inputMethod: InputMethod = InputMethod(),
+  /**
+   * MIDI keyboard answers only: when true, a guess must land in the exact octave of the asked
+   * note; when false (default) any octave of the right pitch class counts, matching the
+   * octave-less on-screen inputs. On-screen taps are always octave independent.
+   */
+  val midiRespectOctaves: Boolean = false,
   val musicLabels: MusicLabelSettings = MusicLabelSettings(),
   /**
    * When true, the 7-sharp/7-flat key spellings (C♯, C♭ and their minor relatives) may be chosen

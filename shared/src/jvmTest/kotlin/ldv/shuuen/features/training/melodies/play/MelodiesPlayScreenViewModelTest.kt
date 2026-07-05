@@ -6,8 +6,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -20,6 +24,8 @@ import ldv.shuuen.core.audio.engine.MidiEngine
 import ldv.shuuen.core.audio.engine.MidiEngineStatus
 import ldv.shuuen.core.audio.engine.MidiFilePlaybackOptions
 import ldv.shuuen.core.audio.engine.MidiFilePlayer
+import ldv.shuuen.core.audio.input.MidiKeyboardEvent
+import ldv.shuuen.core.audio.input.MidiKeyboardInput
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.music.Chord
@@ -65,6 +71,7 @@ class MelodiesPlayScreenViewModelTest {
         player = FakeMidiFilePlayer(),
         settingsRepository = FakeSettingsRepository(),
         trainingSessionRepository = FakeTrainingSessionRepository(),
+        midiKeyboardInput = FakeMidiKeyboardInput(),
       )
     advanceUntilIdle()
     assertEquals(6, engine.playedNotes.size)
@@ -88,6 +95,7 @@ class MelodiesPlayScreenViewModelTest {
           player = FakeMidiFilePlayer(),
           settingsRepository = FakeSettingsRepository(),
           trainingSessionRepository = FakeTrainingSessionRepository(),
+          midiKeyboardInput = FakeMidiKeyboardInput(),
         )
       runCurrent()
       assertEquals(listOf("play:C4"), engine.events)
@@ -159,6 +167,8 @@ private class FakeSettingsRepository : SettingsRepository {
 
   override suspend fun setInputMethod(inputMethod: InputMethod) = Unit
 
+  override suspend fun setMidiRespectOctaves(value: Boolean) = Unit
+
   override suspend fun setAllowSevenAccidentalKeys(value: Boolean) = Unit
 
   override suspend fun setNoteNames(names: List<String>) = Unit
@@ -168,6 +178,13 @@ private class FakeSettingsRepository : SettingsRepository {
   override suspend fun setCustomNoteNamesPreset(names: List<String>) = Unit
 
   override suspend fun setCustomDegreeNamesPreset(names: List<String>) = Unit
+}
+
+private class FakeMidiKeyboardInput : MidiKeyboardInput {
+  override val connectedDevices: StateFlow<List<String>> = MutableStateFlow(emptyList())
+
+  override val events: SharedFlow<MidiKeyboardEvent> =
+    MutableSharedFlow(extraBufferCapacity = 16, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 }
 
 private class FakeMidiEngine : MidiEngine {

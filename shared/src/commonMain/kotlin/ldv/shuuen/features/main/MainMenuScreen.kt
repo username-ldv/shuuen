@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ldv.shuuen.core.ui.components.Hairline
 import ldv.shuuen.core.ui.components.LinearTrainingProgress
+import ldv.shuuen.core.ui.components.MidiKeyboardBadge
 import ldv.shuuen.core.ui.components.ShuuenTopAppBar
 import ldv.shuuen.core.ui.components.ShuuenTopAppBarType
 import ldv.shuuen.core.ui.components.ShuuenUi
@@ -57,6 +58,7 @@ fun MainMenuScreen(
       ShuuenTopAppBar(
         trailingIcon = Icons.Rounded.Settings,
         onTrailingClick = onOpenSettings,
+        statusContent = { MidiKeyboardBadge() },
         type = ShuuenTopAppBarType.Simple
       )
     },

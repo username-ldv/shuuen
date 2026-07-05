@@ -184,6 +184,19 @@ internal actual object BassPlatform {
 
   actual fun freeSoundFont(soundFontHandle: Int): Boolean =
     BASSMIDI.BASS_MIDI_FontFree(soundFontHandle)
+
+  // BASSMIDI has no MIDI input on Android (per its docs); the app uses android.media.midi instead.
+  actual val midiInputSupported: Boolean = false
+
+  actual fun midiInGetDeviceInfo(device: Int): BassMidiInputDeviceInfo? = null
+
+  actual fun midiInInit(device: Int, onData: (ByteArray) -> Unit): Boolean = false
+
+  actual fun midiInStart(device: Int): Boolean = false
+
+  actual fun midiInStop(device: Int): Boolean = false
+
+  actual fun midiInFree(device: Int): Boolean = false
 }
 
 private fun Int.toUnsignedLong(): Long = toLong() and 0xffffffffL

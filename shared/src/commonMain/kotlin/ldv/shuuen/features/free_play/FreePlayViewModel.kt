@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ldv.shuuen.core.audio.engine.MidiEngine
 import ldv.shuuen.core.audio.engine.MidiEngineStatus
+import ldv.shuuen.core.audio.input.MidiKeyboardEvent
+import ldv.shuuen.core.audio.input.MidiKeyboardInput
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.Pitch
@@ -20,6 +22,7 @@ import ldv.shuuen.core.settings.SettingsRepository
 class FreePlayViewModel(
   private val midiEngine: MidiEngine,
   settingsRepository: SettingsRepository,
+  midiKeyboardInput: MidiKeyboardInput,
   initialTonic: Pitch = Pitch.random(),
 ) : ViewModel() {
   private val mutableState = MutableStateFlow(FreePlayState.initial(initialTonic))
@@ -44,6 +47,17 @@ class FreePlayViewModel(
           mutableState.update {
             it.copy(audioReady = false, initializingAudio = false, errorMessage = status.message)
           }
+        }
+      }
+    }
+
+    // A MIDI keyboard plays the on-screen keys: press and release map to the key of the played
+    // pitch class (free play's keyboard is octave-less, like the quiz inputs).
+    viewModelScope.launch {
+      midiKeyboardInput.events.collect { event ->
+        when (event) {
+          is MidiKeyboardEvent.NoteOn -> pressPitch(event.midiIndex.mod(12))
+          is MidiKeyboardEvent.NoteOff -> releasePitch(event.midiIndex.mod(12))
         }
       }
     }
