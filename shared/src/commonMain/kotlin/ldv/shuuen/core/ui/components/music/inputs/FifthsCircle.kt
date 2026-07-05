@@ -129,7 +129,7 @@ class FifthsCircleState(private val scope: CoroutineScope) {
     scope.launch {
       try {
         flash.progress.animateTo(1f, tween(attackMillis, easing = FastOutSlowInEasing))
-        delay(holdMillis)
+        delay(holdMillis.milliseconds)
         flash.progress.animateTo(0f, tween(releaseMillis, easing = FastOutSlowInEasing))
       } finally {
         flashes.remove(flash)
