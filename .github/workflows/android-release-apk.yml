@@ -2,6 +2,11 @@ name: Android Release APK
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Optional GitHub Release tag to create/update, for example v1.0.0"
+        required: false
+        type: string
   push:
     branches:
       - main
@@ -9,7 +14,11 @@ on:
       - "v*"
 
 permissions:
-  contents: read
+  contents: write
+
+env:
+  ANDROID_HOME: /usr/local/lib/android/sdk
+  ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
 
 concurrency:
   group: android-release-apk-${{ github.ref }}
@@ -36,10 +45,16 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Cache Android SDK packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.ANDROID_HOME }}/platforms/android-37.0
+            ${{ env.ANDROID_HOME }}/build-tools/36.1.0
+          key: android-sdk-${{ runner.os }}-platform-37.0-build-tools-36.1.0
+
       - name: Install Android SDK components
-        run: |
-          yes | sdkmanager --licenses > /dev/null
-          sdkmanager "platforms;android-37.0" "build-tools;36.1.0"
+        run: sdkmanager "platforms;android-37.0" "build-tools;36.1.0"
 
       - name: Build release APK
         run: |
@@ -98,3 +113,20 @@ jobs:
           name: shuuen-release-apk
           path: artifacts/shuuen-release.apk
           if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.release_tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.inputs.release_tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" artifacts/shuuen-release.apk --clobber
+          else
+            gh release create "$RELEASE_TAG" artifacts/shuuen-release.apk \
+              --target "$GITHUB_SHA" \
+              --title "$RELEASE_TAG" \
+              --generate-notes
+          fi
