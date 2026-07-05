@@ -1,0 +1,100 @@
+name: Android Release APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-release-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK components
+        run: |
+          yes | sdkmanager --licenses > /dev/null
+          sdkmanager "platforms;android-37.0" "build-tools;36.1.0"
+
+      - name: Build release APK
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :androidApp:assembleRelease --no-daemon
+
+      - name: Prepare APK artifact
+        env:
+          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          ANDROID_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEYSTORE_PASSWORD }}
+          ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          artifact_dir="artifacts"
+          mkdir -p "$artifact_dir"
+
+          missing_secrets=()
+          [[ -z "${ANDROID_RELEASE_KEYSTORE_BASE64}" ]] && missing_secrets+=("ANDROID_RELEASE_KEYSTORE_BASE64")
+          [[ -z "${ANDROID_RELEASE_KEYSTORE_PASSWORD}" ]] && missing_secrets+=("ANDROID_RELEASE_KEYSTORE_PASSWORD")
+          [[ -z "${ANDROID_RELEASE_KEY_ALIAS}" ]] && missing_secrets+=("ANDROID_RELEASE_KEY_ALIAS")
+
+          if (( ${#missing_secrets[@]} > 0 )); then
+            echo "::error::Missing required signing secret(s): ${missing_secrets[*]}"
+            exit 1
+          fi
+
+          unsigned_apk="$(find androidApp/build/outputs/apk/release -maxdepth 1 -name "*-release-unsigned.apk" -print -quit)"
+          if [[ -z "$unsigned_apk" ]]; then
+            echo "Could not find unsigned release APK output."
+            exit 1
+          fi
+
+          mkdir -p signing
+          printf "%s" "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 --decode > signing/release.keystore
+
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          key_password="${ANDROID_RELEASE_KEY_PASSWORD:-$ANDROID_RELEASE_KEYSTORE_PASSWORD}"
+
+          "$build_tools/zipalign" -p -f 4 "$unsigned_apk" "$artifact_dir/shuuen-release-aligned.apk"
+          "$build_tools/apksigner" sign \
+            --ks signing/release.keystore \
+            --ks-key-alias "$ANDROID_RELEASE_KEY_ALIAS" \
+            --ks-pass "pass:$ANDROID_RELEASE_KEYSTORE_PASSWORD" \
+            --key-pass "pass:$key_password" \
+            --out "$artifact_dir/shuuen-release.apk" \
+            "$artifact_dir/shuuen-release-aligned.apk"
+          "$build_tools/apksigner" verify --verbose "$artifact_dir/shuuen-release.apk"
+
+          rm -f "$artifact_dir/shuuen-release-aligned.apk"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: shuuen-release-apk
+          path: artifacts/shuuen-release.apk
+          if-no-files-found: error
