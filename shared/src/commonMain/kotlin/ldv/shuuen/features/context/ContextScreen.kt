@@ -192,7 +192,7 @@ private val sequencePresets =
                         listOf(Degree.D3, Degree.D5),
                         Sustain.Finite(Timing(standardTempo).half()),
                         duration = ContextDuration.SameAsScaleRotation,
-                        relativeDirection = DegreeDirection.Up,
+                        relativeDirection = DegreeDirection.Down,
                     ),
                 ),
         ),
