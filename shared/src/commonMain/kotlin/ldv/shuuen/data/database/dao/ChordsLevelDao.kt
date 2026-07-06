@@ -15,4 +15,7 @@ interface ChordsLevelDao {
 
   @Upsert
   suspend fun upsertLevel(level: ChordsLevelDbEntity)
+
+  @Query("delete from levels_chords where id = :id")
+  suspend fun deleteById(id: String)
 }

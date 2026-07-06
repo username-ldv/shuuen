@@ -58,6 +58,10 @@ class SinglesLocalLevelRepositoryImpl(
     singlesLevelDao.upsertLevel(entity)
   }
 
+  override suspend fun deleteLevel(id: String) {
+    singlesLevelDao.deleteById(id)
+  }
+
   private suspend fun mapEntity(entity: SinglesLevelDbEntity): SinglesLevel {
     val context = contextLocalRepository.getDegreeContextById(entity.contextId)
     return SinglesLevel(

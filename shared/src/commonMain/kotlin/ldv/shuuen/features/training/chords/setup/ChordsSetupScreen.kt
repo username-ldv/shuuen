@@ -54,12 +54,15 @@ fun ChordsSetupScreen(
     onSaveLevel: () -> Unit,
 ) {
   val saveableScreenState by viewModel.screenState.collectAsStateWithLifecycle()
+  val isEditing = viewModel.isEditing
   StaticScreenFrame(
       verticalSpacing = 22.dp,
       topBar = {
         ShuuenTopAppBar(
-            title = "CHORDS SETUP",
-            subtitle = "Create a custom chord training level.",
+            title = if (isEditing) "EDIT CHORDS" else "CHORDS SETUP",
+            subtitle =
+                if (isEditing) "Update this chord training level."
+                else "Create a custom chord training level.",
             onBack = onNavigateBack,
             type = ShuuenTopAppBarType.Labeled,
         )
@@ -214,7 +217,7 @@ fun ChordsSetupScreen(
 
     val scope = rememberCoroutineScope()
     PrimaryCta(
-        text = "SAVE LEVEL",
+        text = if (isEditing) "SAVE CHANGES" else "SAVE LEVEL",
         onClick = {
           scope.launch {
             viewModel.upsertLevel()

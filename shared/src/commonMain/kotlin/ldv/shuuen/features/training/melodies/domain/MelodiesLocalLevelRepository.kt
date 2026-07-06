@@ -10,4 +10,6 @@ interface MelodiesLocalLevelRepository {
   fun getLevelById(id: String): Flow<ResponseState<MelodiesLevel>>
 
   suspend fun upsertLevel(level: MelodiesLevel)
+
+  suspend fun deleteLevel(id: String)
 }

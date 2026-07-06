@@ -143,6 +143,8 @@ private class FakeMelodiesRepository(private val level: MelodiesLevel) :
     flowOf(ResponseState.Success(level))
 
   override suspend fun upsertLevel(level: MelodiesLevel) = Unit
+
+  override suspend fun deleteLevel(id: String) = Unit
 }
 
 private class FakeTrainingSessionRepository : TrainingSessionRepository {

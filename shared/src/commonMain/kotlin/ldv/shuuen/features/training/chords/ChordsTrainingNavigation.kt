@@ -31,14 +31,17 @@ val chordsTrainingNavigationModule = module {
     ChordsLevelSelectScreen(
       onNavigateBack = { navigator.goBack() },
       onStartLevel = { levelId -> navigator.add(AppRoute.ChordsPlay(levelId)) },
-      onCreateNewLevel = { navigator.add(AppRoute.ChordsSetup) },
+      onCreateNewLevel = { navigator.add(AppRoute.ChordsSetup()) },
+      onEditLevel = { levelId -> navigator.add(AppRoute.ChordsSetup(levelId)) },
       viewModel = koinViewModel(),
     )
   }
 
-  navigation<AppRoute.ChordsSetup> {
+  navigation<AppRoute.ChordsSetup> { route ->
     val navigator = LocalAppNavigator.current
-    val viewModel = koinViewModel<ChordsSetupScreenViewModel>()
+    val viewModel = koinViewModel<ChordsSetupScreenViewModel> {
+      parametersOf(route.levelId.orEmpty())
+    }
     val resultStore = LocalNavResultStore.current
     val result = resultStore.peek(ChordsContextResult)
     LaunchedEffect(result) {

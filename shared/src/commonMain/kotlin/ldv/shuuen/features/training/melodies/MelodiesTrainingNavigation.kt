@@ -31,14 +31,17 @@ val melodiesTrainingNavigationModule = module {
     MelodiesLevelSelectScreen(
       onNavigateBack = { navigator.goBack() },
       onStartLevel = { levelId -> navigator.add(AppRoute.MelodiesPlay(levelId)) },
-      onCreateNewLevel = { navigator.add(AppRoute.MelodiesSetup) },
+      onCreateNewLevel = { navigator.add(AppRoute.MelodiesSetup()) },
+      onEditLevel = { levelId -> navigator.add(AppRoute.MelodiesSetup(levelId)) },
       viewModel = koinViewModel(),
     )
   }
 
-  navigation<AppRoute.MelodiesSetup> {
+  navigation<AppRoute.MelodiesSetup> { route ->
     val navigator = LocalAppNavigator.current
-    val viewModel = koinViewModel<MelodiesSetupScreenViewModel>()
+    val viewModel = koinViewModel<MelodiesSetupScreenViewModel> {
+      parametersOf(route.levelId.orEmpty())
+    }
     val resultStore = LocalNavResultStore.current
     val result = resultStore.peek(MelodiesContextResult)
     LaunchedEffect(result) {

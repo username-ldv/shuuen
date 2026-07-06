@@ -10,4 +10,6 @@ interface ChordsLocalLevelRepository {
   fun getLevelById(id: String): Flow<ResponseState<ChordsLevel>>
 
   suspend fun upsertLevel(level: ChordsLevel)
+
+  suspend fun deleteLevel(id: String)
 }

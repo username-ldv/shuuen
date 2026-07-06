@@ -1,12 +1,14 @@
 package ldv.shuuen.features.training.single.setup
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import ldv.shuuen.core.music.DegreeContext
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.NoteRange
@@ -14,6 +16,7 @@ import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.Scale
 import ldv.shuuen.core.music.ScaleType
 import ldv.shuuen.core.music.toNoteRange
+import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.features.training.single.domain.SinglesLocalLevelRepository
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.LevelSource
@@ -21,7 +24,13 @@ import ldv.shuuen.features.training.domain.ScaleConfig
 import ldv.shuuen.features.training.single.domain.SinglesLevel
 import ldv.shuuen.features.training.common.asConfigDegreeStates
 
-class SinglesSetupScreenViewModel(val levelRepository: SinglesLocalLevelRepository) : ViewModel() {
+class SinglesSetupScreenViewModel(
+    editLevelId: String,
+    val levelRepository: SinglesLocalLevelRepository,
+) : ViewModel() {
+  private val editedLevelId = editLevelId.takeIf { it.isNotBlank() }
+  val isEditing = editedLevelId != null
+
   @OptIn(ExperimentalUuidApi::class)
   private val _singlesLevelState =
       MutableStateFlow(
@@ -43,6 +52,21 @@ class SinglesSetupScreenViewModel(val levelRepository: SinglesLocalLevelReposito
           )
       )
   val screenState = _singlesLevelState.asStateFlow()
+
+  init {
+    editedLevelId?.let { levelId ->
+      viewModelScope.launch {
+        levelRepository.getLevelById(levelId).collect { response ->
+          when (response) {
+            is ResponseState.Success -> _singlesLevelState.value = response.result
+            is ResponseState.Error ->
+                Napier.w(response.throwable) { "Couldn't load singles level for editing" }
+            is ResponseState.Loading -> Unit
+          }
+        }
+      }
+    }
+  }
 
   fun changeQuestionsNumber(v: Int?) {
     _singlesLevelState.update { it.copy(questionsNumber = v) }
@@ -99,9 +123,9 @@ class SinglesSetupScreenViewModel(val levelRepository: SinglesLocalLevelReposito
           is LevelConfig.Singles.Relative -> {
             "Random ${levelConfig.scaleConfig.scaleType}"
           }
-        }
+    }
     levelRepository.upsertLevel(level.copy(name = levelName))
-    Napier.v { "Saved new level: $level" }
+    Napier.v { "Saved singles level: $level" }
   }
 
   fun updateContext(context: DegreeContext) {

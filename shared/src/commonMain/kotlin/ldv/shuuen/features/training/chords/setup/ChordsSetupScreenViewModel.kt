@@ -1,12 +1,14 @@
 package ldv.shuuen.features.training.chords.setup
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import ldv.shuuen.core.music.DegreeContext
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.NoteRange
@@ -15,6 +17,7 @@ import ldv.shuuen.core.music.Scale
 import ldv.shuuen.core.music.ScaleType
 import ldv.shuuen.core.music.generator.ChordStyle
 import ldv.shuuen.core.music.toNoteRange
+import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.features.training.chords.domain.ChordAnswerOrder
 import ldv.shuuen.features.training.chords.domain.ChordSizeRange
 import ldv.shuuen.features.training.chords.domain.ChordsLevel
@@ -24,7 +27,13 @@ import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.LevelSource
 import ldv.shuuen.features.training.domain.ScaleConfig
 
-class ChordsSetupScreenViewModel(val levelRepository: ChordsLocalLevelRepository) : ViewModel() {
+class ChordsSetupScreenViewModel(
+    editLevelId: String,
+    val levelRepository: ChordsLocalLevelRepository,
+) : ViewModel() {
+  private val editedLevelId = editLevelId.takeIf { it.isNotBlank() }
+  val isEditing = editedLevelId != null
+
   @OptIn(ExperimentalUuidApi::class)
   private val _chordsLevelState =
       MutableStateFlow(
@@ -49,6 +58,21 @@ class ChordsSetupScreenViewModel(val levelRepository: ChordsLocalLevelRepository
           )
       )
   val screenState = _chordsLevelState.asStateFlow()
+
+  init {
+    editedLevelId?.let { levelId ->
+      viewModelScope.launch {
+        levelRepository.getLevelById(levelId).collect { response ->
+          when (response) {
+            is ResponseState.Success -> _chordsLevelState.value = response.result
+            is ResponseState.Error ->
+                Napier.w(response.throwable) { "Couldn't load chords level for editing" }
+            is ResponseState.Loading -> Unit
+          }
+        }
+      }
+    }
+  }
 
   fun changeQuestionsNumber(v: Int?) {
     _chordsLevelState.update { it.copy(questionsNumber = v) }
@@ -140,10 +164,10 @@ class ChordsSetupScreenViewModel(val levelRepository: ChordsLocalLevelRepository
           is LevelConfig.Chords.Relative -> {
             "Random ${levelConfig.scaleConfig.scaleType}"
           }
-        }
+    }
     val levelName = "$scaleName · ${level.chordSize} notes"
     levelRepository.upsertLevel(level.copy(name = levelName))
-    Napier.v { "Saved new chords level: $level" }
+    Napier.v { "Saved chords level: $level" }
   }
 
   fun updateContext(context: DegreeContext) {

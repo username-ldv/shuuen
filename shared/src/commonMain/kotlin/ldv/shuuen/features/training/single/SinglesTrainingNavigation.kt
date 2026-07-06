@@ -31,14 +31,17 @@ val singlesTrainingNavigationModule = module {
     SinglesLevelSelectScreen(
       onNavigateBack = { navigator.goBack() },
       onStartLevel = { levelId -> navigator.add(AppRoute.SinglesPlay(levelId)) },
-      onCreateNewLevel = { navigator.add(AppRoute.SinglesSetup) },
+      onCreateNewLevel = { navigator.add(AppRoute.SinglesSetup()) },
+      onEditLevel = { levelId -> navigator.add(AppRoute.SinglesSetup(levelId)) },
       viewModel = koinViewModel(),
     )
   }
 
-  navigation<AppRoute.SinglesSetup> {
+  navigation<AppRoute.SinglesSetup> { route ->
     val navigator = LocalAppNavigator.current
-    val viewModel = koinViewModel<SinglesSetupScreenViewModel>()
+    val viewModel = koinViewModel<SinglesSetupScreenViewModel> {
+      parametersOf(route.levelId.orEmpty())
+    }
     val resultStore = LocalNavResultStore.current
     val result = resultStore.peek(SinglesContextResult)
     LaunchedEffect(result) {

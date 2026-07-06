@@ -43,12 +43,15 @@ fun SinglesSetupScreen(
     onSaveLevel: () -> Unit,
 ) {
   val saveableScreenState by viewModel.screenState.collectAsStateWithLifecycle()
+  val isEditing = viewModel.isEditing
   StaticScreenFrame(
       verticalSpacing = 22.dp,
       topBar = {
         ShuuenTopAppBar(
-            title = "SINGLES SETUP",
-            subtitle = "Create a custom training level.",
+            title = if (isEditing) "EDIT SINGLES" else "SINGLES SETUP",
+            subtitle =
+                if (isEditing) "Update this training level."
+                else "Create a custom training level.",
             onBack = onNavigateBack,
             type = ShuuenTopAppBarType.Labeled,
         )
@@ -119,7 +122,7 @@ fun SinglesSetupScreen(
 
     val scope = rememberCoroutineScope()
     PrimaryCta(
-        text = "SAVE LEVEL",
+        text = if (isEditing) "SAVE CHANGES" else "SAVE LEVEL",
         onClick = {
           // todo: maybe add loading state
           scope.launch {

@@ -1,7 +1,6 @@
 package ldv.shuuen.features.training.chords.level_select
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,11 +13,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.rounded.Casino
 import androidx.compose.material.icons.rounded.Create
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,7 +31,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -49,6 +50,7 @@ import ldv.shuuen.features.training.common.components.ChordStyleSummary
 import ldv.shuuen.features.training.common.components.ContextDetails
 import ldv.shuuen.features.training.common.components.DetailLabel
 import ldv.shuuen.features.training.common.components.DetailRow
+import ldv.shuuen.features.training.common.components.DeleteLevelDialog
 import ldv.shuuen.features.training.common.components.LevelAccuracyLabel
 import ldv.shuuen.features.training.common.components.LevelAccuracyStatsRow
 import ldv.shuuen.features.training.common.components.LevelParametersFlow
@@ -61,9 +63,11 @@ fun ChordsLevelSelectScreen(
     onNavigateBack: () -> Unit,
     onStartLevel: (levelId: String) -> Unit,
     onCreateNewLevel: () -> Unit,
+    onEditLevel: (levelId: String) -> Unit,
     viewModel: ChordsLevelSelectScreenViewModel,
 ) {
   val levels by viewModel.levels.collectAsStateWithLifecycle(ResponseState.Loading)
+  var levelPendingDelete by remember { mutableStateOf<ChordsLevel?>(null) }
   StaticScreenFrame(
       topBar = {
         ShuuenTopAppBar(
@@ -98,7 +102,13 @@ fun ChordsLevelSelectScreen(
             items(items = l.result, key = { it.id }) { level ->
               val statsFlow = remember(viewModel, level.id) { viewModel.levelStats(level.id) }
               val stats by statsFlow.collectAsStateWithLifecycle(LevelAccuracyStats())
-              LevelCard(level, stats = stats, onLevelChosen = { onStartLevel(it.id) })
+              LevelCard(
+                  level,
+                  stats = stats,
+                  onLevelChosen = { onStartLevel(it.id) },
+                  onEditLevel = { onEditLevel(it.id) },
+                  onDeleteLevel = { levelPendingDelete = it },
+              )
             }
 
         is ResponseState.Error ->
@@ -112,6 +122,16 @@ fun ChordsLevelSelectScreen(
       }
     }
   }
+  levelPendingDelete?.let { level ->
+    DeleteLevelDialog(
+        levelName = level.name,
+        onConfirm = {
+          viewModel.deleteLevel(level.id)
+          levelPendingDelete = null
+        },
+        onDismiss = { levelPendingDelete = null },
+    )
+  }
 }
 
 @Composable
@@ -119,6 +139,8 @@ private fun LevelCard(
     level: ChordsLevel,
     stats: LevelAccuracyStats,
     onLevelChosen: (ChordsLevel) -> Unit,
+    onEditLevel: (ChordsLevel) -> Unit,
+    onDeleteLevel: (ChordsLevel) -> Unit,
 ) {
   var expanded by rememberSaveable(level.id) { mutableStateOf(false) }
 
@@ -129,7 +151,7 @@ private fun LevelCard(
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
       Text(
           text = level.name,
@@ -140,19 +162,42 @@ private fun LevelCard(
                   fontWeight = FontWeight.SemiBold,
               ),
           modifier = Modifier.weight(1f),
-          maxLines = 1,
+          maxLines = 2,
           overflow = TextOverflow.Ellipsis,
       )
       LevelAccuracyLabel(stats = stats)
-      Icon(
-          imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-          contentDescription = if (expanded) "Collapse details" else "Expand details",
-          tint = ShuuenUi.Dim,
-          modifier =
-              Modifier.size(26.dp).clip(ShuuenUi.ControlShape).clickable { expanded = !expanded },
-      )
+      IconButton(onClick = { expanded = !expanded }, modifier = Modifier.size(34.dp)) {
+        Icon(
+            imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+            contentDescription = if (expanded) "Collapse details" else "Expand details",
+            tint = ShuuenUi.Dim,
+            modifier = Modifier.size(24.dp),
+        )
+      }
     }
-    LevelAccuracyStatsRow(stats = stats)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+      LevelAccuracyStatsRow(stats = stats, modifier = Modifier.weight(1f))
+      IconButton(onClick = { onEditLevel(level) }, modifier = Modifier.size(34.dp)) {
+        Icon(
+            imageVector = Icons.Rounded.Edit,
+            contentDescription = "Edit level",
+            tint = ShuuenUi.Dim,
+            modifier = Modifier.size(20.dp),
+        )
+      }
+      IconButton(onClick = { onDeleteLevel(level) }, modifier = Modifier.size(34.dp)) {
+        Icon(
+            imageVector = Icons.Rounded.Delete,
+            contentDescription = "Remove level",
+            tint = ShuuenUi.Text,
+            modifier = Modifier.size(20.dp),
+        )
+      }
+    }
     LevelParameterRow(level = level)
     when (val levelConfig = level.levelConfig) {
       is LevelConfig.Chords.Absolute -> {

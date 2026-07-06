@@ -66,13 +66,16 @@ fun MelodiesSetupScreen(
   viewModel: MelodiesSetupScreenViewModel,
 ) {
   val state by viewModel.state.collectAsStateWithLifecycle()
+  val isEditing = viewModel.isEditing
   StaticScreenFrame(
     maxWidth = 920.dp,
     verticalSpacing = 22.dp,
     topBar = {
       ShuuenTopAppBar(
-        title = "MELODIES SETUP",
-        subtitle = "Create a custom melody training level.",
+        title = if (isEditing) "EDIT MELODIES" else "MELODIES SETUP",
+        subtitle =
+          if (isEditing) "Update this melody training level."
+          else "Create a custom melody training level.",
         onBack = onNavigateBack,
         type = ShuuenTopAppBarType.Labeled,
       )
@@ -116,7 +119,7 @@ fun MelodiesSetupScreen(
 
     val scope = rememberCoroutineScope()
     PrimaryCta(
-      text = "SAVE LEVEL",
+      text = if (isEditing) "SAVE CHANGES" else "SAVE LEVEL",
       icon = Icons.Rounded.Save,
       onClick = { scope.launch { if (viewModel.upsertLevel()) onSaveLevel() } },
       modifier = Modifier.padding(top = 4.dp, bottom = 18.dp),

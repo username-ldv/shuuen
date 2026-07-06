@@ -24,6 +24,7 @@ import ldv.shuuen.core.music.ScaleType
 import ldv.shuuen.core.music.generator.MelodyStyle
 import ldv.shuuen.core.music.generator.MelodyStyles
 import ldv.shuuen.core.music.toNoteRange
+import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.features.training.common.asConfigDegreeStates
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.LevelSource
@@ -64,10 +65,35 @@ data class MelodiesSetupState(
 
 @OptIn(ExperimentalUuidApi::class)
 class MelodiesSetupScreenViewModel(
+  editLevelId: String,
   private val levelRepository: MelodiesLocalLevelRepository,
 ) : ViewModel() {
+  private val editedLevelId = editLevelId.takeIf { it.isNotBlank() }
+  private var currentLevelId = Uuid.generateV7().toString()
+  val isEditing = editedLevelId != null
+
   private val _state = MutableStateFlow(MelodiesSetupState())
   val state = _state.asStateFlow()
+
+  init {
+    editedLevelId?.let { levelId ->
+      viewModelScope.launch {
+        levelRepository.getLevelById(levelId).collect { response ->
+          when (response) {
+            is ResponseState.Success -> {
+              currentLevelId = response.result.id
+              _state.value = response.result.toSetupState(_state.value)
+            }
+
+            is ResponseState.Error ->
+              Napier.w(response.throwable) { "Couldn't load melodies level for editing" }
+
+            is ResponseState.Loading -> Unit
+          }
+        }
+      }
+    }
+  }
 
   fun selectSourceMode(mode: MelodiesSourceMode) {
     _state.update { it.copy(sourceMode = mode) }
@@ -179,7 +205,7 @@ class MelodiesSetupScreenViewModel(
       }
     val level =
       MelodiesLevel(
-        id = Uuid.generateV7().toString(),
+        id = currentLevelId,
         name = defaultLevelName(config),
         config = config,
         context = current.context,
@@ -193,6 +219,38 @@ class MelodiesSetupScreenViewModel(
     Napier.v { "Saved melodies level '${level.name}'" }
     return true
   }
+
+  private fun MelodiesLevel.toSetupState(current: MelodiesSetupState): MelodiesSetupState =
+    when (val levelConfig = config) {
+      is LevelConfig.Melodies.Random ->
+        current.copy(
+          sourceMode = MelodiesSourceMode.Random,
+          scaleConfig = levelConfig.scaleConfig,
+          context = context,
+          questionsNumber = levelConfig.questionsNumber,
+          notesPerSequence = levelConfig.notesPerSequence ?: current.notesPerSequence,
+          endlessNotes = levelConfig.notesPerSequence == null,
+          rotateEveryQuestions = levelConfig.rotateEveryQuestions,
+          tempo = levelConfig.tempo,
+          melodyStyle = levelConfig.melodyStyle,
+          range = levelConfig.range,
+          loadedMidi = null,
+          loadedMidiName = null,
+          isLoadingMidi = false,
+          midiError = null,
+        )
+
+      is LevelConfig.Melodies.Midi ->
+        current.copy(
+          sourceMode = MelodiesSourceMode.Midi,
+          context = context,
+          loadedMidi = levelConfig.file,
+          loadedMidiName = levelConfig.fileName,
+          isLoadingMidi = false,
+          midiError = null,
+          useOriginalVelocities = levelConfig.useOriginalVelocities,
+        )
+    }
 
   private fun defaultLevelName(config: LevelConfig.Melodies): String =
     when (config) {

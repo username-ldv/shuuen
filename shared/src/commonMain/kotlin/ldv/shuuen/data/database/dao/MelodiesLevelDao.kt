@@ -15,4 +15,7 @@ interface MelodiesLevelDao {
 
   @Upsert
   suspend fun upsertLevel(level: MelodiesLevelDbEntity)
+
+  @Query("delete from levels_melodies where id = :id")
+  suspend fun deleteById(id: String)
 }

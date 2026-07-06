@@ -54,6 +54,10 @@ class MelodiesLocalLevelRepositoryImpl(
     melodiesLevelDao.upsertLevel(entity)
   }
 
+  override suspend fun deleteLevel(id: String) {
+    melodiesLevelDao.deleteById(id)
+  }
+
   private suspend fun mapEntity(entity: MelodiesLevelDbEntity): MelodiesLevel {
     val context = contextLocalRepository.getDegreeContextById(entity.contextId)
     return MelodiesLevel(

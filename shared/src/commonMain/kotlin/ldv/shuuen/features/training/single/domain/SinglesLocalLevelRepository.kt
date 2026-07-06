@@ -11,4 +11,6 @@ interface SinglesLocalLevelRepository {
   fun getLevelById(id: String): Flow<ResponseState<SinglesLevel>>
 
   suspend fun upsertLevel(level: SinglesLevel)
+
+  suspend fun deleteLevel(id: String)
 }

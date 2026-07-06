@@ -5,11 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -31,18 +26,8 @@ fun ScaleChooser(scaleConfig: ScaleConfig, onScaleChosen: (ScaleConfig) -> Unit 
     label = "1 · SCALE",
     supporting = "Choose the scale you want to train.",
   ) {
-    var tonic: Pitch? by rememberSaveable { mutableStateOf(null) }
-    var mode by rememberSaveable { mutableStateOf(ScaleType.Major) }
-    LaunchedEffect(tonic, mode) {
-      val newScaleConfig: ScaleConfig = tonic?.let { t ->
-        val pitchStates = Scale.fromScaleType(t, mode, listOf(0)).asPitchStates()
-        ScaleConfig.AbsoluteScaleConfig(t, mode, pitchStates)
-      } ?: run {
-        val degreeStates1 = Scale.fromScaleType(Pitch.C, mode, listOf(0)).asConfigDegreeStates()
-        ScaleConfig.RelativeScaleConfig(scaleType = mode, degreeStates = degreeStates1)
-      }
-      onScaleChosen(newScaleConfig)
-    }
+    val tonic = (scaleConfig as? ScaleConfig.AbsoluteScaleConfig)?.root
+    val mode = scaleConfig.scaleType
     Column(
       verticalArrangement = Arrangement.spacedBy(14.dp),
       horizontalAlignment = Alignment.CenterHorizontally
@@ -57,14 +42,17 @@ fun ScaleChooser(scaleConfig: ScaleConfig, onScaleChosen: (ScaleConfig) -> Unit 
             )
           },
           selectedItem = tonic?.let { Scale.appropriatePitchName(it, it, mode) } ?: "Random",
-          onItemSelected = { tonic = Pitch.fromName(it) },
+          onItemSelected = { name ->
+            onScaleChosen(defaultScaleConfig(Pitch.fromName(name), mode))
+          },
           modifier = Modifier.weight(0.75f)
         )
         TextDropdownMenu(
           items = ScaleType.entries.map { it.toString() },
           selectedItem = mode.toString(),
           onItemSelected = {
-            mode = ScaleType.fromName(it) ?: error("invalid scale")
+            val selectedMode = ScaleType.fromName(it) ?: error("invalid scale")
+            onScaleChosen(defaultScaleConfig(tonic, selectedMode))
           },
           modifier = Modifier.weight(1f)
         )
@@ -76,7 +64,7 @@ fun ScaleChooser(scaleConfig: ScaleConfig, onScaleChosen: (ScaleConfig) -> Unit 
               scaleConfig.degreeStates.updateBy(condition = { it.degree == degree }) { previous ->
                 ScaleConfig.ScaleItemState.ScaleDegreeState(degree, !previous.active)
               }
-            val config = ScaleConfig.RelativeScaleConfig(mode, degreeStates)
+            val config = ScaleConfig.RelativeScaleConfig(scaleConfig.scaleType, degreeStates)
             onScaleChosen(config)
           })
         }
@@ -87,7 +75,11 @@ fun ScaleChooser(scaleConfig: ScaleConfig, onScaleChosen: (ScaleConfig) -> Unit 
               scaleConfig.pitchStates.updateBy(condition = { it.pitch == pitch }) { previous ->
                 ScaleConfig.ScaleItemState.ScalePitchState(pitch, !previous.active)
               }
-            val config = ScaleConfig.AbsoluteScaleConfig(scaleConfig.root, mode, pitchStates)
+            val config = ScaleConfig.AbsoluteScaleConfig(
+              scaleConfig.root,
+              scaleConfig.scaleType,
+              pitchStates,
+            )
             onScaleChosen(config)
           })
         }
@@ -95,3 +87,15 @@ fun ScaleChooser(scaleConfig: ScaleConfig, onScaleChosen: (ScaleConfig) -> Unit 
     }
   }
 }
+
+private fun defaultScaleConfig(tonic: Pitch?, mode: ScaleType): ScaleConfig =
+  tonic?.let { root ->
+    ScaleConfig.AbsoluteScaleConfig(
+      root = root,
+      scaleType = mode,
+      pitchStates = Scale.fromScaleType(root, mode, listOf(0)).asPitchStates(),
+    )
+  } ?: ScaleConfig.RelativeScaleConfig(
+    scaleType = mode,
+    degreeStates = Scale.fromScaleType(Pitch.C, mode, listOf(0)).asConfigDegreeStates(),
+  )

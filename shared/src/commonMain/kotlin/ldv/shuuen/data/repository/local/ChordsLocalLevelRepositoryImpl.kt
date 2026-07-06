@@ -57,6 +57,10 @@ class ChordsLocalLevelRepositoryImpl(
     chordsLevelDao.upsertLevel(entity)
   }
 
+  override suspend fun deleteLevel(id: String) {
+    chordsLevelDao.deleteById(id)
+  }
+
   private suspend fun mapEntity(entity: ChordsLevelDbEntity): ChordsLevel {
     val context = contextLocalRepository.getDegreeContextById(entity.contextId)
     return ChordsLevel(

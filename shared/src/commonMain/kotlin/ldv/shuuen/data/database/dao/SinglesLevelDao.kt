@@ -15,4 +15,7 @@ interface SinglesLevelDao {
 
   @Upsert
   suspend fun upsertLevel(level: SinglesLevelDbEntity)
+
+  @Query("delete from levels_singles where id = :id")
+  suspend fun deleteById(id: String)
 }
