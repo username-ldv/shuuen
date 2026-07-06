@@ -62,6 +62,8 @@ import ldv.shuuen.core.music.effectiveNoteNames
 import ldv.shuuen.core.settings.InputComponent
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.InputMode
+import ldv.shuuen.core.settings.MaxLevelStatsWindow
+import ldv.shuuen.core.settings.MinLevelStatsWindow
 import ldv.shuuen.core.ui.components.FlatSection
 import ldv.shuuen.core.ui.components.Hairline
 import ldv.shuuen.core.ui.components.IconBubble
@@ -481,6 +483,12 @@ private fun GeneralSection(
       onCheckedChange = { onAction(SettingsAction.SetAllowSevenAccidentalKeys(it)) },
     )
     Hairline()
+    LevelStatsWindowRow(
+      value = state.levelStatsWindow,
+      onChange = { onAction(SettingsAction.SetLevelStatsWindow(it)) },
+      onCommit = { onAction(SettingsAction.CommitLevelStatsWindow(it)) },
+    )
+    Hairline()
     Row(
       modifier = Modifier
         .fillMaxWidth()
@@ -720,6 +728,52 @@ private fun MelodyOriginalVolumeBoostRow(
   }
 }
 
+@Composable
+private fun LevelStatsWindowRow(
+  value: Int,
+  onChange: (Int) -> Unit,
+  onCommit: (Int) -> Unit,
+) {
+  Column(
+    modifier = Modifier.fillMaxWidth(),
+    verticalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+      Icon(
+        Icons.Rounded.GraphicEq,
+        contentDescription = null,
+        tint = ShuuenUi.Muted,
+        modifier = Modifier.size(22.dp),
+      )
+      Column(modifier = Modifier.weight(1f)) {
+        Text(
+          "Level stats window",
+          color = ShuuenUi.Text,
+          style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+        )
+        Text(
+          "Latest $value games on level cards.",
+          color = ShuuenUi.Dim,
+          style = MaterialTheme.typography.bodySmall,
+        )
+      }
+    }
+    ValueSlider(
+      value = value,
+      onChange = onChange,
+      onCommit = onCommit,
+      valueLabel = { "$it" },
+      iconForValue = { Icons.Rounded.GraphicEq },
+      valueRange = MinLevelStatsWindow.toFloat()..MaxLevelStatsWindow.toFloat(),
+      steps = MaxLevelStatsWindow - MinLevelStatsWindow - 1,
+    )
+  }
+}
+
 private fun melodyVolumeBoostLabel(value: Int): String {
   val tenths = 10 + (value.coerceIn(0, 127) * 30 + 63) / 127
   return "${tenths / 10}.${tenths % 10}x"
@@ -732,11 +786,15 @@ private fun ValueSlider(
   onCommit: (Int) -> Unit,
   valueLabel: (Int) -> String,
   iconForValue: (Int) -> ImageVector = ::volumeIcon,
+  valueRange: ClosedFloatingPointRange<Float> = 0f..127f,
+  steps: Int = 0,
 ) {
   // Local state drives the slider; live drags don't persist, so the incoming
   // [value] only changes on commit/load and re-syncs us without fighting the drag.
-  var sliderValue by remember { mutableFloatStateOf(value.toFloat()) }
-  LaunchedEffect(value) { sliderValue = value.toFloat() }
+  val rangeStart = valueRange.start
+  val rangeEnd = valueRange.endInclusive
+  var sliderValue by remember { mutableFloatStateOf(value.toFloat().coerceIn(rangeStart, rangeEnd)) }
+  LaunchedEffect(value, valueRange) { sliderValue = value.toFloat().coerceIn(rangeStart, rangeEnd) }
   val current = sliderValue.roundToInt()
 
   Row(
@@ -753,11 +811,13 @@ private fun ValueSlider(
     Slider(
       value = sliderValue,
       onValueChange = {
-        sliderValue = it
-        onChange(it.roundToInt())
+        val coerced = it.coerceIn(rangeStart, rangeEnd)
+        sliderValue = coerced
+        onChange(coerced.roundToInt())
       },
       onValueChangeFinished = { onCommit(sliderValue.roundToInt()) },
-      valueRange = 0f..127f,
+      valueRange = valueRange,
+      steps = steps,
       colors = SliderDefaults.colors(
         thumbColor = ShuuenUi.Text,
         activeTrackColor = ShuuenUi.Inverse,

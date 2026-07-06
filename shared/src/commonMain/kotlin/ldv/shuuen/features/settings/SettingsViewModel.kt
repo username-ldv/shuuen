@@ -19,6 +19,7 @@ import ldv.shuuen.core.music.MusicLabelDefaults
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.settings.SettingsRepository
+import ldv.shuuen.core.settings.coerceLevelStatsWindow
 import kotlin.time.Duration.Companion.milliseconds
 
 class SettingsViewModel(
@@ -42,6 +43,7 @@ class SettingsViewModel(
             inputMethod = settings.inputMethod,
             midiRespectOctaves = settings.midiRespectOctaves,
             allowSevenAccidentalKeys = settings.allowSevenAccidentalKeys,
+            levelStatsWindow = coerceLevelStatsWindow(settings.levelStatsWindow),
             musicLabels = settings.musicLabels,
           )
         }
@@ -91,6 +93,14 @@ class SettingsViewModel(
 
       is SettingsAction.SetMidiRespectOctaves -> {
         viewModelScope.launch { settingsRepository.setMidiRespectOctaves(action.value) }
+      }
+
+      is SettingsAction.SetLevelStatsWindow -> {
+        mutableState.update { it.copy(levelStatsWindow = coerceLevelStatsWindow(action.value)) }
+      }
+
+      is SettingsAction.CommitLevelStatsWindow -> {
+        commitLevelStatsWindow(action.value)
       }
 
       is SettingsAction.OpenLabelEditor ->
@@ -176,6 +186,12 @@ class SettingsViewModel(
     val coerced = value.coerceIn(0, 127)
     mutableState.update { it.copy(melodyOriginalVolumeBoost = coerced) }
     viewModelScope.launch { settingsRepository.setMelodyOriginalVolumeBoost(coerced) }
+  }
+
+  private fun commitLevelStatsWindow(value: Int) {
+    val coerced = coerceLevelStatsWindow(value)
+    mutableState.update { it.copy(levelStatsWindow = coerced) }
+    viewModelScope.launch { settingsRepository.setLevelStatsWindow(coerced) }
   }
 
   /** Auditions the channel's current preset with a short phrase. */

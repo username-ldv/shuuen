@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.rounded.Create
@@ -21,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -31,11 +33,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ldv.shuuen.core.result.ResponseState
+import ldv.shuuen.features.training.common.LevelAccuracyStats
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.single.domain.SinglesLevel
 import ldv.shuuen.features.training.common.components.ContextDetails
 import ldv.shuuen.features.training.common.components.DetailLabel
 import ldv.shuuen.features.training.common.components.DetailRow
+import ldv.shuuen.features.training.common.components.LevelAccuracyLabel
+import ldv.shuuen.features.training.common.components.LevelAccuracyStatsRow
 import ldv.shuuen.features.training.common.components.LevelParametersFlow
 import ldv.shuuen.features.training.common.components.sourceLabel
 import ldv.shuuen.features.training.common.toBoxedItems
@@ -87,10 +92,10 @@ fun SinglesLevelSelectScreen(
             }
 
         is ResponseState.Success ->
-            l.result.forEach { level ->
-              item(key = level.id) {
-                LevelCard(level, onLevelChosen = { onStartLevel(it.id) })
-              }
+            items(items = l.result, key = { it.id }) { level ->
+              val statsFlow = remember(viewModel, level.id) { viewModel.levelStats(level.id) }
+              val stats by statsFlow.collectAsStateWithLifecycle(LevelAccuracyStats())
+              LevelCard(level, stats = stats, onLevelChosen = { onStartLevel(it.id) })
             }
 
         is ResponseState.Error ->
@@ -107,7 +112,11 @@ fun SinglesLevelSelectScreen(
 }
 
 @Composable
-private fun LevelCard(level: SinglesLevel, onLevelChosen: (SinglesLevel) -> Unit) {
+private fun LevelCard(
+    level: SinglesLevel,
+    stats: LevelAccuracyStats,
+    onLevelChosen: (SinglesLevel) -> Unit,
+) {
   var expanded by rememberSaveable(level.id) { mutableStateOf(false) }
 
   SurfaceCard(
@@ -131,6 +140,7 @@ private fun LevelCard(level: SinglesLevel, onLevelChosen: (SinglesLevel) -> Unit
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
       )
+      LevelAccuracyLabel(stats = stats)
       Icon(
           imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
           contentDescription = if (expanded) "Collapse details" else "Expand details",
@@ -139,6 +149,7 @@ private fun LevelCard(level: SinglesLevel, onLevelChosen: (SinglesLevel) -> Unit
               Modifier.size(26.dp).clip(ShuuenUi.ControlShape).clickable { expanded = !expanded },
       )
     }
+    LevelAccuracyStatsRow(stats = stats)
     LevelParameterRow(level = level)
     when (val levelConfig = level.levelConfig) {
       is LevelConfig.Singles.Absolute -> {

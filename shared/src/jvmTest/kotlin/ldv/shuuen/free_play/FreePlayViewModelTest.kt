@@ -128,6 +128,8 @@ private class FakeSettingsRepository : SettingsRepository {
 
   override suspend fun setAllowSevenAccidentalKeys(value: Boolean) = Unit
 
+  override suspend fun setLevelStatsWindow(value: Int) = Unit
+
   override suspend fun setNoteNames(names: List<String>) = Unit
 
   override suspend fun setDegreeNames(names: List<String>) = Unit

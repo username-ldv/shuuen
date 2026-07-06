@@ -4,6 +4,7 @@ import ldv.shuuen.core.audio.midi.ChannelPresets
 import ldv.shuuen.core.audio.midi.ChannelVolumes
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
+import ldv.shuuen.core.settings.DefaultLevelStatsWindow
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.MusicLabelSettings
 
@@ -29,6 +30,7 @@ data class SettingsUiState(
   /** MIDI keyboard answers must match the asked note's exact octave (off = octave independent). */
   val midiRespectOctaves: Boolean = false,
   val allowSevenAccidentalKeys: Boolean = false,
+  val levelStatsWindow: Int = DefaultLevelStatsWindow,
   val musicLabels: MusicLabelSettings = MusicLabelSettings(),
   /** The category whose picker sheet is currently open, or null when closed. */
   val openPickerChannel: MidiChannel? = null,
@@ -55,6 +57,10 @@ sealed interface SettingsAction {
   data class SetMidiRespectOctaves(val value: Boolean) : SettingsAction
 
   data class SetAllowSevenAccidentalKeys(val value: Boolean) : SettingsAction
+
+  data class SetLevelStatsWindow(val value: Int) : SettingsAction
+
+  data class CommitLevelStatsWindow(val value: Int) : SettingsAction
 
   data class OpenLabelEditor(val editor: LabelEditor) : SettingsAction
   data object CloseLabelEditor : SettingsAction

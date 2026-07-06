@@ -37,6 +37,8 @@ import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.core.settings.AppSettings
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.SettingsRepository
+import ldv.shuuen.features.training.common.LevelAccuracyStats
+import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.LevelSource
 import ldv.shuuen.features.training.domain.ScaleConfig
@@ -152,6 +154,12 @@ private class FakeTrainingSessionRepository : TrainingSessionRepository {
 
   override fun getSessionById(id: String): Flow<ResponseState<TrainingSession>> =
     flowOf(ResponseState.Error(IllegalStateException("not implemented")))
+
+  override fun observeLevelAccuracyStats(
+    flow: TrainingFlow,
+    levelId: String,
+    limit: Int,
+  ): Flow<LevelAccuracyStats> = flowOf(LevelAccuracyStats(windowSize = limit))
 }
 
 private class FakeSettingsRepository : SettingsRepository {
@@ -170,6 +178,8 @@ private class FakeSettingsRepository : SettingsRepository {
   override suspend fun setMidiRespectOctaves(value: Boolean) = Unit
 
   override suspend fun setAllowSevenAccidentalKeys(value: Boolean) = Unit
+
+  override suspend fun setLevelStatsWindow(value: Int) = Unit
 
   override suspend fun setNoteNames(names: List<String>) = Unit
 

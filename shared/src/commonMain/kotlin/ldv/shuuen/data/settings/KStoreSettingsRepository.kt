@@ -9,6 +9,7 @@ import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.settings.AppSettings
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.SettingsRepository
+import ldv.shuuen.core.settings.coerceLevelStatsWindow
 import org.koin.core.annotation.Named
 
 class KStoreSettingsRepository(
@@ -55,6 +56,10 @@ class KStoreSettingsRepository(
 
   override suspend fun setAllowSevenAccidentalKeys(value: Boolean) {
     store.update { it?.copy(allowSevenAccidentalKeys = value) }
+  }
+
+  override suspend fun setLevelStatsWindow(value: Int) {
+    store.update { it?.copy(levelStatsWindow = coerceLevelStatsWindow(value)) }
   }
 
   override suspend fun setNoteNames(names: List<String>) {

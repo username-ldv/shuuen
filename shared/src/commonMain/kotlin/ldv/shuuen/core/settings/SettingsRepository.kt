@@ -25,6 +25,8 @@ interface SettingsRepository {
 
   suspend fun setAllowSevenAccidentalKeys(value: Boolean)
 
+  suspend fun setLevelStatsWindow(value: Int)
+
   suspend fun setNoteNames(names: List<String>)
 
   suspend fun setDegreeNames(names: List<String>)
@@ -33,6 +35,13 @@ interface SettingsRepository {
 
   suspend fun setCustomDegreeNamesPreset(names: List<String>)
 }
+
+const val DefaultLevelStatsWindow = 15
+const val MinLevelStatsWindow = 1
+const val MaxLevelStatsWindow = 100
+
+fun coerceLevelStatsWindow(value: Int): Int =
+  value.coerceIn(MinLevelStatsWindow, MaxLevelStatsWindow)
 
 @Serializable
 data class MusicLabelSettings(
@@ -63,4 +72,5 @@ data class AppSettings(
    * 5-accidental enharmonic.
    */
   val allowSevenAccidentalKeys: Boolean = false,
+  val levelStatsWindow: Int = DefaultLevelStatsWindow,
 )

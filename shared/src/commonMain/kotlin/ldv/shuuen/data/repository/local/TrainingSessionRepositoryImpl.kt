@@ -3,9 +3,15 @@ package ldv.shuuen.data.repository.local
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.data.database.dao.TrainingSessionDao
 import ldv.shuuen.data.database.entity.TrainingSessionDbEntity
+import ldv.shuuen.features.training.common.LevelAccuracySample
+import ldv.shuuen.features.training.common.LevelAccuracyStats
+import ldv.shuuen.features.training.common.TrainingFlow
+import ldv.shuuen.features.training.common.levelAccuracyStats
+import ldv.shuuen.core.settings.coerceLevelStatsWindow
 import ldv.shuuen.features.training.level_end.domain.TrainingSession
 import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
 
@@ -25,6 +31,28 @@ class TrainingSessionRepositoryImpl(
     }.catch {
       emit(ResponseState.Error(it))
     }
+  }
+
+  override fun observeLevelAccuracyStats(
+    flow: TrainingFlow,
+    levelId: String,
+    limit: Int,
+  ): Flow<LevelAccuracyStats> {
+    val coercedLimit = coerceLevelStatsWindow(limit)
+    return trainingSessionDao.observeRecentScoresByLevelId(flow, levelId, coercedLimit)
+      .map { scores ->
+        levelAccuracyStats(
+          samples =
+            scores.map { score ->
+              LevelAccuracySample(
+                correctNotes = score.correctNotes,
+                notesTotal = score.notesTotal,
+              )
+            },
+          windowSize = coercedLimit,
+        )
+      }
+      .catch { emit(LevelAccuracyStats(windowSize = coercedLimit)) }
   }
 
   private fun TrainingSession.toEntity() =
