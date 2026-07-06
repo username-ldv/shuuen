@@ -39,7 +39,7 @@ import ldv.shuuen.features.training.common.components.ScaleChooser
 fun SinglesSetupScreen(
     viewModel: SinglesSetupScreenViewModel,
     onNavigateBack: () -> Unit,
-    onOpenContext: () -> Unit,
+    onOpenContext: (contextId: String?) -> Unit,
     onSaveLevel: () -> Unit,
 ) {
   val saveableScreenState by viewModel.screenState.collectAsStateWithLifecycle()
@@ -89,7 +89,7 @@ fun SinglesSetupScreen(
         supporting =
             saveableScreenState.context?.let { "Using context ${it.id}" }
                 ?: "Open context screen to configure.",
-        onClick = onOpenContext,
+        onClick = { onOpenContext(saveableScreenState.context?.id) },
     )
 
     Hairline()

@@ -61,7 +61,7 @@ import ldv.shuuen.features.training.domain.ScaleConfig
 @Composable
 fun MelodiesSetupScreen(
   onNavigateBack: () -> Unit,
-  onOpenContext: () -> Unit,
+  onOpenContext: (contextId: String?) -> Unit,
   onSaveLevel: () -> Unit,
   viewModel: MelodiesSetupScreenViewModel,
 ) {
@@ -131,7 +131,7 @@ fun MelodiesSetupScreen(
 private fun LeadingSections(
   state: MelodiesSetupState,
   viewModel: MelodiesSetupScreenViewModel,
-  onOpenContext: () -> Unit,
+  onOpenContext: (contextId: String?) -> Unit,
 ) {
   when (state.sourceMode) {
     MelodiesSourceMode.Random -> {
@@ -193,14 +193,14 @@ private fun RandomTrailingSections(
 private fun ContextSection(
   label: String,
   context: DegreeContext?,
-  onOpenContext: () -> Unit,
+  onOpenContext: (contextId: String?) -> Unit,
 ) {
   SetupNavRow(
     label = label,
     supporting =
       context?.let { "Using context ${it.name ?: it.id}" }
         ?: "Open context screen to configure.",
-    onClick = onOpenContext,
+    onClick = { onOpenContext(context?.id) },
   ) {
     Icon(
       Icons.Rounded.ChevronRight,

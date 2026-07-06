@@ -12,7 +12,10 @@ sealed interface AppRoute : NavKey {
 
   @Serializable data object Settings : AppRoute
 
-  @Serializable data class Context(val recipient: ContextRecipient) : AppRoute
+  @Serializable data class Context(
+    val recipient: ContextRecipient,
+    val contextId: String? = null,
+  ) : AppRoute
 
   @Serializable data object SinglesLevelSelect : AppRoute
 

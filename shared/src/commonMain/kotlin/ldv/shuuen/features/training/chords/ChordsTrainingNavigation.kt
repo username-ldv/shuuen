@@ -53,7 +53,9 @@ val chordsTrainingNavigationModule = module {
 
     ChordsSetupScreen(
       onNavigateBack = { navigator.goBack() },
-      onOpenContext = { navigator.add(AppRoute.Context(ContextRecipient.ChordsSetup)) },
+      onOpenContext = { contextId ->
+        navigator.add(AppRoute.Context(ContextRecipient.ChordsSetup, contextId))
+      },
       onSaveLevel = { navigator.goBack() },
       viewModel = viewModel,
     )

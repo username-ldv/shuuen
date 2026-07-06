@@ -53,7 +53,9 @@ val singlesTrainingNavigationModule = module {
 
     SinglesSetupScreen(
       onNavigateBack = { navigator.goBack() },
-      onOpenContext = { navigator.add(AppRoute.Context(ContextRecipient.SinglesSetup)) },
+      onOpenContext = { contextId ->
+        navigator.add(AppRoute.Context(ContextRecipient.SinglesSetup, contextId))
+      },
       onSaveLevel = { navigator.goBack() },
       viewModel = viewModel,
     )

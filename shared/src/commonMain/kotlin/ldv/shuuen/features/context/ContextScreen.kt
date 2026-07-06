@@ -35,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -213,10 +214,15 @@ fun ContextScreen(
   viewModel: ContextViewModel,
 ) {
   var context by remember { mutableStateOf(editableContext(sequencePresets[0].nodes)) }
+  val initialContext by viewModel.initialContext.collectAsStateWithLifecycle()
   val nodes = context.nodes
   val playingNodeNumber by viewModel.playingNodeNumber.collectAsStateWithLifecycle()
   val playingMelody by viewModel.playingMelody.collectAsStateWithLifecycle()
   val playingFullSequence by viewModel.playingFullSequence.collectAsStateWithLifecycle()
+
+  LaunchedEffect(initialContext?.id) {
+    initialContext?.let { context = it }
+  }
 
   StaticScreenFrame(
       verticalSpacing = 18.dp,

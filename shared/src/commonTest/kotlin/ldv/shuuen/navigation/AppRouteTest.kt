@@ -14,6 +14,7 @@ class AppRouteTest {
       AppRoute.MelodiesSetup("edit-id"),
       AppRoute.MelodiesPlay("test-id"),
       AppRoute.Context(ContextRecipient.MelodiesSetup),
+      AppRoute.Context(ContextRecipient.MelodiesSetup, "context-id"),
       AppRoute.SinglesLevelSelect,
       AppRoute.MelodiesLevelSelect,
       AppRoute.SinglesLevelComplete("test-id", "session-id"),

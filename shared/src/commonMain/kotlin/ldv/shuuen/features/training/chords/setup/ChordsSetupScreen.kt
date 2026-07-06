@@ -50,7 +50,7 @@ import ldv.shuuen.features.training.domain.LevelConfig
 fun ChordsSetupScreen(
     viewModel: ChordsSetupScreenViewModel,
     onNavigateBack: () -> Unit,
-    onOpenContext: () -> Unit,
+    onOpenContext: (contextId: String?) -> Unit,
     onSaveLevel: () -> Unit,
 ) {
   val saveableScreenState by viewModel.screenState.collectAsStateWithLifecycle()
@@ -100,7 +100,7 @@ fun ChordsSetupScreen(
         supporting =
             saveableScreenState.context?.let { "Using context ${it.id}" }
                 ?: "Open context screen to configure.",
-        onClick = onOpenContext,
+        onClick = { onOpenContext(saveableScreenState.context?.id) },
     )
 
     Hairline()

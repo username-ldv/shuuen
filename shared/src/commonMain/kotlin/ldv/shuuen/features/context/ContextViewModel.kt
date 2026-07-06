@@ -15,6 +15,7 @@ import ldv.shuuen.core.audio.engine.MidiEngine
 import ldv.shuuen.core.audio.engine.MidiEngineStatus
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.music.Chord
+import ldv.shuuen.core.music.DegreeContext
 import ldv.shuuen.core.music.DegreeContextNode
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.Pitch
@@ -23,6 +24,7 @@ import ldv.shuuen.core.music.Sustain
 import ldv.shuuen.core.music.Timing
 import ldv.shuuen.core.music.constructSetupMelodyFlow
 import ldv.shuuen.core.music.toChords
+import ldv.shuuen.features.context.domain.ContextLocalRepository
 
 private const val PreviewTempo = 90
 private val PreviewRoot = Pitch.C
@@ -36,13 +38,18 @@ private data class PlayingNodePreview(
 )
 
 class ContextViewModel(
+    contextId: String,
     private val midiEngine: MidiEngine,
+    private val contextRepository: ContextLocalRepository,
 ) : ViewModel() {
+  private val initialContextId = contextId.takeIf { it.isNotBlank() }
   private var audioReady = false
   private var setupMelodyPreviewJob: Job? = null
   private var nodePreviewJob: Job? = null
   private var fullSequencePreviewJob: Job? = null
   private var activeNodePreview: PlayingNodePreview? = null
+  private val _initialContext = MutableStateFlow<DegreeContext?>(null)
+  val initialContext = _initialContext.asStateFlow()
   private val _playingMelody = MutableStateFlow(false)
   val playingMelody = _playingMelody.asStateFlow()
   private val _playingNodeNumber = MutableStateFlow<Int?>(null)
@@ -53,6 +60,11 @@ class ContextViewModel(
   init {
     viewModelScope.launch {
       audioReady = midiEngine.initialize() == MidiEngineStatus.Ready
+    }
+    initialContextId?.let { id ->
+      viewModelScope.launch {
+        _initialContext.value = contextRepository.getDegreeContextById(id)
+      }
     }
   }
 

@@ -52,7 +52,9 @@ val melodiesTrainingNavigationModule = module {
     }
     MelodiesSetupScreen(
       onNavigateBack = { navigator.goBack() },
-      onOpenContext = { navigator.add(AppRoute.Context(ContextRecipient.MelodiesSetup)) },
+      onOpenContext = { contextId ->
+        navigator.add(AppRoute.Context(ContextRecipient.MelodiesSetup, contextId))
+      },
       onSaveLevel = { navigator.goBack() },
       viewModel = viewModel,
     )
