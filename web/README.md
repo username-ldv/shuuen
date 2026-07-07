@@ -1,42 +1,106 @@
-# sv
+# 終焉 · Shuuen — Landing
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Marketing landing page for **Shuuen**, a next-generation ear-training app for
+musicians (Windows · Linux · Android). The site is a single, statically
+prerendered page with a monochrome, pure-black aesthetic.
 
-## Creating a project
+> **Scope:** this repository is the **UI only** — the marketing page. It contains
+> no application logic; the download / login / repository actions are
+> presentational anchors.
 
-If you're seeing this, you've probably already done this step. Congrats!
+---
+
+## Stack
+
+| Concern        | Choice                                                                 |
+| -------------- | ---------------------------------------------------------------------- |
+| Framework      | [SvelteKit](https://svelte.dev/docs/kit) (Svelte 5, runes mode)        |
+| UI components  | [shadcn-svelte](https://shadcn-svelte.com) — `nova` style, `neutral` base |
+| Styling        | [Tailwind CSS v4](https://tailwindcss.com)                             |
+| Icons          | [Lucide](https://lucide.dev) (`@lucide/svelte`)                        |
+| Font           | Inter (variable, self-hosted via `@fontsource-variable/inter`)         |
+| Runtime / PM   | [Bun](https://bun.sh)                                                   |
+| Rendering      | Fully prerendered (static) via `@sveltejs/adapter-static`              |
+
+The visual design was imported from a
+[Claude Design](https://claude.ai/design) project and adapted to the default
+shadcn-svelte look. See [docs/DESIGN.md](docs/DESIGN.md).
+
+---
+
+## Getting started
+
+**Prerequisites:** [Bun](https://bun.sh) `≥ 1.3`. (Node `≥ 22` also works if you
+prefer `npm`/`pnpm`; `engine-strict` is enabled.)
 
 ```sh
-# create a new project
-npx sv create my-app
+bun install      # install dependencies
+bun run dev      # start the dev server at http://localhost:5173
 ```
 
-To recreate this project with the same configuration:
+Open [http://localhost:5173](http://localhost:5173). Hot-module reload is on.
 
-```sh
-# recreate this project
-bun x sv@0.16.2 create --template minimal --types ts --add tailwindcss="plugins:none" --install bun my-app
+---
+
+## Scripts
+
+| Command            | What it does                                                     |
+| ------------------ | --------------------------------------------------------------- |
+| `bun run dev`      | Start the Vite dev server (HMR) on port `5173`.                 |
+| `bun run build`    | Prerender the site to static files in `build/`.                 |
+| `bun run preview`  | Serve the production `build/` locally to sanity-check it.       |
+| `bun run check`    | Type-check with `svelte-check` (0 errors expected).             |
+| `bun run check:watch` | Same, in watch mode.                                         |
+
+---
+
+## Project structure
+
+```
+src/
+├─ app.html                 # Document shell — `<html class="dark">` (dark-only brand)
+├─ routes/
+│  ├─ +layout.svelte        # Root layout: favicon + global CSS
+│  ├─ +layout.ts            # `export const prerender = true` (static site)
+│  ├─ +page.svelte          # The entire landing page
+│  └─ layout.css            # Tailwind + shadcn theme tokens (pure-black override)
+└─ lib/
+   ├─ components/ui/        # shadcn-svelte components (button, card, separator)
+   └─ utils.ts              # `cn()` class-merge helper
+
+static/images/             # Brand assets (logo wordmark, app icon / favicon)
+docs/                      # Design language + contributing guide
 ```
 
-## Developing
+---
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+## Rendering & deployment
 
-```sh
-npm run dev
+The whole site is **prerendered to static HTML** at build time — there is no
+server runtime. `bun run build` produces a self-contained `build/` directory:
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+```
+build/
+├─ index.html      # fully rendered page
+├─ _app/           # hashed JS, CSS, fonts
+├─ images/         # brand assets
+└─ robots.txt
 ```
 
-## Building
+Deploy `build/` to any static host — GitHub Pages, Netlify, Cloudflare Pages,
+Vercel (static), S3 + CloudFront, etc. No Node server required.
 
-To create a production version of your app:
+> If a future route needs runtime rendering (server data, form actions, API
+> endpoints), set `export const prerender = false` on that route and swap
+> `adapter-static` for a server-capable adapter in
+> [`vite.config.ts`](vite.config.ts). See the
+> [adapters docs](https://svelte.dev/docs/kit/adapters).
 
-```sh
-npm run build
-```
+---
 
-You can preview the production build with `npm run preview`.
+## Documentation
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+- [docs/DESIGN.md](docs/DESIGN.md) — the Shuuen design language: color, type,
+  spacing, and the decisions made adapting the source design to shadcn-svelte.
+- [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) — dev conventions, how to add
+  shadcn-svelte components, and code style.
