@@ -4,6 +4,10 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+	server: {
+		// Bind on all interfaces so both IPv4 (127.0.0.1) and IPv6 (::1) localhost resolve.
+		host: true
+	},
 	plugins: [
 		tailwindcss(),
 		sveltekit({
