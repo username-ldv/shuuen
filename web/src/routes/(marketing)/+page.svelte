@@ -10,8 +10,11 @@
   import Check from "@lucide/svelte/icons/check";
   import Monitor from "@lucide/svelte/icons/monitor";
   import Smartphone from "@lucide/svelte/icons/smartphone";
+  import { PUBLIC_SITE_URL } from "$env/static/public";
 
-  const repoUrl = "https://shuuen.xyz/link";
+  // Friendly alias the native app pastes to pair with the site. In production a
+  // reverse proxy forwards `${PUBLIC_SITE_URL}/link` to the backend's /api/link.
+  const repoUrl = `${PUBLIC_SITE_URL}/link`;
   const appVersion = "0.0.4";
 
   let copied = $state(false);

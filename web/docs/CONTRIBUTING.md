@@ -64,10 +64,29 @@ global stylesheet.
 
 ## Rendering
 
-The site is fully prerendered (`export const prerender = true` in
-[`+layout.ts`](../src/routes/+layout.ts), `adapter-static`). Keep new routes
-prerenderable. If you add internal anchor links (`#section`), make sure the
-target `id` exists, or the prerender crawler will flag it.
+Rendering is **hybrid** (`@sveltejs/adapter-node`) and decided per route — see
+[ARCHITECTURE.md](ARCHITECTURE.md) for the full picture.
+
+- **Marketing** pages live in the [`(marketing)`](../src/routes) route group and
+  are prerendered via `export const prerender = true` in its `+layout.ts`. Keep
+  them prerenderable (no per-request data). If you add internal anchor links
+  (`#section`), make sure the target `id` exists or the prerender crawler flags
+  it.
+- **Dynamic** app pages (personal pages, blog, repository) go in a sibling
+  `(app)/` group — don't set `prerender` there (SSR is the default). Fetch data
+  in a `load` function: `+page.ts` for public/universal, `+page.server.ts` for
+  authenticated or secret-bearing loads.
+- Route groups (`(name)`) don't affect URLs — they only scope layouts/options.
+
+## Configuration & env
+
+- Client-visible config lives in `.env` with a `PUBLIC_` prefix (exposed to the
+  browser); import via `$env/static/public`. Copy `.env.example` → `.env` and
+  keep the example in sync when you add a variable.
+- Server-only secrets go **without** the prefix and are read via
+  `$env/dynamic/private` in server code — never import them into client code.
+- Call the backend from browser code at same-origin `/api` (dev proxy in
+  [`vite.config.ts`](../vite.config.ts) forwards it to the Go server locally).
 
 ## Commit style
 
