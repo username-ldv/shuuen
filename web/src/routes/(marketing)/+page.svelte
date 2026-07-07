@@ -16,6 +16,7 @@
   // reverse proxy forwards `${PUBLIC_SITE_URL}/link` to the backend's /api/link.
   const repoUrl = `${PUBLIC_SITE_URL}/link`;
   const appVersion = "0.0.4";
+  const releasesUrl = "https://github.com/username-ldv/shuuen/releases/latest";
 
   let copied = $state(false);
   let resetTimer: ReturnType<typeof setTimeout>;
@@ -161,8 +162,9 @@
         </span>
       </div>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Card.Root>
-          <Card.Header class="flex flex-col items-start gap-4">
+        <!-- PC binaries aren't published yet — card is disabled. -->
+        <Card.Root aria-disabled="true">
+          <Card.Header class="flex flex-col items-start gap-4 opacity-60">
             <div
               class="flex size-13 items-center justify-center rounded-full bg-muted"
             >
@@ -178,10 +180,7 @@
             </div>
           </Card.Header>
           <Card.Footer>
-            <Button size="sm" class="w-full" href="#download">
-              <Download data-icon="inline-start" />
-              Download
-            </Button>
+            <Button size="sm" class="w-full" disabled>Coming soon</Button>
           </Card.Footer>
         </Card.Root>
 
@@ -202,7 +201,13 @@
             </div>
           </Card.Header>
           <Card.Footer>
-            <Button size="sm" class="w-full" href="#download">
+            <Button
+              size="sm"
+              class="w-full"
+              href={releasesUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <Download data-icon="inline-start" />
               Download
             </Button>
