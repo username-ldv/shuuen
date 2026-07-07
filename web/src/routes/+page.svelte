@@ -75,6 +75,7 @@
       class="flex flex-col items-center pt-24 pb-20 text-center"
     >
       <span
+        lang="ja-JP"
         class="mb-8 text-[10px] font-semibold uppercase tracking-[0.25em] text-muted-foreground/70"
       >
         終焉 · The End / Final Moment
@@ -214,6 +215,7 @@
       class="mx-auto flex max-w-180 flex-wrap items-center justify-between gap-4"
     >
       <span
+        lang="ja-JP"
         class="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/70"
       >
         終焉 · Shuuen
