@@ -84,11 +84,15 @@
 				set the scale, context and range, then practice with precision.
 			</p>
 			<div class="mt-9 flex flex-wrap items-center justify-center gap-3.5">
-				<Button href="#login" class="h-11 px-6">
+				<Button href="#login" class="h-11 px-6 has-data-[icon=inline-start]:pl-6">
 					<CircleUserRound data-icon="inline-start" />
 					My Page
 				</Button>
-				<Button href="#download" variant="secondary" class="h-11 px-6">
+				<Button
+					href="#download"
+					variant="secondary"
+					class="h-11 px-6 has-data-[icon=inline-start]:pl-6"
+				>
 					<Download data-icon="inline-start" />
 					Download
 				</Button>
