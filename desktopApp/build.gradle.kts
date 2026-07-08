@@ -24,6 +24,8 @@ compose.desktop {
   application {
     mainClass = "ldv.shuuen.MainKt"
 
+    buildTypes.release.proguard.isEnabled.set(false)
+
     nativeDistributions {
       appResourcesRootDir.set(project.layout.projectDirectory.dir("src/main/appResources"))
       targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
