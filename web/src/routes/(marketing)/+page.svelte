@@ -50,7 +50,13 @@
     class="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/80 px-6 py-4 backdrop-blur-sm"
   >
     <a href="#top" class="flex items-center gap-3 text-foreground">
-      <img src="/images/shuuen-icon.png" alt="" class="size-6 object-contain" />
+      <img
+        src="/images/shuuen-icon.png"
+        alt=""
+        width="1024"
+        height="1024"
+        class="size-6 object-contain"
+      />
       <span class="text-sm font-semibold uppercase tracking-[0.28em]"
         >Shuuen</span
       >
@@ -97,6 +103,10 @@
       <img
         src="/images/shuuen-logo.png"
         alt="Shuuen"
+        width="1050"
+        height="624"
+        loading="eager"
+        fetchpriority="high"
         class="mb-9 w-full max-w-90"
       />
       <h1 class="max-w-115 text-3xl font-semibold leading-tight text-balance">
