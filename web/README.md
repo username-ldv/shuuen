@@ -2,14 +2,15 @@
 
 Web frontend for **Shuuen**, a next-generation ear-training app for musicians
 (Windows · Linux · Android). It pairs with the native app and (in time) a
-separate Go backend API. The current codebase is the **marketing landing
-page** — a single, prerendered page with a monochrome, pure-black aesthetic —
-built to grow into the interactive site (personal pages, news blog, a global
+separate Go backend API. The current codebase includes the **marketing landing
+page** plus a small optional-auth surface (login, sign-up, and profile) built
+to grow into the interactive site (personal pages, news blog, a global
 repository of melodies/levels/contexts, and music-API integrations).
 
-> **Current scope:** UI only. The download / login / repository actions are
-> presentational for now. The rendering setup and URL scheme are already
-> arranged for the dynamic features to drop in later — see
+> **Current scope:** marketing UI plus optional account flow. Download and
+> repository actions are still presentational; auth routes call the Go backend
+> and store its JWT in an HTTP-only frontend session cookie. The rendering setup
+> and URL scheme are arranged for more dynamic features — see
 > [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
@@ -24,7 +25,7 @@ repository of melodies/levels/contexts, and music-API integrations).
 | Icons          | [Lucide](https://lucide.dev) (`@lucide/svelte`)                        |
 | Font           | Inter (variable, self-hosted via `@fontsource-variable/inter`)         |
 | Runtime / PM   | [Bun](https://bun.sh)                                                   |
-| Rendering      | Hybrid — marketing prerendered, app routes SSR — via `@sveltejs/adapter-node` |
+| Rendering      | SSR via `@sveltejs/adapter-node` with same-origin backend proxying |
 | Backend        | Separate **Go** API (not in this repo), reached at `/api` (see [ARCHITECTURE](docs/ARCHITECTURE.md)) |
 
 The visual design was imported from a
@@ -40,7 +41,7 @@ prefer `npm`/`pnpm`; `engine-strict` is enabled.)
 
 ```sh
 bun install            # install dependencies
-cp .env.example .env   # local config (PUBLIC_SITE_URL); adjust if needed
+cp .env.example .env   # local config (PUBLIC_SITE_URL, SHUUEN_BACKEND_URL)
 bun run dev            # start the dev server at http://localhost:5173
 ```
 
@@ -57,7 +58,7 @@ Open [http://localhost:5173](http://localhost:5173). Hot-module reload is on.
 | Command            | What it does                                                     |
 | ------------------ | --------------------------------------------------------------- |
 | `bun run dev`      | Start the Vite dev server (HMR) on port `5173`.                 |
-| `bun run build`    | Build the Node server to `build/` (marketing routes prerendered). |
+| `bun run build`    | Build the Node server to `build/`.                              |
 | `bun run preview`  | Serve the production build locally to sanity-check it.          |
 | `bun run check`    | Type-check with `svelte-check` (0 errors expected).             |
 | `bun run check:watch` | Same, in watch mode.                                         |
@@ -67,18 +68,20 @@ Open [http://localhost:5173](http://localhost:5173). Hot-module reload is on.
 ## Project structure
 
 ```
-.env(.example)              # PUBLIC_SITE_URL (used to build the app-pairing link)
+.env(.example)              # PUBLIC_SITE_URL + server-only backend URL
 src/
 ├─ app.html                 # Document shell — `<html class="dark">` (dark-only brand)
 ├─ routes/
 │  ├─ +layout.svelte        # Root layout (all pages): favicon + global CSS
 │  ├─ layout.css            # Tailwind + shadcn theme tokens (pure-black override)
-│  └─ (marketing)/          # Prerendered marketing route group (URL-transparent)
-│     ├─ +layout.ts         # `export const prerender = true` for this group
-│     └─ +page.svelte       # The landing page (served at `/`)
-│                           # → future: sibling (app)/ group for dynamic, SSR routes
+│  ├─ (marketing)/          # Session-aware marketing route group (URL-transparent)
+│  │  ├─ +layout.ts         # `export const prerender = false` for account state
+│  │  └─ +page.svelte       # The landing page (served at `/`)
+│  └─ (app)/                # Dynamic SSR account routes (`/login`, `/sign-up`, `/me`)
 └─ lib/
-   ├─ components/ui/        # shadcn-svelte components (button, card, separator)
+   ├─ auth/                 # Shared auth response types
+   ├─ components/ui/        # shadcn-svelte components
+   ├─ server/               # Server-only auth/backend helpers
    └─ utils.ts              # `cn()` class-merge helper
 
 static/images/             # Brand assets (logo wordmark, app icon / favicon)
@@ -89,16 +92,15 @@ docs/                      # Architecture, design language, contributing guide
 
 ## Rendering & deployment
 
-Rendering is **hybrid** (`@sveltejs/adapter-node`): marketing routes are
-prerendered to HTML at build time and served as static files, while future app
-routes render on the server at request time. `bun run build` produces a
-self-contained Node app in `build/`:
+Rendering is SSR through `@sveltejs/adapter-node`: the landing page renders on
+request so the header can reflect the current login state, and app routes render
+on the server too. `bun run build` produces a self-contained Node app in
+`build/`:
 
 ```
 build/
 ├─ index.js        # server entry — start with `node build`
 ├─ handler.js      # Express/Connect-style middleware (for embedding)
-├─ prerendered/    # prebuilt marketing HTML (e.g. index.html)
 ├─ client/         # hashed JS, CSS, fonts, images
 └─ server/         # SSR server bundle
 ```

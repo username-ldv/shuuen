@@ -34,7 +34,7 @@ browser client never hits CORS.
 
 | Path | Served by | Purpose |
 | --- | --- | --- |
-| `/` | frontend (prerendered) | Marketing landing page |
+| `/` | frontend (SSR) | Marketing landing page with account-aware header |
 | `/app/*`, `/me`, `/news`, … | frontend (SSR, later) | Personal pages, blog, melody/level repository |
 | `/api/*` | Go backend | All API endpoints — repositories, melodies, contexts, music-API integrations, auth |
 | `/link` | Go backend (`/api/link`) | **Cosmetic alias.** The URL the native app pastes to pair with the site. The proxy rewrites `/link` → `/api/link`; the short form just reads nicely for users. |
@@ -45,21 +45,25 @@ browser — so it only needs to be a clean, stable HTTPS URL.
 
 ## Rendering model
 
-Rendering is decided **per route** (SvelteKit), so the marketing page stays
-static even as dynamic features arrive.
+Rendering is decided **per route** (SvelteKit). The landing page now renders on
+request so it can show the current account state in the header.
 
 - **Marketing** — the [`(marketing)`](../src/routes) route group carries
-  `export const prerender = true` in its `+layout.ts`. These pages are baked to
-  HTML at build time (`build/prerendered/`) and need no data.
-- **App (future)** — add a sibling `(app)/` group without `prerender` (SSR is
-  the default). Route groups don't affect URLs, so `/` stays `/`.
+  `export const prerender = false` in its `+layout.ts`, and `/` loads
+  `locals.user` from the server session.
+- **App** — dynamic routes live in the sibling `(app)/` group without
+  `prerender` (SSR is the default). Route groups don't affect URLs, so `/`
+  stays `/`.
   - Public, SEO-relevant pages (news blog, melody repository) → `+page.ts`
     universal `load` that fetches from the API.
   - Authenticated pages (personal pages) → `+page.server.ts` `load` +
     `hooks.server.ts` for session handling; server-only so secrets stay server-side.
+  - Current account routes: `/login`, `/sign-up`, and `/me`. The frontend keeps
+    the backend JWT in an HTTP-only cookie and sends it to Go as a bearer token
+    from server code only.
 
-`@sveltejs/adapter-node` produces one Node server that serves the prerendered
-marketing HTML *and* runs SSR for the app routes.
+`@sveltejs/adapter-node` produces one Node server that serves both the marketing
+page and app routes through SSR.
 
 ### Where the frontend calls the API
 
@@ -72,15 +76,16 @@ marketing HTML *and* runs SSR for the app routes.
 ## Configuration
 
 Client-visible config comes from `.env` (`PUBLIC_` prefix = exposed to the
-browser, inlined at build for prerendered pages):
+browser):
 
 | Variable | Example | Used for |
 | --- | --- | --- |
 | `PUBLIC_SITE_URL` | `https://shuuen.xyz` | Building the `/link` pairing URL shown on the landing page |
+| `SHUUEN_BACKEND_URL` | `http://127.0.0.1:9999` | Server-side auth calls from SvelteKit to the Go backend |
 
-Server-only secrets (DB URL, session keys, upstream music-API keys) will be
-added **without** the `PUBLIC_` prefix and read via `$env/dynamic/private` in
-server code once the app routes exist. Copy `.env.example` → `.env` to start.
+Server-only secrets (DB URL, session keys, upstream music-API keys) are added
+**without** the `PUBLIC_` prefix and read via `$env/dynamic/private` in server
+code. Copy `.env.example` → `.env` to start.
 
 ## Dev vs. production
 
@@ -108,11 +113,10 @@ shuuen.xyz {
 }
 ```
 
-## When the backend lands — checklist
+## Backend follow-up checklist
 
-1. Stand the Go API up on `:9999` with an `/api/link` endpoint (+ health check).
-2. Add the `(app)/` route group with the first dynamic routes and their `load`s.
-3. Introduce server-only env vars (secrets) via `$env/dynamic/private`.
+1. Add the `/api/link` endpoint for the native app pairing alias.
+2. Expand the `(app)/` route group with public repository/news routes and their `load`s.
+3. Add stronger production session management if the frontend needs refresh tokens or
+   long-lived sessions.
 4. Configure the production reverse proxy per the topology above.
-
-Nothing in the current marketing setup needs to change for any of this.

@@ -1,4 +1,3 @@
-// Marketing pages (landing, and future about/pricing/etc.) are static: no
-// per-user data, so prerender the whole (marketing) group to plain HTML at
-// build time. Dynamic app routes live in a sibling group and opt out.
-export const prerender = true;
+// The landing page shows the current account state in its header, so it now
+// renders on request instead of being prerendered.
+export const prerender = false;

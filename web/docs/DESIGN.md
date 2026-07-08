@@ -87,8 +87,7 @@ component sizes them). See [CONTRIBUTING.md](CONTRIBUTING.md).
    (`has-data-[icon=inline-start]:pl-2`), the override also restores symmetric
    left padding (`has-data-[icon=inline-start]:pl-6`) so the label stays
    centered.
-4. **"News" is a placeholder** nav item with no section yet; the static
-   prerender is configured to `warn` (not error) on its missing `#news` anchor.
+4. **"News" is a placeholder** nav item with no section yet.
 
 ---
 

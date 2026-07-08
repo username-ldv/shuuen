@@ -1,8 +1,9 @@
 # Contributing
 
-A short guide to working in this repo. It's a small, UI-only SvelteKit project;
-the goal is to keep it consistent with the shadcn-svelte preset and the
-[Shuuen design language](DESIGN.md).
+A short guide to working in this repo. It's a small SvelteKit project with a
+session-aware marketing page and dynamic SSR account routes; the goal is to
+keep it consistent with the shadcn-svelte preset and the [Shuuen design
+language](DESIGN.md).
 
 ## Setup
 
@@ -15,7 +16,7 @@ Before pushing, make sure the project type-checks and builds:
 
 ```sh
 bun run check    # svelte-check — expect 0 errors / 0 warnings
-bun run build    # must prerender cleanly to build/
+bun run build    # must build cleanly to build/
 ```
 
 ## Adding shadcn-svelte components
@@ -67,12 +68,9 @@ global stylesheet.
 Rendering is **hybrid** (`@sveltejs/adapter-node`) and decided per route — see
 [ARCHITECTURE.md](ARCHITECTURE.md) for the full picture.
 
-- **Marketing** pages live in the [`(marketing)`](../src/routes) route group and
-  are prerendered via `export const prerender = true` in its `+layout.ts`. Keep
-  them prerenderable (no per-request data). If you add internal anchor links
-  (`#section`), make sure the target `id` exists or the prerender crawler flags
-  it.
-- **Dynamic** app pages (personal pages, blog, repository) go in a sibling
+- **Marketing** pages live in the [`(marketing)`](../src/routes) route group.
+  The landing page is SSR because it shows current account state in the header.
+- **Dynamic** app pages (personal pages, blog, repository) go in the sibling
   `(app)/` group — don't set `prerender` there (SSR is the default). Fetch data
   in a `load` function: `+page.ts` for public/universal, `+page.server.ts` for
   authenticated or secret-bearing loads.
@@ -83,8 +81,9 @@ Rendering is **hybrid** (`@sveltejs/adapter-node`) and decided per route — see
 - Client-visible config lives in `.env` with a `PUBLIC_` prefix (exposed to the
   browser); import via `$env/static/public`. Copy `.env.example` → `.env` and
   keep the example in sync when you add a variable.
-- Server-only secrets go **without** the prefix and are read via
+- Server-only values go **without** the prefix and are read via
   `$env/dynamic/private` in server code — never import them into client code.
+  Auth routes use `SHUUEN_BACKEND_URL` for direct server-to-Go calls.
 - Call the backend from browser code at same-origin `/api` (dev proxy in
   [`vite.config.ts`](../vite.config.ts) forwards it to the Go server locally).
 

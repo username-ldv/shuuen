@@ -11,6 +11,9 @@
   import Monitor from "@lucide/svelte/icons/monitor";
   import Smartphone from "@lucide/svelte/icons/smartphone";
   import { PUBLIC_SITE_URL } from "$env/static/public";
+  import type { PageData } from "./$types";
+
+  let { data }: { data: PageData } = $props();
 
   // Friendly alias the native app pastes to pair with the site. In production a
   // reverse proxy forwards `${PUBLIC_SITE_URL}/link` to the backend's /api/link.
@@ -65,10 +68,17 @@
       >
         News
       </a>
-      <Button href="#login" size="sm">
-        <LogIn data-icon="inline-start" />
-        Log In
-      </Button>
+      {#if data.user}
+        <Button href="/me" size="sm">
+          <CircleUserRound data-icon="inline-start" />
+          <span class="max-w-28 truncate sm:max-w-36">@{data.user.username}</span>
+        </Button>
+      {:else}
+        <Button href="/login" size="sm">
+          <LogIn data-icon="inline-start" />
+          Log In
+        </Button>
+      {/if}
     </nav>
   </header>
 
@@ -102,7 +112,7 @@
       </p>
       <div class="mt-9 flex flex-wrap items-center justify-center gap-3.5">
         <Button
-          href="#login"
+          href="/me"
           class="h-11 px-6 has-data-[icon=inline-start]:pl-6"
         >
           <CircleUserRound data-icon="inline-start" />
