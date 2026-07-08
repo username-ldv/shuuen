@@ -45,7 +45,7 @@ Or run with Postgres through Docker Compose:
 docker compose up --build
 ```
 
-The API listens on `http://localhost:8080` by default.
+The API listens on `http://localhost:9999` by default.
 
 ## Data Folder Catalog
 
@@ -121,6 +121,10 @@ Main endpoints:
 - `POST /api/v1/auth/login`
 - `GET /api/v1/auth/me`
 
+Register and login with a `username` of 3-20 letters, numbers, or underscores
+plus a password. Username display casing is preserved, but login and uniqueness
+checks are case-insensitive.
+
 Send authenticated mutation requests with:
 
 ```text
@@ -173,7 +177,7 @@ Group path responses include the group, direct child groups, and melodies in tha
 Use multipart form data to add a variant to an existing melody:
 
 ```sh
-curl -X POST http://localhost:8080/api/v1/library/melodies/1/variants \
+curl -X POST http://localhost:9999/api/v1/library/melodies/1/variants \
   -H "Authorization: Bearer <access_token>" \
   -F "format=midi" \
   -F "file=@warmup.mid"

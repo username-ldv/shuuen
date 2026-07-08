@@ -53,7 +53,7 @@ func Load() (Config, error) {
 		AppEnv: getEnv("APP_ENV", "development"),
 		HTTP: HTTPConfig{
 			Host:            getEnv("HTTP_HOST", "0.0.0.0"),
-			Port:            getEnv("HTTP_PORT", "8080"),
+			Port:            getEnv("HTTP_PORT", "9999"),
 			ReadTimeout:     getDuration("HTTP_READ_TIMEOUT", 5*time.Second),
 			WriteTimeout:    getDuration("HTTP_WRITE_TIMEOUT", 10*time.Second),
 			IdleTimeout:     getDuration("HTTP_IDLE_TIMEOUT", 30*time.Second),

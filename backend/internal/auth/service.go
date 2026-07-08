@@ -19,9 +19,9 @@ type Service struct {
 }
 
 type Claims struct {
-	UserID uint   `json:"user_id"`
-	Email  string `json:"email"`
-	Role   string `json:"role"`
+	UserID   uint   `json:"user_id"`
+	Username string `json:"username"`
+	Role     string `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -50,9 +50,9 @@ func (s *Service) GenerateAccessToken(user model.User) (string, time.Time, error
 	expiresAt := now.Add(s.ttl)
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
-		UserID: user.ID,
-		Email:  user.Email,
-		Role:   user.Role,
+		UserID:   user.ID,
+		Username: user.Username,
+		Role:     user.Role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   strconv.FormatUint(uint64(user.ID), 10),
 			Issuer:    s.issuer,

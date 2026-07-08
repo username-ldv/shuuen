@@ -15,7 +15,8 @@ type Base struct {
 
 type User struct {
 	Base
-	Email        string `gorm:"size:320;uniqueIndex;not null" json:"email"`
+	Username     string `gorm:"size:20;not null" json:"username"`
+	UsernameKey  string `gorm:"size:20;uniqueIndex;not null" json:"-"`
 	DisplayName  string `gorm:"size:160" json:"display_name"`
 	PasswordHash string `gorm:"size:255;not null" json:"-"`
 	Role         string `gorm:"size:40;not null;default:user" json:"role"`

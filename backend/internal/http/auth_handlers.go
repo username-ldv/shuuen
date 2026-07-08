@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
@@ -10,14 +11,16 @@ import (
 	"shuuen-backend/internal/model"
 )
 
+var usernamePattern = regexp.MustCompile(`^[A-Za-z0-9_]{3,20}$`)
+
 type registerRequest struct {
-	Email       string `json:"email" validate:"required,email,max=320"`
+	Username    string `json:"username" validate:"required,min=3,max=20"`
 	Password    string `json:"password" validate:"required,min=8,max=200"`
 	DisplayName string `json:"display_name" validate:"max=160"`
 }
 
 type loginRequest struct {
-	Email    string `json:"email" validate:"required,email,max=320"`
+	Username string `json:"username" validate:"required,min=3,max=20"`
 	Password string `json:"password" validate:"required"`
 }
 
@@ -26,11 +29,15 @@ func (h *Handler) Register(c fiber.Ctx) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return sendError(c, fiber.StatusBadRequest, "invalid request body")
 	}
-	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	req.Username = cleanUsername(req.Username)
 	req.DisplayName = strings.TrimSpace(req.DisplayName)
 	if err := h.validate.Struct(req); err != nil {
 		return sendError(c, fiber.StatusBadRequest, "validation failed", err.Error())
 	}
+	if !validUsername(req.Username) {
+		return sendError(c, fiber.StatusBadRequest, "username must be 3-20 characters and use only letters, numbers, or underscores")
+	}
+	usernameKey := usernameLookupKey(req.Username)
 
 	passwordHash, err := auth.HashPassword(req.Password)
 	if err != nil {
@@ -38,14 +45,15 @@ func (h *Handler) Register(c fiber.Ctx) error {
 	}
 
 	user := model.User{
-		Email:        req.Email,
+		Username:     req.Username,
+		UsernameKey:  usernameKey,
 		DisplayName:  req.DisplayName,
 		PasswordHash: passwordHash,
 		Role:         "user",
 	}
 	if err := h.db.Create(&user).Error; err != nil {
 		if isUniqueConstraint(err) {
-			return sendError(c, fiber.StatusConflict, "email is already registered")
+			return sendError(c, fiber.StatusConflict, "username is already registered")
 		}
 		return err
 	}
@@ -58,21 +66,24 @@ func (h *Handler) Login(c fiber.Ctx) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return sendError(c, fiber.StatusBadRequest, "invalid request body")
 	}
-	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	req.Username = cleanUsername(req.Username)
 	if err := h.validate.Struct(req); err != nil {
 		return sendError(c, fiber.StatusBadRequest, "validation failed", err.Error())
 	}
+	if !validUsername(req.Username) {
+		return sendError(c, fiber.StatusBadRequest, "username must be 3-20 characters and use only letters, numbers, or underscores")
+	}
 
 	var user model.User
-	err := h.db.Where("email = ?", req.Email).First(&user).Error
+	err := h.db.Where("username_key = ?", usernameLookupKey(req.Username)).First(&user).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return sendError(c, fiber.StatusUnauthorized, "invalid email or password")
+			return sendError(c, fiber.StatusUnauthorized, "invalid username or password")
 		}
 		return err
 	}
 	if !auth.CheckPassword(user.PasswordHash, req.Password) {
-		return sendError(c, fiber.StatusUnauthorized, "invalid email or password")
+		return sendError(c, fiber.StatusUnauthorized, "invalid username or password")
 	}
 
 	return h.authResponse(c, fiber.StatusOK, user)
@@ -97,4 +108,16 @@ func (h *Handler) authResponse(c fiber.Ctx, status int, user model.User) error {
 		"token_type":   "Bearer",
 		"expires_at":   expiresAt,
 	})
+}
+
+func cleanUsername(value string) string {
+	return strings.TrimSpace(value)
+}
+
+func usernameLookupKey(value string) string {
+	return strings.ToLower(cleanUsername(value))
+}
+
+func validUsername(value string) bool {
+	return usernamePattern.MatchString(value)
 }
