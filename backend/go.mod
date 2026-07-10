@@ -3,22 +3,20 @@ module shuuen-backend
 go 1.25.0
 
 require (
-	github.com/glebarez/sqlite v1.11.0
 	github.com/go-playground/validator/v10 v10.22.1
 	github.com/gofiber/fiber/v3 v3.3.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/joho/godotenv v1.5.1
+	github.com/ncruces/go-sqlite3/gormlite v0.34.0
 	github.com/rs/zerolog v1.33.0
-	golang.org/x/crypto v0.51.0
+	golang.org/x/crypto v0.53.0
 	gorm.io/driver/postgres v1.5.11
-	gorm.io/gorm v1.25.12
+	gorm.io/gorm v1.31.2
 )
 
 require (
 	github.com/andybalholm/brotli v1.2.1 // indirect
-	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
-	github.com/glebarez/go-sqlite v1.21.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/gofiber/schema v1.7.1 // indirect
@@ -34,17 +32,15 @@ require (
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
+	github.com/ncruces/go-sqlite3 v0.35.2 // indirect
+	github.com/ncruces/go-sqlite3-wasm/v3 v3.2.35303 // indirect
+	github.com/ncruces/julianday v1.0.0 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
-	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/tinylib/msgp v1.6.4 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.71.0 // indirect
-	golang.org/x/net v0.54.0 // indirect
-	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.44.0 // indirect
-	golang.org/x/text v0.37.0 // indirect
-	modernc.org/libc v1.22.5 // indirect
-	modernc.org/mathutil v1.5.0 // indirect
-	modernc.org/memory v1.5.0 // indirect
-	modernc.org/sqlite v1.23.1 // indirect
+	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/text v0.40.0 // indirect
 )

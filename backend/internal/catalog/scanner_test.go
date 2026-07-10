@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/glebarez/sqlite"
+	"github.com/ncruces/go-sqlite3/gormlite"
 	"gorm.io/gorm"
 
 	"shuuen-backend/internal/config"
@@ -25,7 +25,7 @@ func TestScannerIndexesRecursiveFoldersAndVariants(t *testing.T) {
 	writeFile(t, filepath.Join(groupDir, "warmup.mid"), "midi")
 	writeFile(t, filepath.Join(groupDir, "warmup.musicxml"), "<score-partwise />")
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	db, err := gorm.Open(gormlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("gorm.Open returned error: %v", err)
 	}

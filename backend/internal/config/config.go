@@ -62,7 +62,7 @@ func Load() (Config, error) {
 		},
 		Database: DatabaseConfig{
 			Driver:      strings.ToLower(getEnv("DATABASE_DRIVER", "sqlite")),
-			DSN:         getEnv("DATABASE_DSN", "data/shuuen-index.db"),
+			DSN:         getEnv("DATABASE_DSN", "data/shuuen.db"),
 			AutoMigrate: getBool("AUTO_MIGRATE", true),
 		},
 		Auth: AuthConfig{
@@ -113,6 +113,9 @@ func (c Config) validate() error {
 		if len(c.Auth.JWTSecret) < 32 {
 			return errors.New("JWT_SECRET must be at least 32 characters in production")
 		}
+	}
+	if c.HTTP.Port == "" {
+		return errors.New("HTTP_PORT is required")
 	}
 	return nil
 }

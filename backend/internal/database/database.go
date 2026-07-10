@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/glebarez/sqlite"
+	"github.com/ncruces/go-sqlite3/gormlite"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -26,7 +26,7 @@ func Connect(cfg config.DatabaseConfig) (*gorm.DB, error) {
 		if err := ensureSQLiteDir(cfg.DSN); err != nil {
 			return nil, err
 		}
-		return gorm.Open(sqlite.Open(cfg.DSN), gormConfig)
+		return gorm.Open(gormlite.Open(cfg.DSN), gormConfig)
 	default:
 		return nil, fmt.Errorf("unsupported database driver %q", cfg.Driver)
 	}
