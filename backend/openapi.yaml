@@ -1,15 +1,17 @@
-openapi: 3.1.0
+openapi: 3.2.0
 info:
   title: Shuuen Backend API
   version: 1.0.0
   license:
     name: The Supreme Mandate of the Void 1.2
+    url: https://github.com/username-ldv/shuuen-backend/blob/main/LICENSE
   description: >-
     Public catalog reads and role-aware account access. Catalog mutations require
     an administrator bearer token. Private reads additionally require
     include_private=true.
 servers:
-  - url: http://localhost:9999
+  - url: /
+    description: Current origin
 security: []
 components:
   securitySchemes:
@@ -113,6 +115,30 @@ components:
         variants:
           type: array
           items: { $ref: '#/components/schemas/FileVariant' }
+    GroupPage:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/LibraryGroup' }
+        meta: { $ref: '#/components/schemas/ListMeta' }
+    MelodyPage:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Melody' }
+        meta: { $ref: '#/components/schemas/ListMeta' }
+    TagPage:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Tag' }
+        meta: { $ref: '#/components/schemas/ListMeta' }
     AuthRequest:
       type: object
       required: [username, password]
@@ -148,12 +174,14 @@ paths:
   /healthz:
     get:
       summary: Readiness check for database and storage
+      operationId: healthCheck
       responses:
         '200': { description: Healthy }
         '503': { description: Database or storage unavailable }
   /api/v1/auth/register:
     post:
       summary: Register an ordinary user when registration is enabled
+      operationId: registerUser
       requestBody:
         required: true
         content:
@@ -174,6 +202,7 @@ paths:
   /api/v1/auth/login:
     post:
       summary: Log in
+      operationId: loginUser
       requestBody:
         required: true
         content:
@@ -192,6 +221,7 @@ paths:
   /api/v1/auth/me:
     get:
       summary: Current user
+      operationId: getCurrentUser
       security: [{ bearerAuth: [] }]
       responses:
         '200': { description: Current user }
@@ -199,6 +229,7 @@ paths:
   /api/v1/auth/password:
     post:
       summary: Change password and revoke previously issued tokens
+      operationId: changePassword
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -218,6 +249,7 @@ paths:
   /api/v1/library/groups:
     get:
       summary: List groups
+      operationId: listGroups
       security: [{}, { bearerAuth: [] }]
       parameters:
         - { $ref: '#/components/parameters/Limit' }
@@ -236,11 +268,16 @@ paths:
           in: query
           schema: { type: string }
       responses:
-        '200': { description: Group page }
+        '200':
+          description: Group page
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GroupPage' }
         '403': { $ref: '#/components/responses/Forbidden' }
   /api/v1/library/groups/{id}:
     get:
       summary: Get a group and a bounded melody page
+      operationId: getGroup
       security: [{}, { bearerAuth: [] }]
       parameters:
         - name: id
@@ -259,6 +296,7 @@ paths:
   /api/v1/library/path/{groupPath}:
     get:
       summary: Get a group by filesystem-relative path
+      operationId: getGroupByPath
       security: [{}, { bearerAuth: [] }]
       parameters:
         - name: groupPath
@@ -277,6 +315,7 @@ paths:
   /api/v1/library/melodies:
     get:
       summary: List melodies
+      operationId: listMelodies
       security: [{}, { bearerAuth: [] }]
       parameters:
         - { $ref: '#/components/parameters/Limit' }
@@ -304,11 +343,16 @@ paths:
           in: query
           schema: { type: string }
       responses:
-        '200': { description: Melody page }
+        '200':
+          description: Melody page
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MelodyPage' }
         '403': { $ref: '#/components/responses/Forbidden' }
   /api/v1/library/tags:
     get:
       summary: List tags
+      operationId: listTags
       parameters:
         - { $ref: '#/components/parameters/Limit' }
         - { $ref: '#/components/parameters/Offset' }
@@ -316,9 +360,14 @@ paths:
           in: query
           schema: { type: string }
       responses:
-        '200': { description: Tag page }
+        '200':
+          description: Tag page
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TagPage' }
     post:
       summary: Create a tag
+      operationId: createTag
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -338,6 +387,7 @@ paths:
   /api/v1/library/tags/{id}:
     get:
       summary: Get a tag
+      operationId: getTag
       parameters:
         - name: id
           in: path
@@ -348,6 +398,7 @@ paths:
         '404': { description: Tag not found }
     patch:
       summary: Update a tag
+      operationId: updateTag
       security: [{ bearerAuth: [] }]
       parameters:
         - name: id
@@ -369,6 +420,7 @@ paths:
         '409': { description: Name or slug already exists }
     delete:
       summary: Delete a tag
+      operationId: deleteTag
       security: [{ bearerAuth: [] }]
       parameters:
         - name: id
@@ -381,6 +433,7 @@ paths:
   /api/v1/library/melodies/{id}:
     get:
       summary: Get a melody
+      operationId: getMelody
       security: [{}, { bearerAuth: [] }]
       parameters:
         - name: id
@@ -393,6 +446,7 @@ paths:
         '404': { description: Melody not found or private }
     delete:
       summary: Delete a melody and its files
+      operationId: deleteMelody
       security: [{ bearerAuth: [] }]
       parameters:
         - name: id
@@ -405,6 +459,7 @@ paths:
   /api/v1/library/melodies/{id}/variants:
     get:
       summary: List variants for a visible melody
+      operationId: listVariants
       security: [{}, { bearerAuth: [] }]
       parameters:
         - name: id
@@ -416,6 +471,7 @@ paths:
         '200': { description: Variants }
     post:
       summary: Upload a variant
+      operationId: uploadVariant
       security: [{ bearerAuth: [] }]
       parameters:
         - name: id
@@ -438,6 +494,7 @@ paths:
   /api/v1/library/variants/{id}:
     get:
       summary: Get variant metadata
+      operationId: getVariant
       security: [{}, { bearerAuth: [] }]
       parameters:
         - name: id
@@ -450,6 +507,7 @@ paths:
         '404': { description: Variant not found or private }
     patch:
       summary: Change primary status
+      operationId: updateVariant
       security: [{ bearerAuth: [] }]
       parameters:
         - name: id
@@ -467,6 +525,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
     delete:
       summary: Delete a variant and its file
+      operationId: deleteVariant
       security: [{ bearerAuth: [] }]
       parameters:
         - name: id
@@ -479,6 +538,7 @@ paths:
   /api/v1/library/variants/{id}/download:
     get:
       summary: Download a visible variant
+      operationId: downloadVariant
       security: [{}, { bearerAuth: [] }]
       parameters:
         - name: id
@@ -496,6 +556,7 @@ paths:
   /api/v1/library/rescan:
     post:
       summary: Reconcile the filesystem catalog
+      operationId: rescanCatalog
       security: [{ bearerAuth: [] }]
       responses:
         '200': { description: Scan result }

@@ -6,38 +6,34 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"shuuen-backend/internal/model"
+	dbquery "shuuen-backend/internal/query"
 	"shuuen-backend/internal/storage"
 )
 
 func (h *Handler) ListMelodies(c fiber.Ctx) error {
 	limit, offset := parsePagination(c)
-	var rows []model.Melody
-	var total int64
-
-	countQuery, err := h.buildMelodyQuery(c)
+	query, err := h.buildMelodyQuery(c)
 	if err != nil {
 		return sendError(c, fiber.StatusBadRequest, err.Error())
 	}
-	if err := countQuery.Distinct("melodies.id").Count(&total).Error; err != nil {
+	total, err := query.Distinct("melodies.id").Count(c.Context(), "melodies.id")
+	if err != nil {
 		return err
 	}
 
-	dataQuery, err := h.buildMelodyQuery(c)
-	if err != nil {
-		return sendError(c, fiber.StatusBadRequest, err.Error())
-	}
-	dataQuery = dataQuery.
-		Preload("Group").
-		Preload("Tags").
-		Preload("Variants").
+	rows, err := query.
+		Preload(dbquery.Melody.Group.Name(), nil).
+		Preload(dbquery.Melody.Tags.Name(), nil).
+		Preload(dbquery.Melody.Variants.Name(), nil).
 		Distinct("melodies.*").
 		Order(melodySort(c.Query("sort"))).
 		Limit(limit).
-		Offset(offset)
-
-	if err := dataQuery.Find(&rows).Error; err != nil {
+		Offset(offset).
+		Find(c.Context())
+	if err != nil {
 		return err
 	}
 	return c.JSON(listResponse{Data: rows, Meta: listMeta{Limit: limit, Offset: offset, Total: total}})
@@ -49,8 +45,13 @@ func (h *Handler) GetMelody(c fiber.Ctx) error {
 		return err
 	}
 
-	var melody model.Melody
-	if err := h.db.Preload("Group").Preload("Tags").Preload("Variants").First(&melody, id).Error; err != nil {
+	melody, err := gorm.G[model.Melody](h.db).
+		Preload(dbquery.Melody.Group.Name(), nil).
+		Preload(dbquery.Melody.Tags.Name(), nil).
+		Preload(dbquery.Melody.Variants.Name(), nil).
+		Where(dbquery.Melody.ID.Eq(id)).
+		First(c.Context())
+	if err != nil {
 		return notFoundOrError(c, err, "melody not found")
 	}
 	if !includePrivate(c) && (!melody.IsPublic || !melody.Group.IsPublic) {
@@ -65,8 +66,11 @@ func (h *Handler) DeleteMelody(c fiber.Ctx) error {
 		return err
 	}
 
-	var melody model.Melody
-	if err := h.db.Preload("Variants").First(&melody, id).Error; err != nil {
+	melody, err := gorm.G[model.Melody](h.db).
+		Preload(dbquery.Melody.Variants.Name(), nil).
+		Where(dbquery.Melody.ID.Eq(id)).
+		First(c.Context())
+	if err != nil {
 		return notFoundOrError(c, err, "melody not found")
 	}
 	staged := make([]*storage.StagedDelete, 0, len(melody.Variants))
@@ -80,15 +84,21 @@ func (h *Handler) DeleteMelody(c fiber.Ctx) error {
 	}
 
 	err = h.db.Transaction(func(tx *gorm.DB) error {
-		for _, variant := range melody.Variants {
-			if err := tx.Delete(&variant).Error; err != nil {
-				return err
-			}
-		}
-		if err := tx.Model(&melody).Association("Tags").Clear(); err != nil {
+		if _, err := gorm.G[model.FileVariant](tx).
+			Where(dbquery.FileVariant.MelodyID.Eq(melody.ID)).
+			Delete(c.Context()); err != nil {
 			return err
 		}
-		return tx.Delete(&melody).Error
+		if _, err := gorm.G[model.Melody](tx).
+			Where(dbquery.Melody.ID.Eq(melody.ID)).
+			Set(dbquery.Melody.Tags.Unlink()).
+			Update(c.Context()); err != nil {
+			return err
+		}
+		_, err := gorm.G[model.Melody](tx).
+			Where(dbquery.Melody.ID.Eq(melody.ID)).
+			Delete(c.Context())
+		return err
 	})
 	if err != nil {
 		rollbackStagedDeletes(staged)
@@ -108,12 +118,14 @@ func rollbackStagedDeletes(staged []*storage.StagedDelete) {
 	}
 }
 
-func (h *Handler) buildMelodyQuery(c fiber.Ctx) (*gorm.DB, error) {
-	query := h.db.Model(&model.Melody{}).
-		Joins("JOIN library_groups ON library_groups.id = melodies.group_id").
-		Where("library_groups.deleted_at IS NULL")
+func (h *Handler) buildMelodyQuery(c fiber.Ctx) (gorm.ChainInterface[model.Melody], error) {
+	query := gorm.G[model.Melody](h.db).
+		Joins(clause.InnerJoin.Association(dbquery.Melody.Group.Name()), nil)
 	if !includePrivate(c) {
-		query = query.Where("melodies.is_public = ? AND library_groups.is_public = ?", true, true)
+		query = query.Where(
+			dbquery.Melody.IsPublic.WithTable("melodies").Eq(true),
+			dbquery.LibraryGroup.IsPublic.WithTable("Group").Eq(true),
+		)
 	} else {
 		publicValue, err := parseOptionalBool(c, "public")
 		if err != nil {
@@ -137,21 +149,17 @@ func (h *Handler) buildMelodyQuery(c fiber.Ctx) (*gorm.DB, error) {
 		query = withGroupPathFilter(query, groupPath, parseBoolQuery(c, "recursive", false))
 	}
 	if tagID := parseQueryInt(c, "tag_id", 0); tagID > 0 {
-		query = query.Joins("JOIN melody_tags ON melody_tags.melody_id = melodies.id").
-			Where("melody_tags.tag_id = ?", tagID)
+		query = query.Where("EXISTS (SELECT 1 FROM melody_tags WHERE melody_tags.melody_id = melodies.id AND melody_tags.tag_id = ?)", tagID)
 	}
 	if tagSlug := strings.TrimSpace(c.Query("tag")); tagSlug != "" {
-		query = query.Joins("JOIN melody_tags AS melody_tags_slug ON melody_tags_slug.melody_id = melodies.id").
-			Joins("JOIN tags ON tags.id = melody_tags_slug.tag_id").
-			Where("tags.slug = ? AND tags.deleted_at IS NULL", tagSlug)
+		query = query.Where("EXISTS (SELECT 1 FROM melody_tags JOIN tags ON tags.id = melody_tags.tag_id WHERE melody_tags.melody_id = melodies.id AND tags.slug = ? AND tags.deleted_at IS NULL)", tagSlug)
 	}
 	if format := strings.TrimSpace(c.Query("format")); format != "" {
 		normalized := storage.NormalizeFormat(format)
 		if !storage.IsAllowedFormat(normalized) {
 			return nil, errors.New("unsupported variant format")
 		}
-		query = query.Joins("JOIN file_variants ON file_variants.melody_id = melodies.id").
-			Where("file_variants.format = ? AND file_variants.deleted_at IS NULL", normalized)
+		query = query.Where("EXISTS (SELECT 1 FROM file_variants WHERE file_variants.melody_id = melodies.id AND file_variants.format = ? AND file_variants.deleted_at IS NULL)", normalized)
 	}
 	if q := strings.TrimSpace(c.Query("q")); q != "" {
 		needle := containsPattern(strings.ToLower(q))

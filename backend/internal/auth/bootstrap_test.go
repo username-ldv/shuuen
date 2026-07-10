@@ -8,6 +8,7 @@ import (
 
 	"shuuen-backend/internal/config"
 	"shuuen-backend/internal/model"
+	"shuuen-backend/internal/query"
 )
 
 func TestEnsureBootstrapAdminCreatesAndDoesNotResetExistingPassword(t *testing.T) {
@@ -23,11 +24,13 @@ func TestEnsureBootstrapAdminCreatesAndDoesNotResetExistingPassword(t *testing.T
 		BootstrapAdminPassword: "initial-password",
 		BootstrapAdminName:     "Administrator",
 	}
-	if _, err := EnsureBootstrapAdmin(db, cfg); err != nil {
+	if _, err := EnsureBootstrapAdmin(t.Context(), db, cfg); err != nil {
 		t.Fatal(err)
 	}
-	var user model.User
-	if err := db.Where("username_key = ?", "admin").First(&user).Error; err != nil {
+	user, err := gorm.G[model.User](db).
+		Where(query.User.UsernameKey.Eq("admin")).
+		First(t.Context())
+	if err != nil {
 		t.Fatal(err)
 	}
 	if user.Role != "admin" || !CheckPassword(user.PasswordHash, "initial-password") {
@@ -35,10 +38,11 @@ func TestEnsureBootstrapAdminCreatesAndDoesNotResetExistingPassword(t *testing.T
 	}
 
 	cfg.BootstrapAdminPassword = "replacement-password"
-	if _, err := EnsureBootstrapAdmin(db, cfg); err != nil {
+	if _, err := EnsureBootstrapAdmin(t.Context(), db, cfg); err != nil {
 		t.Fatal(err)
 	}
-	if err := db.First(&user, user.ID).Error; err != nil {
+	user, err = gorm.G[model.User](db).Where(query.User.ID.Eq(user.ID)).First(t.Context())
+	if err != nil {
 		t.Fatal(err)
 	}
 	if !CheckPassword(user.PasswordHash, "initial-password") || CheckPassword(user.PasswordHash, "replacement-password") {

@@ -9,6 +9,7 @@ import (
 
 	"shuuen-backend/internal/catalog"
 	"shuuen-backend/internal/model"
+	dbquery "shuuen-backend/internal/query"
 	"shuuen-backend/internal/storage"
 )
 
@@ -21,16 +22,23 @@ func (h *Handler) ListVariants(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	var melody model.Melody
-	if err := h.db.Preload("Group").First(&melody, melodyID).Error; err != nil {
+	melody, err := gorm.G[model.Melody](h.db).
+		Preload(dbquery.Melody.Group.Name(), nil).
+		Where(dbquery.Melody.ID.Eq(melodyID)).
+		First(c.Context())
+	if err != nil {
 		return notFoundOrError(c, err, "melody not found")
 	}
 	if !canViewMelody(c, melody) {
 		return sendError(c, fiber.StatusNotFound, "melody not found")
 	}
 
-	var rows []model.FileVariant
-	if err := h.db.Where("melody_id = ?", melodyID).Order("is_primary desc, created_at asc").Find(&rows).Error; err != nil {
+	rows, err := gorm.G[model.FileVariant](h.db).
+		Where(dbquery.FileVariant.MelodyID.Eq(melodyID)).
+		Order(dbquery.FileVariant.IsPrimary.Desc()).
+		Order(dbquery.FileVariant.CreatedAt.Asc()).
+		Find(c.Context())
+	if err != nil {
 		return err
 	}
 	return sendData(c, fiber.StatusOK, rows)
@@ -42,8 +50,11 @@ func (h *Handler) GetVariant(c fiber.Ctx) error {
 		return err
 	}
 
-	var variant model.FileVariant
-	if err := h.db.Preload("Melody.Group").First(&variant, id).Error; err != nil {
+	variant, err := gorm.G[model.FileVariant](h.db).
+		Preload(dbquery.FileVariant.Melody.Name()+"."+dbquery.Melody.Group.Name(), nil).
+		Where(dbquery.FileVariant.ID.Eq(id)).
+		First(c.Context())
+	if err != nil {
 		return notFoundOrError(c, err, "variant not found")
 	}
 	if !canViewMelody(c, variant.Melody) {
@@ -58,8 +69,11 @@ func (h *Handler) UploadVariant(c fiber.Ctx) error {
 		return err
 	}
 
-	var melody model.Melody
-	if err := h.db.Preload("Group").First(&melody, melodyID).Error; err != nil {
+	melody, err := gorm.G[model.Melody](h.db).
+		Preload(dbquery.Melody.Group.Name(), nil).
+		Where(dbquery.Melody.ID.Eq(melodyID)).
+		First(c.Context())
+	if err != nil {
 		return notFoundOrError(c, err, "melody not found")
 	}
 
@@ -82,16 +96,22 @@ func (h *Handler) UploadVariant(c fiber.Ctx) error {
 	}
 
 	var variant model.FileVariant
-	err = h.db.WithContext(c.Context()).Transaction(func(tx *gorm.DB) error {
-		var lockedMelody model.Melody
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&lockedMelody, melody.ID).Error; err != nil {
+	err = h.db.Transaction(func(tx *gorm.DB) error {
+		if _, err := gorm.G[model.Melody](tx, clause.Locking{Strength: "UPDATE"}).
+			Where(dbquery.Melody.ID.Eq(melody.ID)).
+			First(c.Context()); err != nil {
 			return err
 		}
-		var activeVariants int64
-		if err := tx.Model(&model.FileVariant{}).Where("melody_id = ?", melody.ID).Count(&activeVariants).Error; err != nil {
+		activeVariants, err := gorm.G[model.FileVariant](tx).
+			Where(dbquery.FileVariant.MelodyID.Eq(melody.ID)).
+			Count(c.Context(), "*")
+		if err != nil {
 			return err
 		}
-		err := tx.Unscoped().Where("storage_path = ?", stored.StoragePath).First(&variant).Error
+		variant, err = gorm.G[model.FileVariant](tx).
+			Scopes(dbquery.Unscoped).
+			Where(dbquery.FileVariant.StoragePath.Eq(stored.StoragePath)).
+			First(c.Context())
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
@@ -110,12 +130,24 @@ func (h *Handler) UploadVariant(c fiber.Ctx) error {
 		variant.ScanID = "upload"
 		variant.DeletedAt = gorm.DeletedAt{}
 		if variant.ID == 0 {
-			return tx.Create(&variant).Error
+			return gorm.G[model.FileVariant](tx).Omit(dbquery.FileVariant.Melody.Name()).Create(c.Context(), &variant)
 		}
-		return tx.Unscoped().Save(&variant).Error
+		_, err = gorm.G[model.FileVariant](tx).
+			Scopes(dbquery.Unscoped).
+			Where(dbquery.FileVariant.ID.Eq(variant.ID)).
+			Select("*").
+			Omit(dbquery.FileVariant.Melody.Name()).
+			Updates(c.Context(), variant)
+		return err
 	})
 	if err != nil {
 		_ = h.storage.Delete(stored.StoragePath)
+		return err
+	}
+	variant, err = gorm.G[model.FileVariant](h.db).
+		Where(dbquery.FileVariant.ID.Eq(variant.ID)).
+		First(c.Context())
+	if err != nil {
 		return err
 	}
 	return sendData(c, fiber.StatusCreated, variant)
@@ -135,8 +167,11 @@ func (h *Handler) UpdateVariant(c fiber.Ctx) error {
 		return err
 	}
 
-	var variant model.FileVariant
-	if err := h.db.Preload("Melody.Group").First(&variant, id).Error; err != nil {
+	variant, err := gorm.G[model.FileVariant](h.db).
+		Preload(dbquery.FileVariant.Melody.Name()+"."+dbquery.Melody.Group.Name(), nil).
+		Where(dbquery.FileVariant.ID.Eq(id)).
+		First(c.Context())
+	if err != nil {
 		return notFoundOrError(c, err, "variant not found")
 	}
 	if !canViewMelody(c, variant.Melody) {
@@ -149,19 +184,25 @@ func (h *Handler) UpdateVariant(c fiber.Ctx) error {
 
 	err = h.db.Transaction(func(tx *gorm.DB) error {
 		if *req.IsPrimary {
-			if err := tx.Model(&model.FileVariant{}).
+			if _, err := gorm.G[model.FileVariant](tx).
 				Where("melody_id = ? AND id <> ?", variant.MelodyID, variant.ID).
-				Update("is_primary", false).Error; err != nil {
+				Update(c.Context(), "is_primary", false); err != nil {
 				return err
 			}
 		}
-		return tx.Model(&variant).Update("is_primary", *req.IsPrimary).Error
+		_, err := gorm.G[model.FileVariant](tx).
+			Where(dbquery.FileVariant.ID.Eq(variant.ID)).
+			Update(c.Context(), "is_primary", *req.IsPrimary)
+		return err
 	})
 	if err != nil {
 		return err
 	}
 
-	if err := h.db.First(&variant, variant.ID).Error; err != nil {
+	variant, err = gorm.G[model.FileVariant](h.db).
+		Where(dbquery.FileVariant.ID.Eq(variant.ID)).
+		First(c.Context())
+	if err != nil {
 		return err
 	}
 	return sendData(c, fiber.StatusOK, variant)
@@ -173,8 +214,10 @@ func (h *Handler) DownloadVariant(c fiber.Ctx) error {
 		return err
 	}
 
-	var variant model.FileVariant
-	if err := h.db.First(&variant, id).Error; err != nil {
+	variant, err := gorm.G[model.FileVariant](h.db).
+		Where(dbquery.FileVariant.ID.Eq(id)).
+		First(c.Context())
+	if err != nil {
 		return notFoundOrError(c, err, "variant not found")
 	}
 
@@ -191,8 +234,10 @@ func (h *Handler) DeleteVariant(c fiber.Ctx) error {
 		return err
 	}
 
-	var variant model.FileVariant
-	if err := h.db.First(&variant, id).Error; err != nil {
+	variant, err := gorm.G[model.FileVariant](h.db).
+		Where(dbquery.FileVariant.ID.Eq(id)).
+		First(c.Context())
+	if err != nil {
 		return notFoundOrError(c, err, "variant not found")
 	}
 
@@ -200,7 +245,9 @@ func (h *Handler) DeleteVariant(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	if err := h.db.Delete(&variant).Error; err != nil {
+	if _, err := gorm.G[model.FileVariant](h.db).
+		Where(dbquery.FileVariant.ID.Eq(variant.ID)).
+		Delete(c.Context()); err != nil {
 		_ = pending.Rollback()
 		return err
 	}

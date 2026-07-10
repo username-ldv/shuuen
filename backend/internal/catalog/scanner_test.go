@@ -12,6 +12,7 @@ import (
 
 	"shuuen-backend/internal/config"
 	"shuuen-backend/internal/model"
+	dbquery "shuuen-backend/internal/query"
 )
 
 func TestScannerIndexesRecursiveFoldersAndVariants(t *testing.T) {
@@ -59,24 +60,33 @@ func TestScannerIndexesRecursiveFoldersAndVariants(t *testing.T) {
 		t.Fatalf("VariantsFound = %d, want 2", result.VariantsFound)
 	}
 
-	var group model.LibraryGroup
-	if err := db.Preload("Tags").Where("path = ?", "my_textbook/1").First(&group).Error; err != nil {
+	group, err := gorm.G[model.LibraryGroup](db).
+		Preload(dbquery.LibraryGroup.Tags.Name(), nil).
+		Where(dbquery.LibraryGroup.Path.Eq("my_textbook/1")).
+		First(t.Context())
+	if err != nil {
 		t.Fatalf("expected group to be indexed: %v", err)
 	}
 	if group.Name != "Grade 1" || len(group.Tags) != 1 {
 		t.Fatalf("unexpected group metadata: %#v", group)
 	}
 
-	var melody model.Melody
-	if err := db.Preload("Tags").Preload("Variants").Where("source_path = ?", "my_textbook/1/warmup").First(&melody).Error; err != nil {
+	melody, err := gorm.G[model.Melody](db).
+		Preload(dbquery.Melody.Tags.Name(), nil).
+		Preload(dbquery.Melody.Variants.Name(), nil).
+		Where(dbquery.Melody.SourcePath.Eq("my_textbook/1/warmup")).
+		First(t.Context())
+	if err != nil {
 		t.Fatalf("expected melody to be indexed: %v", err)
 	}
 	if melody.Title != "Warmup" || len(melody.Tags) != 1 || len(melody.Variants) != 2 {
 		t.Fatalf("unexpected melody metadata: %#v", melody)
 	}
 
-	var primary model.FileVariant
-	if err := db.Where("melody_id = ? AND is_primary = ?", melody.ID, true).First(&primary).Error; err != nil {
+	primary, err := gorm.G[model.FileVariant](db).
+		Where("melody_id = ? AND is_primary = ?", melody.ID, true).
+		First(t.Context())
+	if err != nil {
 		t.Fatalf("expected primary variant: %v", err)
 	}
 	if primary.Format != "musicxml" {
@@ -92,6 +102,7 @@ func TestScannerRestoresSoftDeletedCatalogRows(t *testing.T) {
 	}
 	midiPath := filepath.Join(groupDir, "song.mid")
 	xmlPath := filepath.Join(groupDir, "song.musicxml")
+	writeFile(t, filepath.Join(groupDir, "song.shuuen.json"), `{"tags":["restored"]}`)
 	writeFile(t, midiPath, "midi")
 	writeFile(t, xmlPath, "<score-partwise />")
 
@@ -111,8 +122,10 @@ func TestScannerRestoresSoftDeletedCatalogRows(t *testing.T) {
 	if _, err := scanner.Scan(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	var original model.Melody
-	if err := db.Where("source_path = ?", "group/song").First(&original).Error; err != nil {
+	original, err := gorm.G[model.Melody](db).
+		Where(dbquery.Melody.SourcePath.Eq("group/song")).
+		First(t.Context())
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -125,8 +138,15 @@ func TestScannerRestoresSoftDeletedCatalogRows(t *testing.T) {
 	if _, err := scanner.Scan(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if err := db.First(&model.Melody{}, original.ID).Error; !errors.Is(err, gorm.ErrRecordNotFound) {
+	if _, err := gorm.G[model.Melody](db).Where(dbquery.Melody.ID.Eq(original.ID)).First(t.Context()); !errors.Is(err, gorm.ErrRecordNotFound) {
 		t.Fatalf("expected melody to be soft-deleted, got %v", err)
+	}
+	var joinCount int64
+	if err := gorm.G[int64](db).Raw("SELECT COUNT(*) FROM melody_tags WHERE melody_id = ?", original.ID).Scan(t.Context(), &joinCount); err != nil {
+		t.Fatal(err)
+	}
+	if joinCount != 0 {
+		t.Fatalf("soft-deleted melody retained %d tag links", joinCount)
 	}
 
 	writeFile(t, midiPath, "midi")
@@ -134,12 +154,18 @@ func TestScannerRestoresSoftDeletedCatalogRows(t *testing.T) {
 	if _, err := scanner.Scan(t.Context()); err != nil {
 		t.Fatalf("restoring files caused scan failure: %v", err)
 	}
-	var restored model.Melody
-	if err := db.Where("source_path = ?", "group/song").First(&restored).Error; err != nil {
+	restored, err := gorm.G[model.Melody](db).
+		Preload(dbquery.Melody.Tags.Name(), nil).
+		Where(dbquery.Melody.SourcePath.Eq("group/song")).
+		First(t.Context())
+	if err != nil {
 		t.Fatal(err)
 	}
 	if restored.ID != original.ID {
 		t.Fatalf("restored melody ID = %d, want stable ID %d", restored.ID, original.ID)
+	}
+	if len(restored.Tags) != 1 || restored.Tags[0].Slug != "restored" {
+		t.Fatalf("restored melody tags = %#v, want restored tag", restored.Tags)
 	}
 }
 
@@ -168,15 +194,19 @@ func TestScannerUsesUnifiedPublicVisibilityAndInheritsPrivateParent(t *testing.T
 	if _, err := scanner.Scan(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	var group model.LibraryGroup
-	if err := db.Where("path = ?", "private/child").First(&group).Error; err != nil {
+	group, err := gorm.G[model.LibraryGroup](db).
+		Where(dbquery.LibraryGroup.Path.Eq("private/child")).
+		First(t.Context())
+	if err != nil {
 		t.Fatal(err)
 	}
 	if group.IsPublic {
 		t.Fatal("child of private group should be private")
 	}
-	var melody model.Melody
-	if err := db.Where("source_path = ?", "private/child/song").First(&melody).Error; err != nil {
+	melody, err := gorm.G[model.Melody](db).
+		Where(dbquery.Melody.SourcePath.Eq("private/child/song")).
+		First(t.Context())
+	if err != nil {
 		t.Fatal(err)
 	}
 	if melody.IsPublic {
@@ -207,16 +237,18 @@ func TestUnchangedScanDoesNotRewriteCatalogTimestamps(t *testing.T) {
 	if _, err := scanner.Scan(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	var before model.Melody
-	if err := db.Where("source_path = ?", "group/song").First(&before).Error; err != nil {
+	before, err := gorm.G[model.Melody](db).
+		Where(dbquery.Melody.SourcePath.Eq("group/song")).
+		First(t.Context())
+	if err != nil {
 		t.Fatal(err)
 	}
 	time.Sleep(5 * time.Millisecond)
 	if _, err := scanner.Scan(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	var after model.Melody
-	if err := db.First(&after, before.ID).Error; err != nil {
+	after, err := gorm.G[model.Melody](db).Where(dbquery.Melody.ID.Eq(before.ID)).First(t.Context())
+	if err != nil {
 		t.Fatal(err)
 	}
 	if !after.UpdatedAt.Equal(before.UpdatedAt) {

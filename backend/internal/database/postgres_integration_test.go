@@ -21,10 +21,10 @@ func TestPostgresMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := Migrate(db); err != nil {
+	if err := Migrate(t.Context(), db); err != nil {
 		t.Fatal(err)
 	}
-	if err := Migrate(db); err != nil {
+	if err := Migrate(t.Context(), db); err != nil {
 		t.Fatalf("Postgres migrations are not idempotent: %v", err)
 	}
 }

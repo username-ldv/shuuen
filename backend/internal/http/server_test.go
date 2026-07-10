@@ -19,6 +19,7 @@ import (
 	"shuuen-backend/internal/config"
 	"shuuen-backend/internal/database"
 	"shuuen-backend/internal/model"
+	dbquery "shuuen-backend/internal/query"
 	"shuuen-backend/internal/storage"
 )
 
@@ -35,7 +36,7 @@ func TestRegisteredUserCannotMutateCatalogButAdminCan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Create(&model.User{Username: "Admin", UsernameKey: "admin", PasswordHash: hash, Role: "admin"}).Error; err != nil {
+	if err := gorm.G[model.User](db).Create(t.Context(), &model.User{Username: "Admin", UsernameKey: "admin", PasswordHash: hash, Role: "admin"}); err != nil {
 		t.Fatal(err)
 	}
 	adminToken := loginTestUser(t, app, "Admin", "admin-password")
@@ -49,7 +50,7 @@ func TestRegisteredUserCannotMutateCatalogButAdminCan(t *testing.T) {
 
 func TestPrivateGroupsRequireAdminIncludePrivateScope(t *testing.T) {
 	app, db := newTestServer(t)
-	if err := db.Create(&model.LibraryGroup{Path: "private", Name: "Private", Slug: "private", IsPublic: false}).Error; err != nil {
+	if err := gorm.G[model.LibraryGroup](db).Create(t.Context(), &model.LibraryGroup{Path: "private", Name: "Private", Slug: "private", IsPublic: false}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -69,7 +70,7 @@ func TestPrivateGroupsRequireAdminIncludePrivateScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Create(&model.User{Username: "Admin", UsernameKey: "admin", PasswordHash: hash, Role: "admin"}).Error; err != nil {
+	if err := gorm.G[model.User](db).Create(t.Context(), &model.User{Username: "Admin", UsernameKey: "admin", PasswordHash: hash, Role: "admin"}); err != nil {
 		t.Fatal(err)
 	}
 	adminToken := loginTestUser(t, app, "Admin", "admin-password")
@@ -86,7 +87,7 @@ func TestPrivateGroupsRequireAdminIncludePrivateScope(t *testing.T) {
 func TestGroupTreePaginatesLargeMelodyCollections(t *testing.T) {
 	app, db := newTestServer(t)
 	group := model.LibraryGroup{Path: "group", Name: "Group", Slug: "group", IsPublic: true}
-	if err := db.Create(&group).Error; err != nil {
+	if err := gorm.G[model.LibraryGroup](db).Create(t.Context(), &group); err != nil {
 		t.Fatal(err)
 	}
 	melodies := make([]model.Melody, 250)
@@ -97,7 +98,7 @@ func TestGroupTreePaginatesLargeMelodyCollections(t *testing.T) {
 			Title: name, Slug: name, IsPublic: true,
 		}
 	}
-	if err := db.CreateInBatches(&melodies, 100).Error; err != nil {
+	if err := gorm.G[model.Melody](db).CreateInBatches(t.Context(), &melodies, 100); err != nil {
 		t.Fatal(err)
 	}
 
@@ -150,16 +151,16 @@ func TestVariantUploadIndexesDirectlyWithoutFullRescan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Create(&model.User{Username: "Admin", UsernameKey: "admin", PasswordHash: hash, Role: "admin"}).Error; err != nil {
+	if err := gorm.G[model.User](db).Create(t.Context(), &model.User{Username: "Admin", UsernameKey: "admin", PasswordHash: hash, Role: "admin"}); err != nil {
 		t.Fatal(err)
 	}
 	token := loginTestUser(t, app, "Admin", "admin-password")
 	group := model.LibraryGroup{Path: "group", Name: "Group", Slug: "group", IsPublic: true}
-	if err := db.Create(&group).Error; err != nil {
+	if err := gorm.G[model.LibraryGroup](db).Create(t.Context(), &group); err != nil {
 		t.Fatal(err)
 	}
 	melody := model.Melody{GroupID: group.ID, SourcePath: "group/song", FileStem: "song", Title: "Song", Slug: "song", IsPublic: true}
-	if err := db.Create(&melody).Error; err != nil {
+	if err := gorm.G[model.Melody](db).Create(t.Context(), &melody); err != nil {
 		t.Fatal(err)
 	}
 
@@ -193,15 +194,17 @@ func TestVariantUploadIndexesDirectlyWithoutFullRescan(t *testing.T) {
 		responseBody, _ := io.ReadAll(response.Body)
 		t.Fatalf("upload status = %d, want 201: %s", response.StatusCode, responseBody)
 	}
-	var variant model.FileVariant
-	if err := db.Where("melody_id = ?", melody.ID).First(&variant).Error; err != nil {
+	variant, err := gorm.G[model.FileVariant](db).
+		Where(dbquery.FileVariant.MelodyID.Eq(melody.ID)).
+		First(t.Context())
+	if err != nil {
 		t.Fatal(err)
 	}
 	if variant.ScanID != "upload" || !variant.IsPrimary {
 		t.Fatalf("unexpected directly indexed variant: %#v", variant)
 	}
-	var groupCount int64
-	if err := db.Model(&model.LibraryGroup{}).Count(&groupCount).Error; err != nil {
+	groupCount, err := gorm.G[model.LibraryGroup](db).Count(t.Context(), "*")
+	if err != nil {
 		t.Fatal(err)
 	}
 	if groupCount != 1 {
@@ -215,7 +218,7 @@ func newTestServer(t *testing.T) (*fiber.App, *gorm.DB) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := database.Migrate(db); err != nil {
+	if err := database.Migrate(t.Context(), db); err != nil {
 		t.Fatal(err)
 	}
 	catalogConfig := config.CatalogConfig{

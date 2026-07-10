@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -182,10 +183,8 @@ func (c Config) validate() error {
 		if len(c.Auth.JWTSecret) < 32 {
 			return errors.New("JWT_SECRET must be at least 32 characters in production")
 		}
-		for _, origin := range c.HTTP.CORSOrigins {
-			if origin == "*" {
-				return errors.New("CORS_ALLOWED_ORIGINS must not contain * outside development or test")
-			}
+		if slices.Contains(c.HTTP.CORSOrigins, "*") {
+			return errors.New("CORS_ALLOWED_ORIGINS must not contain * outside development or test")
 		}
 	}
 	adminUsernameSet := c.Auth.BootstrapAdminUsername != ""

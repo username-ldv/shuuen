@@ -9,6 +9,7 @@ import (
 
 	"shuuen-backend/internal/auth"
 	"shuuen-backend/internal/model"
+	"shuuen-backend/internal/query"
 )
 
 var usernamePattern = regexp.MustCompile(`^[A-Za-z0-9_]{3,20}$`)
@@ -62,7 +63,7 @@ func (h *Handler) Register(c fiber.Ctx) error {
 		PasswordHash: passwordHash,
 		Role:         "user",
 	}
-	if err := h.db.Create(&user).Error; err != nil {
+	if err := gorm.G[model.User](h.db).Create(c.Context(), &user); err != nil {
 		if isUniqueConstraint(err) {
 			return sendError(c, fiber.StatusConflict, "username is already registered")
 		}
@@ -88,8 +89,9 @@ func (h *Handler) Login(c fiber.Ctx) error {
 		return sendError(c, fiber.StatusUnauthorized, "invalid username or password")
 	}
 
-	var user model.User
-	err := h.db.Where("username_key = ?", usernameLookupKey(req.Username)).First(&user).Error
+	user, err := gorm.G[model.User](h.db).
+		Where(query.User.UsernameKey.Eq(usernameLookupKey(req.Username))).
+		First(c.Context())
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return sendError(c, fiber.StatusUnauthorized, "invalid username or password")
@@ -104,8 +106,10 @@ func (h *Handler) Login(c fiber.Ctx) error {
 }
 
 func (h *Handler) Me(c fiber.Ctx) error {
-	var user model.User
-	if err := h.db.First(&user, currentUserID(c)).Error; err != nil {
+	user, err := gorm.G[model.User](h.db).
+		Where(query.User.ID.Eq(currentUserID(c))).
+		First(c.Context())
+	if err != nil {
 		return notFoundOrError(c, err, "user not found")
 	}
 	return sendData(c, fiber.StatusOK, user)
@@ -119,8 +123,10 @@ func (h *Handler) ChangePassword(c fiber.Ctx) error {
 	if err := h.validate.Struct(req); err != nil || len(req.CurrentPassword) > 72 || len(req.NewPassword) > 72 {
 		return sendError(c, fiber.StatusBadRequest, "new password must be 8-72 bytes")
 	}
-	var user model.User
-	if err := h.db.First(&user, currentUserID(c)).Error; err != nil {
+	user, err := gorm.G[model.User](h.db).
+		Where(query.User.ID.Eq(currentUserID(c))).
+		First(c.Context())
+	if err != nil {
 		return notFoundOrError(c, err, "user not found")
 	}
 	if !auth.CheckPassword(user.PasswordHash, req.CurrentPassword) {
@@ -130,13 +136,19 @@ func (h *Handler) ChangePassword(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	if err := h.db.Model(&user).Updates(map[string]any{
-		"password_hash": hash,
-		"token_version": gorm.Expr("token_version + 1"),
-	}).Error; err != nil {
+	if _, err := gorm.G[model.User](h.db).
+		Where(query.User.ID.Eq(user.ID)).
+		Set(
+			query.User.PasswordHash.Set(hash),
+			query.User.TokenVersion.Incr(1),
+		).
+		Update(c.Context()); err != nil {
 		return err
 	}
-	if err := h.db.First(&user, user.ID).Error; err != nil {
+	user, err = gorm.G[model.User](h.db).
+		Where(query.User.ID.Eq(user.ID)).
+		First(c.Context())
+	if err != nil {
 		return err
 	}
 	return h.authResponse(c, fiber.StatusOK, user)

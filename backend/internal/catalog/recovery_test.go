@@ -23,15 +23,15 @@ func TestRecoverPendingDeletesRestoresActiveAndDiscardsDeletedVariants(t *testin
 		t.Fatal(err)
 	}
 	group := model.LibraryGroup{Path: "group", Name: "Group", Slug: "group", IsPublic: true}
-	if err := db.Create(&group).Error; err != nil {
+	if err := gorm.G[model.LibraryGroup](db).Create(t.Context(), &group); err != nil {
 		t.Fatal(err)
 	}
 	melody := model.Melody{GroupID: group.ID, SourcePath: "group/song", FileStem: "song", Title: "Song", Slug: "song", IsPublic: true}
-	if err := db.Create(&melody).Error; err != nil {
+	if err := gorm.G[model.Melody](db).Create(t.Context(), &melody); err != nil {
 		t.Fatal(err)
 	}
 	variant := model.FileVariant{MelodyID: melody.ID, Format: "midi", OriginalName: "song.mid", StoredName: "song.mid", StoragePath: "group/song.mid", ChecksumSHA: "checksum"}
-	if err := db.Create(&variant).Error; err != nil {
+	if err := gorm.G[model.FileVariant](db).Create(t.Context(), &variant); err != nil {
 		t.Fatal(err)
 	}
 	store, err := storage.NewFileStore(config.CatalogConfig{Root: root, MaxUploadBytes: 1024})
@@ -58,7 +58,7 @@ func TestRecoverPendingDeletesRestoresActiveAndDiscardsDeletedVariants(t *testin
 	if _, err := store.StageDelete(variant.StoragePath); err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Delete(&variant).Error; err != nil {
+	if _, err := gorm.G[model.FileVariant](db).Where("id = ?", variant.ID).Delete(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if err := RecoverPendingDeletes(t.Context(), db, store.Root()); err != nil {

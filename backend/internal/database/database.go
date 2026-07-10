@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	stdlog "log"
 	"os"
@@ -56,7 +57,7 @@ type schemaMigration struct {
 
 type migration struct {
 	version uint
-	apply   func(*gorm.DB) error
+	apply   func(context.Context, *gorm.DB) error
 }
 
 var migrations = []migration{
@@ -67,23 +68,25 @@ var migrations = []migration{
 	{version: 5, apply: constrainPostgresCatalogPaths},
 }
 
-func Migrate(db *gorm.DB) error {
+func Migrate(ctx context.Context, db *gorm.DB) error {
 	if err := db.AutoMigrate(&schemaMigration{}); err != nil {
 		return err
 	}
 	for _, item := range migrations {
-		var count int64
-		if err := db.Model(&schemaMigration{}).Where("version = ?", item.version).Count(&count).Error; err != nil {
+		count, err := gorm.G[schemaMigration](db).
+			Where("version = ?", item.version).
+			Count(ctx, "*")
+		if err != nil {
 			return err
 		}
 		if count > 0 {
 			continue
 		}
 		if err := db.Transaction(func(tx *gorm.DB) error {
-			if err := item.apply(tx); err != nil {
+			if err := item.apply(ctx, tx); err != nil {
 				return fmt.Errorf("migration %d: %w", item.version, err)
 			}
-			return tx.Create(&schemaMigration{Version: item.version, AppliedAt: time.Now().UTC()}).Error
+			return gorm.G[schemaMigration](tx).Create(ctx, &schemaMigration{Version: item.version, AppliedAt: time.Now().UTC()})
 		}); err != nil {
 			return err
 		}
@@ -91,7 +94,7 @@ func Migrate(db *gorm.DB) error {
 	return nil
 }
 
-func migrateInitialSchema(db *gorm.DB) error {
+func migrateInitialSchema(ctx context.Context, db *gorm.DB) error {
 	coreTablesExist := db.Migrator().HasTable("library_groups") && db.Migrator().HasTable("melodies") && db.Migrator().HasTable("file_variants")
 	if !coreTablesExist {
 		return db.AutoMigrate(
@@ -102,10 +105,10 @@ func migrateInitialSchema(db *gorm.DB) error {
 			&model.FileVariant{},
 		)
 	}
-	if err := migrateVisibilityColumn(db, "library_groups", "is_active"); err != nil {
+	if err := migrateVisibilityColumn(ctx, db, "library_groups", "is_active"); err != nil {
 		return err
 	}
-	if err := migrateVisibilityColumn(db, "melodies", "is_published"); err != nil {
+	if err := migrateVisibilityColumn(ctx, db, "melodies", "is_published"); err != nil {
 		return err
 	}
 	if !db.Migrator().HasColumn("file_variants", "file_mod_time") {
@@ -116,17 +119,17 @@ func migrateInitialSchema(db *gorm.DB) error {
 	return nil
 }
 
-func migrateVisibilityColumn(db *gorm.DB, table string, legacyColumn string) error {
+func migrateVisibilityColumn(ctx context.Context, db *gorm.DB, table string, legacyColumn string) error {
 	if !db.Migrator().HasTable(table) || !db.Migrator().HasColumn(table, legacyColumn) {
 		return nil
 	}
 	if !db.Migrator().HasColumn(table, "is_public") {
-		return db.Exec(fmt.Sprintf("ALTER TABLE %s RENAME COLUMN %s TO is_public", table, legacyColumn)).Error
+		return gorm.G[any](db).Exec(ctx, fmt.Sprintf("ALTER TABLE %s RENAME COLUMN %s TO is_public", table, legacyColumn))
 	}
-	return db.Exec(fmt.Sprintf("UPDATE %s SET is_public = %s", table, legacyColumn)).Error
+	return gorm.G[any](db).Exec(ctx, fmt.Sprintf("UPDATE %s SET is_public = %s", table, legacyColumn))
 }
 
-func addCatalogQueryIndexes(db *gorm.DB) error {
+func addCatalogQueryIndexes(ctx context.Context, db *gorm.DB) error {
 	statements := []string{
 		"CREATE INDEX IF NOT EXISTS idx_library_groups_public_parent_sort ON library_groups (deleted_at, is_public, parent_id, sort_order, name, id)",
 		"CREATE INDEX IF NOT EXISTS idx_melodies_public_sort ON melodies (deleted_at, is_public, sort_order, title, id)",
@@ -136,47 +139,54 @@ func addCatalogQueryIndexes(db *gorm.DB) error {
 		"CREATE INDEX IF NOT EXISTS idx_file_variants_melody_primary ON file_variants (deleted_at, melody_id, is_primary, created_at, id)",
 	}
 	for _, statement := range statements {
-		if err := db.Exec(statement).Error; err != nil {
+		if err := gorm.G[any](db).Exec(ctx, statement); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func enforcePrimaryVariantInvariant(db *gorm.DB) error {
-	var melodyIDs []uint
-	if err := db.Model(&model.FileVariant{}).
+func enforcePrimaryVariantInvariant(ctx context.Context, db *gorm.DB) error {
+	melodyIDs, err := gorm.G[uint](db).
+		Table("file_variants").
 		Select("melody_id").
-		Where("is_primary = ?", true).
+		Where("is_primary = ? AND deleted_at IS NULL", true).
 		Group("melody_id").
 		Having("COUNT(*) > 1").
-		Scan(&melodyIDs).Error; err != nil {
+		Find(ctx)
+	if err != nil {
 		return err
 	}
 	for _, melodyID := range melodyIDs {
-		var keep model.FileVariant
-		if err := db.Where("melody_id = ? AND is_primary = ?", melodyID, true).Order("id asc").First(&keep).Error; err != nil {
+		keep, err := gorm.G[model.FileVariant](db).
+			Where("melody_id = ? AND is_primary = ?", melodyID, true).
+			Order("id asc").
+			First(ctx)
+		if err != nil {
 			return err
 		}
-		if err := db.Model(&model.FileVariant{}).
+		if _, err := gorm.G[model.FileVariant](db).
 			Where("melody_id = ? AND is_primary = ? AND id <> ?", melodyID, true, keep.ID).
-			Update("is_primary", false).Error; err != nil {
+			Update(ctx, "is_primary", false); err != nil {
 			return err
 		}
 	}
-	return db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_file_variants_one_primary ON file_variants (melody_id) WHERE is_primary = true AND deleted_at IS NULL").Error
+	return gorm.G[any](db).Exec(ctx, "CREATE UNIQUE INDEX IF NOT EXISTS idx_file_variants_one_primary ON file_variants (melody_id) WHERE is_primary = true AND deleted_at IS NULL")
 }
 
-func addUserTokenVersion(db *gorm.DB) error {
+func addUserTokenVersion(ctx context.Context, db *gorm.DB) error {
 	if !db.Migrator().HasColumn("users", "token_version") {
 		if err := db.Migrator().AddColumn(&model.User{}, "TokenVersion"); err != nil {
 			return err
 		}
 	}
-	return db.Model(&model.User{}).Where("token_version = 0 OR token_version IS NULL").Update("token_version", 1).Error
+	_, err := gorm.G[model.User](db).
+		Where("token_version = 0 OR token_version IS NULL").
+		Update(ctx, "token_version", 1)
+	return err
 }
 
-func constrainPostgresCatalogPaths(db *gorm.DB) error {
+func constrainPostgresCatalogPaths(ctx context.Context, db *gorm.DB) error {
 	if db.Dialector.Name() != "postgres" {
 		return nil
 	}
@@ -189,16 +199,16 @@ func constrainPostgresCatalogPaths(db *gorm.DB) error {
 		{table: "file_variants", column: "storage_path"},
 	}
 	for _, item := range columns {
-		var count int64
 		query := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE char_length(%s) > 640", item.table, item.column)
-		if err := db.Raw(query).Scan(&count).Error; err != nil {
+		var count int64
+		if err := gorm.G[int64](db).Raw(query).Scan(ctx, &count); err != nil {
 			return err
 		}
 		if count > 0 {
 			return fmt.Errorf("%s.%s contains %d values longer than 640 characters", item.table, item.column, count)
 		}
 		statement := fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s TYPE varchar(640)", item.table, item.column)
-		if err := db.Exec(statement).Error; err != nil {
+		if err := gorm.G[any](db).Exec(ctx, statement); err != nil {
 			return err
 		}
 	}

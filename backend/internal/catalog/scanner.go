@@ -22,6 +22,7 @@ import (
 
 	"shuuen-backend/internal/config"
 	"shuuen-backend/internal/model"
+	dbquery "shuuen-backend/internal/query"
 	"shuuen-backend/internal/storage"
 	"shuuen-backend/internal/util"
 )
@@ -101,8 +102,8 @@ func (s *Scanner) Scan(ctx context.Context) (Result, error) {
 	scanID := time.Now().UTC().Format("20060102150405.000000000")
 	result := Result{ScanID: scanID}
 
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		state, err := loadScanState(tx)
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		state, err := loadScanState(ctx, tx)
 		if err != nil {
 			return err
 		}
@@ -121,7 +122,7 @@ func (s *Scanner) Scan(ctx context.Context) (Result, error) {
 				if entry.Name() != "." && strings.HasPrefix(entry.Name(), ".") && absPath != s.root {
 					return filepath.SkipDir
 				}
-				group, err := s.indexGroup(tx, absPath, groupsByPath, state, scanID)
+				group, err := s.indexGroup(ctx, tx, absPath, groupsByPath, state, scanID)
 				if err != nil {
 					return err
 				}
@@ -134,14 +135,14 @@ func (s *Scanner) Scan(ctx context.Context) (Result, error) {
 				return nil
 			}
 
-			melody, created, err := s.indexMelodyForFile(tx, absPath, groupsByPath, indexedMelodies, state, scanID)
+			melody, created, err := s.indexMelodyForFile(ctx, tx, absPath, groupsByPath, indexedMelodies, state, scanID)
 			if err != nil {
 				return err
 			}
 			if created {
 				result.MelodiesFound++
 			}
-			if err := s.indexVariant(tx, absPath, melody, state, scanID); err != nil {
+			if err := s.indexVariant(ctx, tx, absPath, melody, state, scanID); err != nil {
 				return err
 			}
 			result.VariantsFound++
@@ -151,17 +152,17 @@ func (s *Scanner) Scan(ctx context.Context) (Result, error) {
 			return err
 		}
 		result.MelodiesFound = len(indexedMelodies)
-		if err := markSeen(tx, &model.LibraryGroup{}, state.groupIDs, scanID); err != nil {
+		if err := markSeen[model.LibraryGroup](ctx, tx, state.groupIDs, scanID); err != nil {
 			return err
 		}
-		if err := markSeen(tx, &model.Melody{}, state.melodyIDs, scanID); err != nil {
+		if err := markSeen[model.Melody](ctx, tx, state.melodyIDs, scanID); err != nil {
 			return err
 		}
-		if err := markSeen(tx, &model.FileVariant{}, state.variantIDs, scanID); err != nil {
+		if err := markSeen[model.FileVariant](ctx, tx, state.variantIDs, scanID); err != nil {
 			return err
 		}
 
-		return cleanupStale(tx, scanID)
+		return cleanupStale(ctx, tx, scanID)
 	})
 	if err != nil {
 		return Result{}, err
@@ -170,7 +171,7 @@ func (s *Scanner) Scan(ctx context.Context) (Result, error) {
 	return result, nil
 }
 
-func (s *Scanner) indexGroup(tx *gorm.DB, absPath string, groupsByPath map[string]model.LibraryGroup, state *scanState, scanID string) (model.LibraryGroup, error) {
+func (s *Scanner) indexGroup(ctx context.Context, tx *gorm.DB, absPath string, groupsByPath map[string]model.LibraryGroup, state *scanState, scanID string) (model.LibraryGroup, error) {
 	relPath, err := relativeSlashPath(s.root, absPath)
 	if err != nil {
 		return model.LibraryGroup{}, err
@@ -234,21 +235,38 @@ func (s *Scanner) indexGroup(tx *gorm.DB, absPath string, groupsByPath map[strin
 	}
 
 	if group.ID == 0 {
-		if err := tx.Omit("Parent", "Tags", "Children", "Melodies").Create(&group).Error; err != nil {
+		if err := gorm.G[model.LibraryGroup](tx).
+			Omit(
+				dbquery.LibraryGroup.Parent.Name(),
+				dbquery.LibraryGroup.Tags.Name(),
+				dbquery.LibraryGroup.Children.Name(),
+				dbquery.LibraryGroup.Melodies.Name(),
+			).
+			Create(ctx, &group); err != nil {
 			return model.LibraryGroup{}, err
 		}
 	} else if previous.DeletedAt.Valid || !sameGroup(previous, group) {
-		if err := tx.Unscoped().Omit("Parent", "Tags", "Children", "Melodies").Save(&group).Error; err != nil {
+		if _, err := gorm.G[model.LibraryGroup](tx).
+			Scopes(dbquery.Unscoped).
+			Where(dbquery.LibraryGroup.ID.Eq(group.ID)).
+			Select("*").
+			Omit(
+				dbquery.LibraryGroup.Parent.Name(),
+				dbquery.LibraryGroup.Tags.Name(),
+				dbquery.LibraryGroup.Children.Name(),
+				dbquery.LibraryGroup.Melodies.Name(),
+			).
+			Updates(ctx, group); err != nil {
 			return model.LibraryGroup{}, err
 		}
 	}
 
-	tags, err := loadOrCreateTags(tx, meta.Tags)
+	tags, err := loadOrCreateTags(ctx, tx, meta.Tags)
 	if err != nil {
 		return model.LibraryGroup{}, err
 	}
 	if previous.ID == 0 || previous.DeletedAt.Valid || !sameTagSet(previous.Tags, tags) {
-		if err := tx.Model(&group).Association("Tags").Replace(tags); err != nil {
+		if err := replaceGroupTags(ctx, tx, group.ID, tags); err != nil {
 			return model.LibraryGroup{}, err
 		}
 	}
@@ -259,7 +277,7 @@ func (s *Scanner) indexGroup(tx *gorm.DB, absPath string, groupsByPath map[strin
 	return group, nil
 }
 
-func (s *Scanner) indexMelodyForFile(tx *gorm.DB, absPath string, groupsByPath map[string]model.LibraryGroup, indexed map[string]model.Melody, state *scanState, scanID string) (model.Melody, bool, error) {
+func (s *Scanner) indexMelodyForFile(ctx context.Context, tx *gorm.DB, absPath string, groupsByPath map[string]model.LibraryGroup, indexed map[string]model.Melody, state *scanState, scanID string) (model.Melody, bool, error) {
 	dir := filepath.Dir(absPath)
 	groupPath, err := relativeSlashPath(s.root, dir)
 	if err != nil {
@@ -326,21 +344,36 @@ func (s *Scanner) indexMelodyForFile(tx *gorm.DB, absPath string, groupsByPath m
 	}
 
 	if melody.ID == 0 {
-		if err := tx.Omit("Group", "Tags", "Variants").Create(&melody).Error; err != nil {
+		if err := gorm.G[model.Melody](tx).
+			Omit(
+				dbquery.Melody.Group.Name(),
+				dbquery.Melody.Tags.Name(),
+				dbquery.Melody.Variants.Name(),
+			).
+			Create(ctx, &melody); err != nil {
 			return model.Melody{}, false, err
 		}
 	} else if previous.DeletedAt.Valid || !sameMelody(previous, melody) {
-		if err := tx.Unscoped().Omit("Group", "Tags", "Variants").Save(&melody).Error; err != nil {
+		if _, err := gorm.G[model.Melody](tx).
+			Scopes(dbquery.Unscoped).
+			Where(dbquery.Melody.ID.Eq(melody.ID)).
+			Select("*").
+			Omit(
+				dbquery.Melody.Group.Name(),
+				dbquery.Melody.Tags.Name(),
+				dbquery.Melody.Variants.Name(),
+			).
+			Updates(ctx, melody); err != nil {
 			return model.Melody{}, false, err
 		}
 	}
 
-	tags, err := loadOrCreateTags(tx, meta.Tags)
+	tags, err := loadOrCreateTags(ctx, tx, meta.Tags)
 	if err != nil {
 		return model.Melody{}, false, err
 	}
 	if previous.ID == 0 || previous.DeletedAt.Valid || !sameTagSet(previous.Tags, tags) {
-		if err := tx.Model(&melody).Association("Tags").Replace(tags); err != nil {
+		if err := replaceMelodyTags(ctx, tx, melody.ID, tags); err != nil {
 			return model.Melody{}, false, err
 		}
 	}
@@ -352,7 +385,31 @@ func (s *Scanner) indexMelodyForFile(tx *gorm.DB, absPath string, groupsByPath m
 	return melody, created, nil
 }
 
-func (s *Scanner) indexVariant(tx *gorm.DB, absPath string, melody model.Melody, state *scanState, scanID string) error {
+func replaceGroupTags(ctx context.Context, tx *gorm.DB, groupID uint, tags []model.Tag) error {
+	owner := gorm.G[model.LibraryGroup](tx).Where(dbquery.LibraryGroup.ID.Eq(groupID))
+	if _, err := owner.Set(dbquery.LibraryGroup.Tags.Unlink()).Update(ctx); err != nil {
+		return err
+	}
+	if len(tags) == 0 {
+		return nil
+	}
+	_, err := owner.Set(dbquery.LibraryGroup.Tags.CreateInBatch(tags)).Update(ctx)
+	return err
+}
+
+func replaceMelodyTags(ctx context.Context, tx *gorm.DB, melodyID uint, tags []model.Tag) error {
+	owner := gorm.G[model.Melody](tx).Where(dbquery.Melody.ID.Eq(melodyID))
+	if _, err := owner.Set(dbquery.Melody.Tags.Unlink()).Update(ctx); err != nil {
+		return err
+	}
+	if len(tags) == 0 {
+		return nil
+	}
+	_, err := owner.Set(dbquery.Melody.Tags.CreateInBatch(tags)).Update(ctx)
+	return err
+}
+
+func (s *Scanner) indexVariant(ctx context.Context, tx *gorm.DB, absPath string, melody model.Melody, state *scanState, scanID string) error {
 	relPath, err := relativeSlashPath(s.root, absPath)
 	if err != nil {
 		return err
@@ -404,7 +461,9 @@ func (s *Scanner) indexVariant(tx *gorm.DB, absPath string, melody model.Melody,
 		state.primaryAssigned[melody.ID] = true
 		oldPrimaryID := state.primaryByMelody[melody.ID]
 		if oldPrimaryID != 0 && oldPrimaryID != variant.ID {
-			if err := tx.Model(&model.FileVariant{}).Where("id = ?", oldPrimaryID).Update("is_primary", false).Error; err != nil {
+			if _, err := gorm.G[model.FileVariant](tx).
+				Where(dbquery.FileVariant.ID.Eq(oldPrimaryID)).
+				Update(ctx, "is_primary", false); err != nil {
 				return err
 			}
 			state.demotedVariants[oldPrimaryID] = true
@@ -423,11 +482,18 @@ func (s *Scanner) indexVariant(tx *gorm.DB, absPath string, melody model.Melody,
 	}
 
 	if variant.ID == 0 {
-		if err := tx.Omit("Melody").Create(&variant).Error; err != nil {
+		if err := gorm.G[model.FileVariant](tx).
+			Omit(dbquery.FileVariant.Melody.Name()).
+			Create(ctx, &variant); err != nil {
 			return err
 		}
 	} else if previous.DeletedAt.Valid || !sameVariant(previous, variant) {
-		if err := tx.Unscoped().Omit("Melody").Save(&variant).Error; err != nil {
+		if _, err := gorm.G[model.FileVariant](tx).
+			Scopes(dbquery.Unscoped).
+			Where(dbquery.FileVariant.ID.Eq(variant.ID)).
+			Select("*").
+			Omit(dbquery.FileVariant.Melody.Name()).
+			Updates(ctx, variant); err != nil {
 			return err
 		}
 	}
@@ -436,7 +502,7 @@ func (s *Scanner) indexVariant(tx *gorm.DB, absPath string, melody model.Melody,
 	return nil
 }
 
-func loadScanState(tx *gorm.DB) (*scanState, error) {
+func loadScanState(ctx context.Context, tx *gorm.DB) (*scanState, error) {
 	state := &scanState{
 		groups:          map[string]model.LibraryGroup{},
 		melodies:        map[string]model.Melody{},
@@ -445,22 +511,30 @@ func loadScanState(tx *gorm.DB) (*scanState, error) {
 		primaryAssigned: map[uint]bool{},
 		demotedVariants: map[uint]bool{},
 	}
-	var groups []model.LibraryGroup
-	if err := tx.Unscoped().Preload("Tags").Find(&groups).Error; err != nil {
+	groups, err := gorm.G[model.LibraryGroup](tx).
+		Scopes(dbquery.Unscoped).
+		Preload(dbquery.LibraryGroup.Tags.Name(), nil).
+		Find(ctx)
+	if err != nil {
 		return nil, err
 	}
 	for _, group := range groups {
 		state.groups[group.Path] = group
 	}
-	var melodies []model.Melody
-	if err := tx.Unscoped().Preload("Tags").Find(&melodies).Error; err != nil {
+	melodies, err := gorm.G[model.Melody](tx).
+		Scopes(dbquery.Unscoped).
+		Preload(dbquery.Melody.Tags.Name(), nil).
+		Find(ctx)
+	if err != nil {
 		return nil, err
 	}
 	for _, melody := range melodies {
 		state.melodies[melody.SourcePath] = melody
 	}
-	var variants []model.FileVariant
-	if err := tx.Unscoped().Find(&variants).Error; err != nil {
+	variants, err := gorm.G[model.FileVariant](tx).
+		Scopes(dbquery.Unscoped).
+		Find(ctx)
+	if err != nil {
 		return nil, err
 	}
 	for _, variant := range variants {
@@ -472,11 +546,14 @@ func loadScanState(tx *gorm.DB) (*scanState, error) {
 	return state, nil
 }
 
-func markSeen(tx *gorm.DB, value any, ids []uint, scanID string) error {
+func markSeen[T any](ctx context.Context, tx *gorm.DB, ids []uint, scanID string) error {
 	const batchSize = 500
 	for start := 0; start < len(ids); start += batchSize {
 		end := min(start+batchSize, len(ids))
-		if err := tx.Unscoped().Model(value).Where("id IN ?", ids[start:end]).UpdateColumn("scan_id", scanID).Error; err != nil {
+		if _, err := gorm.G[T](tx).
+			Scopes(dbquery.Unscoped, dbquery.SkipHooks).
+			Where("id IN ?", ids[start:end]).
+			Update(ctx, "scan_id", scanID); err != nil {
 			return err
 		}
 	}
@@ -526,39 +603,45 @@ func sameTagSet(left []model.Tag, right []model.Tag) bool {
 	return true
 }
 
-func cleanupStale(tx *gorm.DB, scanID string) error {
-	staleVariantQuery := tx.Where("scan_id <> ? OR scan_id = '' OR scan_id IS NULL", scanID)
-	if err := staleVariantQuery.Delete(&model.FileVariant{}).Error; err != nil {
+func cleanupStale(ctx context.Context, tx *gorm.DB, scanID string) error {
+	staleCondition := "scan_id <> ? OR scan_id = '' OR scan_id IS NULL"
+	if _, err := gorm.G[model.FileVariant](tx).
+		Where(staleCondition, scanID).
+		Delete(ctx); err != nil {
 		return err
 	}
 
-	var staleMelodies []model.Melody
-	if err := tx.Where("scan_id <> ? OR scan_id = '' OR scan_id IS NULL", scanID).Find(&staleMelodies).Error; err != nil {
+	staleMelodies, err := gorm.G[model.Melody](tx).Where(staleCondition, scanID).Find(ctx)
+	if err != nil {
 		return err
-	}
-	for _, melody := range staleMelodies {
-		if err := tx.Model(&melody).Association("Tags").Clear(); err != nil {
-			return err
-		}
 	}
 	if len(staleMelodies) > 0 {
-		if err := tx.Delete(&staleMelodies).Error; err != nil {
+		ids := make([]uint, len(staleMelodies))
+		for i := range staleMelodies {
+			ids[i] = staleMelodies[i].ID
+		}
+		melodies := gorm.G[model.Melody](tx).Where(dbquery.Melody.ID.In(ids...))
+		if _, err := melodies.Set(dbquery.Melody.Tags.Unlink()).Update(ctx); err != nil {
+			return err
+		}
+		if _, err := melodies.Delete(ctx); err != nil {
 			return err
 		}
 	}
 
-	var staleGroups []model.LibraryGroup
-	if err := tx.Where("scan_id <> ? OR scan_id = '' OR scan_id IS NULL", scanID).Find(&staleGroups).Error; err != nil {
+	staleGroups, err := gorm.G[model.LibraryGroup](tx).Where(staleCondition, scanID).Find(ctx)
+	if err != nil {
 		return err
 	}
 	sort.Slice(staleGroups, func(i, j int) bool {
 		return len(staleGroups[i].Path) > len(staleGroups[j].Path)
 	})
 	for _, group := range staleGroups {
-		if err := tx.Model(&group).Association("Tags").Clear(); err != nil {
+		owner := gorm.G[model.LibraryGroup](tx).Where(dbquery.LibraryGroup.ID.Eq(group.ID))
+		if _, err := owner.Set(dbquery.LibraryGroup.Tags.Unlink()).Update(ctx); err != nil {
 			return err
 		}
-		if err := tx.Delete(&group).Error; err != nil {
+		if _, err := owner.Delete(ctx); err != nil {
 			return err
 		}
 	}
@@ -566,7 +649,7 @@ func cleanupStale(tx *gorm.DB, scanID string) error {
 	return nil
 }
 
-func loadOrCreateTags(tx *gorm.DB, names []string) ([]model.Tag, error) {
+func loadOrCreateTags(ctx context.Context, tx *gorm.DB, names []string) ([]model.Tag, error) {
 	seen := map[string]struct{}{}
 	tags := make([]model.Tag, 0, len(names))
 
@@ -584,11 +667,13 @@ func loadOrCreateTags(tx *gorm.DB, names []string) ([]model.Tag, error) {
 		}
 		seen[slug] = struct{}{}
 
-		tag := model.Tag{}
-		err := tx.Unscoped().Where("slug = ?", slug).First(&tag).Error
+		tag, err := gorm.G[model.Tag](tx).
+			Scopes(dbquery.Unscoped).
+			Where(dbquery.Tag.Slug.Eq(slug)).
+			First(ctx)
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			tag = model.Tag{Name: name, Slug: slug}
-			if err := tx.Create(&tag).Error; err != nil {
+			if err := gorm.G[model.Tag](tx).Create(ctx, &tag); err != nil {
 				return nil, err
 			}
 		} else if err != nil {
@@ -597,7 +682,14 @@ func loadOrCreateTags(tx *gorm.DB, names []string) ([]model.Tag, error) {
 		if tag.DeletedAt.Valid {
 			tag.DeletedAt = gorm.DeletedAt{}
 			tag.Name = name
-			if err := tx.Unscoped().Save(&tag).Error; err != nil {
+			if _, err := gorm.G[model.Tag](tx).
+				Scopes(dbquery.Unscoped).
+				Where(dbquery.Tag.ID.Eq(tag.ID)).
+				Set(
+					dbquery.Tag.Name.Set(tag.Name),
+					dbquery.Tag.DeletedAt.Set(tag.DeletedAt),
+				).
+				Update(ctx); err != nil {
 				return nil, err
 			}
 		}

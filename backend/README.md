@@ -4,8 +4,9 @@ Go backend for a Fiber v3 API with GORM, role-aware JWT authentication, recursiv
 
 ## Stack
 
-- Go 1.25 language baseline with the security-patched Go 1.26.5 toolchain, and Fiber v3.
-- GORM with SQLite for fast local development and Postgres for production.
+- Go 1.26.5 and Fiber v3.
+- GORM's Generics API with CLI-generated, type-safe field and association helpers; SQLite for fast local development and Postgres for production.
+- OpenAPI 3.2 contract linted in CI with Redocly.
 - JWT bearer auth with bcrypt password hashing.
 - Filesystem catalog under `DATA_ROOT`, indexed into the database on startup and on demand.
 - Versioned database migrations, query-oriented indexes, connection-pool configuration, and soft-delete restoration for indexed resources.
@@ -21,6 +22,7 @@ internal/config      Environment-based configuration
 internal/database    GORM connection and migrations
 internal/http        Fiber server, middleware, and handlers
 internal/model       GORM models
+internal/query       GORM CLI-generated field helpers and shared scopes
 internal/storage     Filesystem upload/download support
 internal/util        Small shared helpers
 ```
@@ -38,6 +40,12 @@ Run locally:
 ```sh
 go mod tidy
 go run ./cmd/api
+```
+
+After changing a model, regenerate the typed GORM helpers:
+
+```sh
+go generate ./internal/model
 ```
 
 Or run with Postgres through Docker Compose:

@@ -22,6 +22,7 @@ import (
 
 func main() {
 	_ = godotenv.Load()
+	ctx := context.Background()
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -41,12 +42,12 @@ func main() {
 	defer sqlDB.Close()
 
 	if cfg.Database.AutoMigrate {
-		if err := database.Migrate(db); err != nil {
+		if err := database.Migrate(ctx, db); err != nil {
 			log.Fatal().Err(err).Msg("failed to run migrations")
 		}
 	}
 
-	if configured, err := auth.EnsureBootstrapAdmin(db, cfg.Auth); err != nil {
+	if configured, err := auth.EnsureBootstrapAdmin(ctx, db, cfg.Auth); err != nil {
 		log.Fatal().Err(err).Msg("failed to bootstrap administrator")
 	} else if configured {
 		log.Info().Str("username", cfg.Auth.BootstrapAdminUsername).Msg("bootstrap administrator is available")
@@ -56,7 +57,7 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to initialize file storage")
 	}
-	if err := catalog.RecoverPendingDeletes(context.Background(), db, fileStore.Root()); err != nil {
+	if err := catalog.RecoverPendingDeletes(ctx, db, fileStore.Root()); err != nil {
 		log.Fatal().Err(err).Msg("failed to recover pending file deletions")
 	}
 
@@ -65,7 +66,7 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to initialize catalog scanner")
 	}
 	if cfg.Catalog.ScanOnStartup {
-		scanResult, err := catalogScanner.Scan(context.Background())
+		scanResult, err := catalogScanner.Scan(ctx)
 		if err != nil {
 			log.Fatal().Err(err).Msg("failed to scan catalog data")
 		}

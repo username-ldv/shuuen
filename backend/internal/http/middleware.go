@@ -9,6 +9,7 @@ import (
 
 	"shuuen-backend/internal/auth"
 	"shuuen-backend/internal/model"
+	"shuuen-backend/internal/query"
 )
 
 func AuthRequired(authService *auth.Service, db *gorm.DB) fiber.Handler {
@@ -41,8 +42,11 @@ func authenticate(c fiber.Ctx, authService *auth.Service, db *gorm.DB, required 
 		return sendError(c, fiber.StatusUnauthorized, "invalid or expired token")
 	}
 
-	var user model.User
-	if err := db.Select("id", "username", "role", "token_version").First(&user, claims.UserID).Error; err != nil {
+	user, err := gorm.G[model.User](db).
+		Select("id", "username", "role", "token_version").
+		Where(query.User.ID.Eq(claims.UserID)).
+		First(c.Context())
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return sendError(c, fiber.StatusUnauthorized, "account is no longer available")
 		}

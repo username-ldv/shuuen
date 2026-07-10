@@ -51,7 +51,7 @@ type Tag struct {
 type Melody struct {
 	Base
 	GroupID     uint          `gorm:"not null;index" json:"group_id"`
-	Group       LibraryGroup  `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"group,omitempty"`
+	Group       LibraryGroup  `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"group"`
 	SourcePath  string        `gorm:"size:640;uniqueIndex;not null" json:"source_path"`
 	FileStem    string        `gorm:"size:260;not null" json:"file_stem"`
 	Title       string        `gorm:"size:220;not null" json:"title"`
@@ -69,7 +69,7 @@ type Melody struct {
 type FileVariant struct {
 	Base
 	MelodyID     uint   `gorm:"not null;index" json:"melody_id"`
-	Melody       Melody `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"melody,omitempty"`
+	Melody       Melody `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"melody"`
 	Format       string `gorm:"size:40;not null;index" json:"format"`
 	OriginalName string `gorm:"size:255;not null" json:"original_name"`
 	StoredName   string `gorm:"size:255;not null" json:"stored_name"`

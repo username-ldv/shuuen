@@ -1,21 +1,24 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"regexp"
 	"strings"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"shuuen-backend/internal/config"
 	"shuuen-backend/internal/model"
+	"shuuen-backend/internal/query"
 )
 
 var accountUsernamePattern = regexp.MustCompile(`^[A-Za-z0-9_]{3,20}$`)
 
 // EnsureBootstrapAdmin creates the configured initial administrator once. If
 // the administrator already exists, its password is left unchanged.
-func EnsureBootstrapAdmin(db *gorm.DB, cfg config.AuthConfig) (bool, error) {
+func EnsureBootstrapAdmin(ctx context.Context, db *gorm.DB, cfg config.AuthConfig) (bool, error) {
 	if cfg.BootstrapAdminUsername == "" {
 		return false, nil
 	}
@@ -25,17 +28,24 @@ func EnsureBootstrapAdmin(db *gorm.DB, cfg config.AuthConfig) (bool, error) {
 	}
 	usernameKey := strings.ToLower(username)
 
-	var user model.User
-	err := db.Unscoped().Where("username_key = ?", usernameKey).First(&user).Error
+	user, err := gorm.G[model.User](db).
+		Scopes(query.Unscoped).
+		Where(query.User.UsernameKey.Eq(usernameKey)).
+		First(ctx)
 	if err == nil {
 		if user.Role != "admin" {
 			return false, errors.New("BOOTSTRAP_ADMIN_USERNAME belongs to an existing non-admin account")
 		}
-		updates := map[string]any{"deleted_at": nil}
+		updates := []clause.Assigner{query.User.DeletedAt.Set(gorm.DeletedAt{})}
 		if strings.TrimSpace(user.DisplayName) == "" {
-			updates["display_name"] = strings.TrimSpace(cfg.BootstrapAdminName)
+			updates = append(updates, query.User.DisplayName.Set(strings.TrimSpace(cfg.BootstrapAdminName)))
 		}
-		return true, db.Unscoped().Model(&user).Updates(updates).Error
+		_, err = gorm.G[model.User](db).
+			Scopes(query.Unscoped).
+			Where(query.User.ID.Eq(user.ID)).
+			Set(updates...).
+			Update(ctx)
+		return true, err
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return false, err
@@ -52,5 +62,5 @@ func EnsureBootstrapAdmin(db *gorm.DB, cfg config.AuthConfig) (bool, error) {
 		PasswordHash: passwordHash,
 		Role:         "admin",
 	}
-	return true, db.Create(&user).Error
+	return true, gorm.G[model.User](db).Create(ctx, &user)
 }

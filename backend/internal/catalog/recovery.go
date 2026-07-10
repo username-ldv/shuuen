@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 
 	"shuuen-backend/internal/model"
+	"shuuen-backend/internal/query"
 )
 
 // RecoverPendingDeletes resolves files left in .trash if the process stopped
@@ -44,8 +45,10 @@ func RecoverPendingDeletes(ctx context.Context, db *gorm.DB, root string) error 
 				return errors.New("invalid staged delete path")
 			}
 			storagePath := filepath.ToSlash(relative)
-			var variant model.FileVariant
-			err = db.WithContext(ctx).Unscoped().Where("storage_path = ?", storagePath).First(&variant).Error
+			variant, err := gorm.G[model.FileVariant](db).
+				Scopes(query.Unscoped).
+				Where(query.FileVariant.StoragePath.Eq(storagePath)).
+				First(ctx)
 			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 				return err
 			}

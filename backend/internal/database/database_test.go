@@ -14,33 +14,33 @@ func TestMigrateUpgradesLegacyVisibilityColumnsAndIsIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Exec("CREATE TABLE library_groups (id integer primary key, is_active numeric not null default 1)").Error; err != nil {
+	if err := gorm.G[any](db).Exec(t.Context(), "CREATE TABLE library_groups (id integer primary key, is_active numeric not null default 1)"); err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Exec("INSERT INTO library_groups (id, is_active) VALUES (1, 0)").Error; err != nil {
+	if err := gorm.G[any](db).Exec(t.Context(), "INSERT INTO library_groups (id, is_active) VALUES (1, 0)"); err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Exec("CREATE TABLE melodies (id integer primary key, is_published numeric not null default 1)").Error; err != nil {
+	if err := gorm.G[any](db).Exec(t.Context(), "CREATE TABLE melodies (id integer primary key, is_published numeric not null default 1)"); err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Exec("INSERT INTO melodies (id, is_published) VALUES (1, 0)").Error; err != nil {
+	if err := gorm.G[any](db).Exec(t.Context(), "INSERT INTO melodies (id, is_published) VALUES (1, 0)"); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := migrateVisibilityColumn(db, "library_groups", "is_active"); err != nil {
+	if err := migrateVisibilityColumn(t.Context(), db, "library_groups", "is_active"); err != nil {
 		t.Fatalf("group visibility migration failed: %v", err)
 	}
-	if err := migrateVisibilityColumn(db, "melodies", "is_published"); err != nil {
+	if err := migrateVisibilityColumn(t.Context(), db, "melodies", "is_published"); err != nil {
 		t.Fatalf("melody visibility migration failed: %v", err)
 	}
 	if !db.Migrator().HasColumn("library_groups", "is_public") || !db.Migrator().HasColumn("melodies", "is_public") {
 		t.Fatal("legacy visibility columns were not migrated")
 	}
 	var groupPublic, melodyPublic bool
-	if err := db.Raw("SELECT is_public FROM library_groups WHERE id = 1").Scan(&groupPublic).Error; err != nil {
+	if err := gorm.G[bool](db).Raw("SELECT is_public FROM library_groups WHERE id = 1").Scan(t.Context(), &groupPublic); err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Raw("SELECT is_public FROM melodies WHERE id = 1").Scan(&melodyPublic).Error; err != nil {
+	if err := gorm.G[bool](db).Raw("SELECT is_public FROM melodies WHERE id = 1").Scan(t.Context(), &melodyPublic); err != nil {
 		t.Fatal(err)
 	}
 	if groupPublic || melodyPublic {
@@ -51,14 +51,14 @@ func TestMigrateUpgradesLegacyVisibilityColumnsAndIsIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := Migrate(fresh); err != nil {
+	if err := Migrate(t.Context(), fresh); err != nil {
 		t.Fatalf("first migration failed: %v", err)
 	}
-	if err := Migrate(fresh); err != nil {
+	if err := Migrate(t.Context(), fresh); err != nil {
 		t.Fatalf("second migration failed: %v", err)
 	}
-	var count int64
-	if err := fresh.Model(&schemaMigration{}).Count(&count).Error; err != nil {
+	count, err := gorm.G[schemaMigration](fresh).Count(t.Context(), "*")
+	if err != nil {
 		t.Fatal(err)
 	}
 	if count != int64(len(migrations)) {
@@ -68,19 +68,19 @@ func TestMigrateUpgradesLegacyVisibilityColumnsAndIsIdempotent(t *testing.T) {
 		t.Fatal("primary variant invariant index was not created")
 	}
 	group := model.LibraryGroup{Path: "group", Name: "Group", Slug: "group", IsPublic: true}
-	if err := fresh.Create(&group).Error; err != nil {
+	if err := gorm.G[model.LibraryGroup](fresh).Create(t.Context(), &group); err != nil {
 		t.Fatal(err)
 	}
 	melody := model.Melody{GroupID: group.ID, SourcePath: "group/song", FileStem: "song", Title: "Song", Slug: "song", IsPublic: true}
-	if err := fresh.Create(&melody).Error; err != nil {
+	if err := gorm.G[model.Melody](fresh).Create(t.Context(), &melody); err != nil {
 		t.Fatal(err)
 	}
 	first := model.FileVariant{MelodyID: melody.ID, Format: "midi", OriginalName: "song.mid", StoredName: "song.mid", StoragePath: "group/song.mid", ChecksumSHA: "a", IsPrimary: true}
-	if err := fresh.Create(&first).Error; err != nil {
+	if err := gorm.G[model.FileVariant](fresh).Create(t.Context(), &first); err != nil {
 		t.Fatal(err)
 	}
 	second := model.FileVariant{MelodyID: melody.ID, Format: "musicxml", OriginalName: "song.xml", StoredName: "song.xml", StoragePath: "group/song.xml", ChecksumSHA: "b", IsPrimary: true}
-	if err := fresh.Create(&second).Error; err == nil {
+	if err := gorm.G[model.FileVariant](fresh).Create(t.Context(), &second); err == nil {
 		t.Fatal("database allowed two active primary variants for one melody")
 	}
 }
