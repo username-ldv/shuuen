@@ -1,0 +1,39 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: shuuen_test
+          POSTGRES_USER: shuuen
+          POSTGRES_PASSWORD: shuuen-test-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U shuuen -d shuuen_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_POSTGRES_DSN: host=127.0.0.1 user=shuuen password=shuuen-test-password dbname=shuuen_test port=5432 sslmode=disable TimeZone=UTC
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.5
+          cache: true
+      - run: go test -race -count=1 ./...
+      - run: go vet ./...
+      - run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+      - run: npx --yes @redocly/cli@2.38.0 lint openapi.yaml
+      - run: docker build -t shuuen-backend:ci .

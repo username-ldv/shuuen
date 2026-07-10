@@ -34,6 +34,11 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to connect database")
 	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to access database pool")
+	}
+	defer sqlDB.Close()
 
 	if cfg.Database.AutoMigrate {
 		if err := database.Migrate(db); err != nil {
@@ -41,25 +46,38 @@ func main() {
 		}
 	}
 
+	if configured, err := auth.EnsureBootstrapAdmin(db, cfg.Auth); err != nil {
+		log.Fatal().Err(err).Msg("failed to bootstrap administrator")
+	} else if configured {
+		log.Info().Str("username", cfg.Auth.BootstrapAdminUsername).Msg("bootstrap administrator is available")
+	}
+
 	fileStore, err := storage.NewFileStore(cfg.Catalog)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to initialize file storage")
+	}
+	if err := catalog.RecoverPendingDeletes(context.Background(), db, fileStore.Root()); err != nil {
+		log.Fatal().Err(err).Msg("failed to recover pending file deletions")
 	}
 
 	catalogScanner, err := catalog.NewScanner(db, cfg.Catalog)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to initialize catalog scanner")
 	}
-	scanResult, err := catalogScanner.Scan(context.Background())
-	if err != nil {
-		log.Fatal().Err(err).Msg("failed to scan catalog data")
+	if cfg.Catalog.ScanOnStartup {
+		scanResult, err := catalogScanner.Scan(context.Background())
+		if err != nil {
+			log.Fatal().Err(err).Msg("failed to scan catalog data")
+		}
+		log.Info().
+			Str("scan_id", scanResult.ScanID).
+			Int("groups", scanResult.GroupsIndexed).
+			Int("melodies", scanResult.MelodiesFound).
+			Int("variants", scanResult.VariantsFound).
+			Msg("catalog scan complete")
+	} else {
+		log.Info().Msg("startup catalog scan disabled")
 	}
-	log.Info().
-		Str("scan_id", scanResult.ScanID).
-		Int("groups", scanResult.GroupsIndexed).
-		Int("melodies", scanResult.MelodiesFound).
-		Int("variants", scanResult.VariantsFound).
-		Msg("catalog scan complete")
 
 	authService := auth.NewService(cfg.Auth)
 	app := httpapi.NewServer(httpapi.ServerDeps{

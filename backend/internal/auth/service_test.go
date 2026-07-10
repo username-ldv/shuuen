@@ -30,10 +30,11 @@ func TestGenerateAndParseAccessToken(t *testing.T) {
 	})
 
 	user := model.User{
-		Base:        model.Base{ID: 42},
-		Username:    "TestUser",
-		UsernameKey: "testuser",
-		Role:        "user",
+		Base:         model.Base{ID: 42},
+		Username:     "TestUser",
+		UsernameKey:  "testuser",
+		Role:         "user",
+		TokenVersion: 3,
 	}
 
 	token, expiresAt, err := service.GenerateAccessToken(user)
@@ -51,7 +52,7 @@ func TestGenerateAndParseAccessToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseAccessToken returned error: %v", err)
 	}
-	if claims.UserID != user.ID || claims.Username != user.Username || claims.Role != user.Role {
+	if claims.UserID != user.ID || claims.Username != user.Username || claims.Role != user.Role || claims.TokenVersion != user.TokenVersion {
 		t.Fatalf("unexpected claims: %#v", claims)
 	}
 }

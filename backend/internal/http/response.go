@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -33,6 +34,10 @@ func errorHandler(c fiber.Ctx, err error) error {
 	if errors.As(err, &fiberErr) {
 		status = fiberErr.Code
 		message = fiberErr.Message
+	}
+	if status >= fiber.StatusInternalServerError {
+		requestID, _ := c.Locals("requestid").(string)
+		log.Error().Err(err).Str("request_id", requestID).Str("method", c.Method()).Str("path", c.Path()).Msg("request failed")
 	}
 
 	return c.Status(status).JSON(apiError{Error: message})
@@ -92,6 +97,18 @@ func parseBoolQuery(c fiber.Ctx, key string, fallback bool) bool {
 	}
 }
 
+func parseOptionalBool(c fiber.Ctx, key string) (*bool, error) {
+	raw := strings.ToLower(strings.TrimSpace(c.Query(key)))
+	if raw == "" {
+		return nil, nil
+	}
+	value, err := strconv.ParseBool(raw)
+	if err != nil {
+		return nil, fiber.NewError(fiber.StatusBadRequest, key+" must be true or false")
+	}
+	return &value, nil
+}
+
 func parseQueryInt(c fiber.Ctx, key string, fallback int) int {
 	raw := strings.TrimSpace(c.Query(key))
 	if raw == "" {
@@ -120,5 +137,20 @@ func cleanURLPath(value string) string {
 	if value == "." {
 		return ""
 	}
+	return value
+}
+
+func containsPattern(value string) string {
+	return "%" + escapeLike(value) + "%"
+}
+
+func descendantPattern(value string) string {
+	return escapeLike(value) + "/%"
+}
+
+func escapeLike(value string) string {
+	value = strings.ReplaceAll(value, `\`, `\\`)
+	value = strings.ReplaceAll(value, "%", `\%`)
+	value = strings.ReplaceAll(value, "_", `\_`)
 	return value
 }

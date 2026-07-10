@@ -1,9 +1,11 @@
 package catalog
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/ncruces/go-sqlite3/gormlite"
 	"gorm.io/gorm"
@@ -79,6 +81,146 @@ func TestScannerIndexesRecursiveFoldersAndVariants(t *testing.T) {
 	}
 	if primary.Format != "musicxml" {
 		t.Fatalf("primary format = %q, want musicxml", primary.Format)
+	}
+}
+
+func TestScannerRestoresSoftDeletedCatalogRows(t *testing.T) {
+	root := t.TempDir()
+	groupDir := filepath.Join(root, "group")
+	if err := os.MkdirAll(groupDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	midiPath := filepath.Join(groupDir, "song.mid")
+	xmlPath := filepath.Join(groupDir, "song.musicxml")
+	writeFile(t, midiPath, "midi")
+	writeFile(t, xmlPath, "<score-partwise />")
+
+	db, err := gorm.Open(gormlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.User{}, &model.LibraryGroup{}, &model.Tag{}, &model.Melody{}, &model.FileVariant{}); err != nil {
+		t.Fatal(err)
+	}
+	scanner, err := NewScanner(db, config.CatalogConfig{
+		Root: root, FolderMetadataFile: ".shuuen.json", MelodyMetadataSuffix: ".shuuen.json", MaxUploadBytes: 1024,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := scanner.Scan(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	var original model.Melody
+	if err := db.Where("source_path = ?", "group/song").First(&original).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Remove(midiPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(xmlPath); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := scanner.Scan(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.First(&model.Melody{}, original.ID).Error; !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("expected melody to be soft-deleted, got %v", err)
+	}
+
+	writeFile(t, midiPath, "midi")
+	writeFile(t, xmlPath, "<score-partwise />")
+	if _, err := scanner.Scan(t.Context()); err != nil {
+		t.Fatalf("restoring files caused scan failure: %v", err)
+	}
+	var restored model.Melody
+	if err := db.Where("source_path = ?", "group/song").First(&restored).Error; err != nil {
+		t.Fatal(err)
+	}
+	if restored.ID != original.ID {
+		t.Fatalf("restored melody ID = %d, want stable ID %d", restored.ID, original.ID)
+	}
+}
+
+func TestScannerUsesUnifiedPublicVisibilityAndInheritsPrivateParent(t *testing.T) {
+	root := t.TempDir()
+	child := filepath.Join(root, "private", "child")
+	if err := os.MkdirAll(child, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(root, "private", ".shuuen.json"), `{"is_public":false}`)
+	writeFile(t, filepath.Join(child, "song.mid"), "midi")
+
+	db, err := gorm.Open(gormlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.User{}, &model.LibraryGroup{}, &model.Tag{}, &model.Melody{}, &model.FileVariant{}); err != nil {
+		t.Fatal(err)
+	}
+	scanner, err := NewScanner(db, config.CatalogConfig{
+		Root: root, FolderMetadataFile: ".shuuen.json", MelodyMetadataSuffix: ".shuuen.json", MaxUploadBytes: 1024,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := scanner.Scan(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	var group model.LibraryGroup
+	if err := db.Where("path = ?", "private/child").First(&group).Error; err != nil {
+		t.Fatal(err)
+	}
+	if group.IsPublic {
+		t.Fatal("child of private group should be private")
+	}
+	var melody model.Melody
+	if err := db.Where("source_path = ?", "private/child/song").First(&melody).Error; err != nil {
+		t.Fatal(err)
+	}
+	if melody.IsPublic {
+		t.Fatal("melody in private group should be private")
+	}
+}
+
+func TestUnchangedScanDoesNotRewriteCatalogTimestamps(t *testing.T) {
+	root := t.TempDir()
+	groupDir := filepath.Join(root, "group")
+	if err := os.MkdirAll(groupDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(groupDir, "song.mid"), "midi")
+	db, err := gorm.Open(gormlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.User{}, &model.LibraryGroup{}, &model.Tag{}, &model.Melody{}, &model.FileVariant{}); err != nil {
+		t.Fatal(err)
+	}
+	scanner, err := NewScanner(db, config.CatalogConfig{
+		Root: root, FolderMetadataFile: ".shuuen.json", MelodyMetadataSuffix: ".shuuen.json", MaxUploadBytes: 1024,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := scanner.Scan(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	var before model.Melody
+	if err := db.Where("source_path = ?", "group/song").First(&before).Error; err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(5 * time.Millisecond)
+	if _, err := scanner.Scan(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	var after model.Melody
+	if err := db.First(&after, before.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if !after.UpdatedAt.Equal(before.UpdatedAt) {
+		t.Fatalf("unchanged melody UpdatedAt changed from %s to %s", before.UpdatedAt, after.UpdatedAt)
 	}
 }
 

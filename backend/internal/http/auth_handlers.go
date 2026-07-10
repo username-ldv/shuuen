@@ -24,7 +24,15 @@ type loginRequest struct {
 	Password string `json:"password" validate:"required"`
 }
 
+type changePasswordRequest struct {
+	CurrentPassword string `json:"current_password" validate:"required"`
+	NewPassword     string `json:"new_password" validate:"required,min=8,max=72"`
+}
+
 func (h *Handler) Register(c fiber.Ctx) error {
+	if !h.registrationEnabled {
+		return sendError(c, fiber.StatusForbidden, "registration is disabled")
+	}
 	var req registerRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return sendError(c, fiber.StatusBadRequest, "invalid request body")
@@ -36,6 +44,9 @@ func (h *Handler) Register(c fiber.Ctx) error {
 	}
 	if !validUsername(req.Username) {
 		return sendError(c, fiber.StatusBadRequest, "username must be 3-20 characters and use only letters, numbers, or underscores")
+	}
+	if len(req.Password) > 72 {
+		return sendError(c, fiber.StatusBadRequest, "password must not exceed 72 bytes")
 	}
 	usernameKey := usernameLookupKey(req.Username)
 
@@ -73,6 +84,9 @@ func (h *Handler) Login(c fiber.Ctx) error {
 	if !validUsername(req.Username) {
 		return sendError(c, fiber.StatusBadRequest, "username must be 3-20 characters and use only letters, numbers, or underscores")
 	}
+	if len(req.Password) > 72 {
+		return sendError(c, fiber.StatusUnauthorized, "invalid username or password")
+	}
 
 	var user model.User
 	err := h.db.Where("username_key = ?", usernameLookupKey(req.Username)).First(&user).Error
@@ -95,6 +109,37 @@ func (h *Handler) Me(c fiber.Ctx) error {
 		return notFoundOrError(c, err, "user not found")
 	}
 	return sendData(c, fiber.StatusOK, user)
+}
+
+func (h *Handler) ChangePassword(c fiber.Ctx) error {
+	var req changePasswordRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return sendError(c, fiber.StatusBadRequest, "invalid request body")
+	}
+	if err := h.validate.Struct(req); err != nil || len(req.CurrentPassword) > 72 || len(req.NewPassword) > 72 {
+		return sendError(c, fiber.StatusBadRequest, "new password must be 8-72 bytes")
+	}
+	var user model.User
+	if err := h.db.First(&user, currentUserID(c)).Error; err != nil {
+		return notFoundOrError(c, err, "user not found")
+	}
+	if !auth.CheckPassword(user.PasswordHash, req.CurrentPassword) {
+		return sendError(c, fiber.StatusUnauthorized, "current password is incorrect")
+	}
+	hash, err := auth.HashPassword(req.NewPassword)
+	if err != nil {
+		return err
+	}
+	if err := h.db.Model(&user).Updates(map[string]any{
+		"password_hash": hash,
+		"token_version": gorm.Expr("token_version + 1"),
+	}).Error; err != nil {
+		return err
+	}
+	if err := h.db.First(&user, user.ID).Error; err != nil {
+		return err
+	}
+	return h.authResponse(c, fiber.StatusOK, user)
 }
 
 func (h *Handler) authResponse(c fiber.Ctx, status int, user model.User) error {

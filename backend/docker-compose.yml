@@ -30,14 +30,35 @@ services:
       JWT_SECRET: dev-secret-change-me
       JWT_ISSUER: shuuen-backend
       ACCESS_TOKEN_TTL: 24h
+      REGISTRATION_ENABLED: "true"
+      BOOTSTRAP_ADMIN_USERNAME: admin
+      BOOTSTRAP_ADMIN_PASSWORD: change-this-development-password
+      BOOTSTRAP_ADMIN_DISPLAY_NAME: Administrator
+      CORS_ALLOWED_ORIGINS: "*"
+      AUTH_RATE_LIMIT_MAX: 20
+      AUTH_RATE_LIMIT_WINDOW: 1m
+      ADMIN_RATE_LIMIT_MAX: 5
+      ADMIN_RATE_LIMIT_WINDOW: 1m
+      DATABASE_MAX_OPEN_CONNS: 20
+      DATABASE_MAX_IDLE_CONNS: 10
+      DATABASE_CONN_MAX_LIFETIME: 30m
+      DATABASE_CONN_MAX_IDLE_TIME: 5m
       DATA_ROOT: /app/data
       FOLDER_METADATA_FILE: .shuuen.json
       MELODY_METADATA_SUFFIX: .shuuen.json
       MAX_UPLOAD_SIZE: 52428800
+      CATALOG_SCAN_ON_STARTUP: "true"
     ports:
       - "9999:9999"
     volumes:
       - api-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9999/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    stop_grace_period: 15s
 
 volumes:
   postgres-data:

@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
+	"gorm.io/gorm"
 
 	"shuuen-backend/internal/model"
 	"shuuen-backend/internal/util"
@@ -28,7 +29,7 @@ func (h *Handler) ListTags(c fiber.Ctx) error {
 
 	query := h.db.Model(&model.Tag{})
 	if q := strings.TrimSpace(c.Query("q")); q != "" {
-		query = query.Where("LOWER(name) LIKE ?", "%"+strings.ToLower(q)+"%")
+		query = query.Where("LOWER(name) LIKE ? ESCAPE '\\'", containsPattern(strings.ToLower(q)))
 	}
 
 	if err := query.Count(&total).Error; err != nil {
@@ -68,6 +69,27 @@ func (h *Handler) CreateTag(c fiber.Ctx) error {
 	}
 
 	tag := model.Tag{Name: req.Name, Slug: slug, Color: req.Color}
+	var matches []model.Tag
+	if err := h.db.Unscoped().Where("name = ? OR slug = ?", req.Name, slug).Find(&matches).Error; err != nil {
+		return err
+	}
+	if len(matches) > 0 {
+		if len(matches) != 1 || !matches[0].DeletedAt.Valid {
+			return sendError(c, fiber.StatusConflict, "tag name or slug already exists")
+		}
+		tag = matches[0]
+		tag.Name = req.Name
+		tag.Slug = slug
+		tag.Color = req.Color
+		tag.DeletedAt = gorm.DeletedAt{}
+		if err := h.db.Unscoped().Save(&tag).Error; err != nil {
+			if isUniqueConstraint(err) {
+				return sendError(c, fiber.StatusConflict, "tag name or slug already exists")
+			}
+			return err
+		}
+		return sendData(c, fiber.StatusCreated, tag)
+	}
 	if err := h.db.Create(&tag).Error; err != nil {
 		if isUniqueConstraint(err) {
 			return sendError(c, fiber.StatusConflict, "tag name or slug already exists")
@@ -93,9 +115,16 @@ func (h *Handler) UpdateTag(c fiber.Ctx) error {
 
 	updates := map[string]any{}
 	if req.Name != nil {
-		updates["name"] = strings.TrimSpace(*req.Name)
+		name := strings.TrimSpace(*req.Name)
+		if name == "" {
+			return sendError(c, fiber.StatusBadRequest, "name must not be empty")
+		}
+		updates["name"] = name
 	}
 	if req.Slug != nil {
+		if strings.TrimSpace(*req.Slug) == "" {
+			return sendError(c, fiber.StatusBadRequest, "slug must not be empty")
+		}
 		updates["slug"] = util.Slugify(*req.Slug)
 	}
 	if req.Color != nil {
@@ -120,10 +149,15 @@ func (h *Handler) DeleteTag(c fiber.Ctx) error {
 	if err := h.db.First(&tag, c.Params("id")).Error; err != nil {
 		return notFoundOrError(c, err, "tag not found")
 	}
-	if err := h.db.Model(&tag).Association("Melodies").Clear(); err != nil {
-		return err
-	}
-	if err := h.db.Delete(&tag).Error; err != nil {
+	if err := h.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&tag).Association("Melodies").Clear(); err != nil {
+			return err
+		}
+		if err := tx.Model(&tag).Association("Groups").Clear(); err != nil {
+			return err
+		}
+		return tx.Delete(&tag).Error
+	}); err != nil {
 		return err
 	}
 	return c.SendStatus(fiber.StatusNoContent)

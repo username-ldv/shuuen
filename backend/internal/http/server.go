@@ -1,12 +1,14 @@
 package httpapi
 
 import (
+	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/compress"
 	"github.com/gofiber/fiber/v3/middleware/cors"
+	"github.com/gofiber/fiber/v3/middleware/limiter"
 	"github.com/gofiber/fiber/v3/middleware/logger"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
@@ -27,11 +29,12 @@ type ServerDeps struct {
 }
 
 type Handler struct {
-	db       *gorm.DB
-	auth     *auth.Service
-	storage  *storage.FileStore
-	catalog  *catalog.Scanner
-	validate *validator.Validate
+	db                  *gorm.DB
+	auth                *auth.Service
+	storage             *storage.FileStore
+	catalog             *catalog.Scanner
+	validate            *validator.Validate
+	registrationEnabled bool
 }
 
 func NewServer(deps ServerDeps) *fiber.App {
@@ -46,23 +49,30 @@ func NewServer(deps ServerDeps) *fiber.App {
 
 	app.Use(recover.New())
 	app.Use(requestid.New())
-	app.Use(compress.New())
-	app.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"*"},
-		AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization"},
-		AllowMethods: []string{"GET", "POST", "PATCH", "DELETE", "OPTIONS"},
-		MaxAge:       int((12 * time.Hour).Seconds()),
+	app.Use(compress.New(compress.Config{
+		Next: func(c fiber.Ctx) bool {
+			return strings.HasSuffix(c.Path(), "/download")
+		},
 	}))
+	if len(deps.Config.HTTP.CORSOrigins) > 0 {
+		app.Use(cors.New(cors.Config{
+			AllowOrigins: deps.Config.HTTP.CORSOrigins,
+			AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization"},
+			AllowMethods: []string{"GET", "POST", "PATCH", "DELETE", "OPTIONS"},
+			MaxAge:       int((12 * time.Hour).Seconds()),
+		}))
+	}
 	app.Use(logger.New(logger.Config{
-		Format: "[${time}] ${status} ${method} ${path} ${latency} ${ip} ${error}\n",
+		Format: "[${time}] ${status} ${method} ${path} ${latency} ${ip} request_id=${locals:requestid} ${error}\n",
 	}))
 
 	h := &Handler{
-		db:       deps.DB,
-		auth:     deps.Auth,
-		storage:  deps.Storage,
-		catalog:  deps.Catalog,
-		validate: validator.New(),
+		db:                  deps.DB,
+		auth:                deps.Auth,
+		storage:             deps.Storage,
+		catalog:             deps.Catalog,
+		validate:            validator.New(),
+		registrationEnabled: deps.Config.Auth.RegistrationEnabled,
 	}
 
 	app.Get("/healthz", h.Health)
@@ -71,11 +81,19 @@ func NewServer(deps ServerDeps) *fiber.App {
 	api.Get("/health", h.Health)
 
 	authRoutes := api.Group("/auth")
-	authRoutes.Post("/register", h.Register)
-	authRoutes.Post("/login", h.Login)
-	authRoutes.Get("/me", AuthRequired(deps.Auth), h.Me)
+	authLimiter := limiter.New(limiter.Config{
+		Max:        deps.Config.HTTP.AuthRateLimit.Max,
+		Expiration: deps.Config.HTTP.AuthRateLimit.Window,
+		LimitReached: func(c fiber.Ctx) error {
+			return sendError(c, fiber.StatusTooManyRequests, "too many authentication attempts")
+		},
+	})
+	authRoutes.Post("/register", authLimiter, h.Register)
+	authRoutes.Post("/login", authLimiter, h.Login)
+	authRoutes.Get("/me", AuthRequired(deps.Auth, deps.DB), h.Me)
+	authRoutes.Post("/password", authLimiter, AuthRequired(deps.Auth, deps.DB), h.ChangePassword)
 
-	library := api.Group("/library")
+	library := api.Group("/library", OptionalAuth(deps.Auth, deps.DB), VisibilityScope)
 	library.Get("/groups", h.ListGroups)
 	library.Get("/groups/:id", h.GetGroup)
 	library.Get("/path/*", h.GetGroupByVersionedPath)
@@ -87,8 +105,15 @@ func NewServer(deps ServerDeps) *fiber.App {
 	library.Get("/variants/:id", h.GetVariant)
 	library.Get("/variants/:id/download", h.DownloadVariant)
 
-	protected := library.Group("", AuthRequired(deps.Auth))
-	protected.Post("/rescan", h.RescanCatalog)
+	protected := library.Group("", AuthenticatedRequired, AdminRequired)
+	adminLimiter := limiter.New(limiter.Config{
+		Max:        deps.Config.HTTP.AdminRateLimit.Max,
+		Expiration: deps.Config.HTTP.AdminRateLimit.Window,
+		LimitReached: func(c fiber.Ctx) error {
+			return sendError(c, fiber.StatusTooManyRequests, "too many administrative requests")
+		},
+	})
+	protected.Post("/rescan", adminLimiter, h.RescanCatalog)
 	protected.Post("/melodies/:id/variants", h.UploadVariant)
 	protected.Delete("/melodies/:id", h.DeleteMelody)
 	protected.Patch("/variants/:id", h.UpdateVariant)
@@ -97,7 +122,7 @@ func NewServer(deps ServerDeps) *fiber.App {
 	protected.Patch("/tags/:id", h.UpdateTag)
 	protected.Delete("/tags/:id", h.DeleteTag)
 
-	app.Get("/api/*", h.GetGroupByDynamicPath)
+	app.Get("/api/*", OptionalAuth(deps.Auth, deps.DB), VisibilityScope, h.GetGroupByDynamicPath)
 
 	return app
 }

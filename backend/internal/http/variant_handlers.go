@@ -1,12 +1,13 @@
 package httpapi
 
 import (
-	"strconv"
-	"strings"
+	"errors"
 
 	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
+	"shuuen-backend/internal/catalog"
 	"shuuen-backend/internal/model"
 	"shuuen-backend/internal/storage"
 )
@@ -20,8 +21,12 @@ func (h *Handler) ListVariants(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	if err := h.db.First(&model.Melody{}, melodyID).Error; err != nil {
+	var melody model.Melody
+	if err := h.db.Preload("Group").First(&melody, melodyID).Error; err != nil {
 		return notFoundOrError(c, err, "melody not found")
+	}
+	if !canViewMelody(c, melody) {
+		return sendError(c, fiber.StatusNotFound, "melody not found")
 	}
 
 	var rows []model.FileVariant
@@ -38,8 +43,11 @@ func (h *Handler) GetVariant(c fiber.Ctx) error {
 	}
 
 	var variant model.FileVariant
-	if err := h.db.Preload("Melody").First(&variant, id).Error; err != nil {
+	if err := h.db.Preload("Melody.Group").First(&variant, id).Error; err != nil {
 		return notFoundOrError(c, err, "variant not found")
+	}
+	if !canViewMelody(c, variant.Melody) {
+		return sendError(c, fiber.StatusNotFound, "variant not found")
 	}
 	return sendData(c, fiber.StatusOK, variant)
 }
@@ -73,13 +81,41 @@ func (h *Handler) UploadVariant(c fiber.Ctx) error {
 		return sendError(c, fiber.StatusBadRequest, err.Error())
 	}
 
-	if _, err := h.catalog.Scan(c.Context()); err != nil {
-		_ = h.storage.Delete(stored.StoragePath)
-		return err
-	}
-
 	var variant model.FileVariant
-	if err := h.db.Where("storage_path = ?", stored.StoragePath).First(&variant).Error; err != nil {
+	err = h.db.WithContext(c.Context()).Transaction(func(tx *gorm.DB) error {
+		var lockedMelody model.Melody
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&lockedMelody, melody.ID).Error; err != nil {
+			return err
+		}
+		var activeVariants int64
+		if err := tx.Model(&model.FileVariant{}).Where("melody_id = ?", melody.ID).Count(&activeVariants).Error; err != nil {
+			return err
+		}
+		err := tx.Unscoped().Where("storage_path = ?", stored.StoragePath).First(&variant).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			variant = model.FileVariant{StoragePath: stored.StoragePath}
+		}
+		variant.MelodyID = melody.ID
+		variant.Format = format
+		variant.OriginalName = stored.OriginalName
+		variant.StoredName = stored.StoredName
+		variant.MimeType = stored.MimeType
+		variant.SizeBytes = stored.SizeBytes
+		variant.FileModTime = stored.FileModTime
+		variant.ChecksumSHA = stored.ChecksumSHA
+		variant.IsPrimary = activeVariants == 0
+		variant.ScanID = "upload"
+		variant.DeletedAt = gorm.DeletedAt{}
+		if variant.ID == 0 {
+			return tx.Create(&variant).Error
+		}
+		return tx.Unscoped().Save(&variant).Error
+	})
+	if err != nil {
+		_ = h.storage.Delete(stored.StoragePath)
 		return err
 	}
 	return sendData(c, fiber.StatusCreated, variant)
@@ -100,8 +136,11 @@ func (h *Handler) UpdateVariant(c fiber.Ctx) error {
 	}
 
 	var variant model.FileVariant
-	if err := h.db.First(&variant, id).Error; err != nil {
+	if err := h.db.Preload("Melody.Group").First(&variant, id).Error; err != nil {
 		return notFoundOrError(c, err, "variant not found")
+	}
+	if !canViewMelody(c, variant.Melody) {
+		return sendError(c, fiber.StatusNotFound, "variant not found")
 	}
 
 	if req.IsPrimary == nil {
@@ -157,10 +196,15 @@ func (h *Handler) DeleteVariant(c fiber.Ctx) error {
 		return notFoundOrError(c, err, "variant not found")
 	}
 
-	if err := h.storage.Delete(variant.StoragePath); err != nil {
+	pending, err := h.storage.StageDelete(variant.StoragePath)
+	if err != nil {
 		return err
 	}
 	if err := h.db.Delete(&variant).Error; err != nil {
+		_ = pending.Rollback()
+		return err
+	}
+	if err := pending.Commit(); err != nil {
 		return err
 	}
 	return c.SendStatus(fiber.StatusNoContent)
@@ -169,19 +213,14 @@ func (h *Handler) DeleteVariant(c fiber.Ctx) error {
 func (h *Handler) RescanCatalog(c fiber.Ctx) error {
 	result, err := h.catalog.Scan(c.Context())
 	if err != nil {
+		if errors.Is(err, catalog.ErrScanInProgress) {
+			return sendError(c, fiber.StatusConflict, err.Error())
+		}
 		return err
 	}
 	return sendData(c, fiber.StatusOK, result)
 }
 
-func parseFormBool(value string, fallback bool) bool {
-	trimmed := strings.TrimSpace(value)
-	if trimmed == "" {
-		return fallback
-	}
-	parsed, err := strconv.ParseBool(trimmed)
-	if err != nil {
-		return fallback
-	}
-	return parsed
+func canViewMelody(c fiber.Ctx, melody model.Melody) bool {
+	return includePrivate(c) || (melody.IsPublic && melody.Group.IsPublic)
 }

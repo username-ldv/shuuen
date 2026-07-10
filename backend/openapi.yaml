@@ -1,0 +1,504 @@
+openapi: 3.1.0
+info:
+  title: Shuuen Backend API
+  version: 1.0.0
+  license:
+    name: The Supreme Mandate of the Void 1.2
+  description: >-
+    Public catalog reads and role-aware account access. Catalog mutations require
+    an administrator bearer token. Private reads additionally require
+    include_private=true.
+servers:
+  - url: http://localhost:9999
+security: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+    Offset:
+      name: offset
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+    IncludePrivate:
+      name: include_private
+      in: query
+      description: Requires an administrator bearer token when true.
+      schema: { type: boolean, default: false }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        details: {}
+    ListMeta:
+      type: object
+      required: [limit, offset, total]
+      properties:
+        limit: { type: integer }
+        offset: { type: integer }
+        total: { type: integer, format: int64 }
+    User:
+      type: object
+      required: [id, username, display_name, role, created_at, updated_at]
+      properties:
+        id: { type: integer }
+        username: { type: string }
+        display_name: { type: string }
+        role: { type: string, enum: [user, admin] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    Tag:
+      type: object
+      required: [id, name, slug, color]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        slug: { type: string }
+        color: { type: string }
+    LibraryGroup:
+      type: object
+      required: [id, path, name, slug, sort_order, is_public]
+      properties:
+        id: { type: integer }
+        parent_id: { type: [integer, 'null'] }
+        path: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string }
+        sort_order: { type: integer }
+        is_public: { type: boolean }
+        tags:
+          type: array
+          items: { $ref: '#/components/schemas/Tag' }
+    FileVariant:
+      type: object
+      required: [id, melody_id, format, original_name, storage_path, size_bytes, checksum_sha256, is_primary]
+      properties:
+        id: { type: integer }
+        melody_id: { type: integer }
+        format: { type: string, enum: [midi, musicxml] }
+        original_name: { type: string }
+        stored_name: { type: string }
+        storage_path: { type: string }
+        mime_type: { type: string }
+        size_bytes: { type: integer, format: int64 }
+        checksum_sha256: { type: string }
+        is_primary: { type: boolean }
+    Melody:
+      type: object
+      required: [id, group_id, source_path, file_stem, title, slug, sort_order, is_public]
+      properties:
+        id: { type: integer }
+        group_id: { type: integer }
+        source_path: { type: string }
+        file_stem: { type: string }
+        title: { type: string }
+        slug: { type: string }
+        description: { type: string }
+        composer: { type: string }
+        difficulty: { type: string }
+        sort_order: { type: integer }
+        is_public: { type: boolean }
+        tags:
+          type: array
+          items: { $ref: '#/components/schemas/Tag' }
+        variants:
+          type: array
+          items: { $ref: '#/components/schemas/FileVariant' }
+    AuthRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string, pattern: '^[A-Za-z0-9_]{3,20}$' }
+        password: { type: string, minLength: 8, maxLength: 72 }
+        display_name: { type: string, maxLength: 160 }
+    AuthResult:
+      type: object
+      required: [user, access_token, token_type, expires_at]
+      properties:
+        user: { $ref: '#/components/schemas/User' }
+        access_token: { type: string }
+        token_type: { type: string, const: Bearer }
+        expires_at: { type: string, format: date-time }
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Insufficient role or private scope
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+paths:
+  /healthz:
+    get:
+      summary: Readiness check for database and storage
+      responses:
+        '200': { description: Healthy }
+        '503': { description: Database or storage unavailable }
+  /api/v1/auth/register:
+    post:
+      summary: Register an ordinary user when registration is enabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AuthRequest' }
+      responses:
+        '201':
+          description: Registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { data: { $ref: '#/components/schemas/AuthResult' } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Username already registered }
+        '429': { description: Rate limit exceeded }
+  /api/v1/auth/login:
+    post:
+      summary: Log in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AuthRequest' }
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { data: { $ref: '#/components/schemas/AuthResult' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { description: Rate limit exceeded }
+  /api/v1/auth/me:
+    get:
+      summary: Current user
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Current user }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/auth/password:
+    post:
+      summary: Change password and revoke previously issued tokens
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password: { type: string, maxLength: 72 }
+                new_password: { type: string, minLength: 8, maxLength: 72 }
+      responses:
+        '200':
+          description: Password changed and replacement token issued
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/library/groups:
+    get:
+      summary: List groups
+      security: [{}, { bearerAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Offset' }
+        - { $ref: '#/components/parameters/IncludePrivate' }
+        - name: parent_id
+          in: query
+          schema: { type: integer }
+        - name: parent_path
+          in: query
+          schema: { type: string }
+        - name: path_prefix
+          in: query
+          schema: { type: string }
+        - name: q
+          in: query
+          schema: { type: string }
+      responses:
+        '200': { description: Group page }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/v1/library/groups/{id}:
+    get:
+      summary: Get a group and a bounded melody page
+      security: [{}, { bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Offset' }
+        - { $ref: '#/components/parameters/IncludePrivate' }
+        - name: recursive
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200': { description: Group tree response }
+        '404': { description: Group not found or private }
+  /api/v1/library/path/{groupPath}:
+    get:
+      summary: Get a group by filesystem-relative path
+      security: [{}, { bearerAuth: [] }]
+      parameters:
+        - name: groupPath
+          in: path
+          required: true
+          schema: { type: string }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Offset' }
+        - { $ref: '#/components/parameters/IncludePrivate' }
+        - name: recursive
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200': { description: Group tree response }
+        '404': { description: Group not found or private }
+  /api/v1/library/melodies:
+    get:
+      summary: List melodies
+      security: [{}, { bearerAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Offset' }
+        - { $ref: '#/components/parameters/IncludePrivate' }
+        - name: group_id
+          in: query
+          schema: { type: integer }
+        - name: group_path
+          in: query
+          schema: { type: string }
+        - name: recursive
+          in: query
+          schema: { type: boolean }
+        - name: tag
+          in: query
+          schema: { type: string }
+        - name: format
+          in: query
+          schema: { type: string, enum: [midi, musicxml] }
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: sort
+          in: query
+          schema: { type: string }
+      responses:
+        '200': { description: Melody page }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/v1/library/tags:
+    get:
+      summary: List tags
+      parameters:
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Offset' }
+        - name: q
+          in: query
+          schema: { type: string }
+      responses:
+        '200': { description: Tag page }
+    post:
+      summary: Create a tag
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 80 }
+                slug: { type: string, maxLength: 100 }
+                color: { type: string, maxLength: 24 }
+      responses:
+        '201': { description: Created tag }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Name or slug already exists }
+  /api/v1/library/tags/{id}:
+    get:
+      summary: Get a tag
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Tag }
+        '404': { description: Tag not found }
+    patch:
+      summary: Update a tag
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 80 }
+                slug: { type: string, maxLength: 100 }
+                color: { type: string, maxLength: 24 }
+      responses:
+        '200': { description: Updated tag }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Name or slug already exists }
+    delete:
+      summary: Delete a tag
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204': { description: Deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/v1/library/melodies/{id}:
+    get:
+      summary: Get a melody
+      security: [{}, { bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - { $ref: '#/components/parameters/IncludePrivate' }
+      responses:
+        '200': { description: Melody }
+        '404': { description: Melody not found or private }
+    delete:
+      summary: Delete a melody and its files
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204': { description: Deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/v1/library/melodies/{id}/variants:
+    get:
+      summary: List variants for a visible melody
+      security: [{}, { bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - { $ref: '#/components/parameters/IncludePrivate' }
+      responses:
+        '200': { description: Variants }
+    post:
+      summary: Upload a variant
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                format: { type: string, enum: [midi, musicxml] }
+                file: { type: string, format: binary }
+      responses:
+        '201': { description: Variant created }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/v1/library/variants/{id}:
+    get:
+      summary: Get variant metadata
+      security: [{}, { bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - { $ref: '#/components/parameters/IncludePrivate' }
+      responses:
+        '200': { description: Variant }
+        '404': { description: Variant not found or private }
+    patch:
+      summary: Change primary status
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: { is_primary: { type: boolean } }
+      responses:
+        '200': { description: Updated variant }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    delete:
+      summary: Delete a variant and its file
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204': { description: Deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/v1/library/variants/{id}/download:
+    get:
+      summary: Download a visible variant
+      security: [{}, { bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - { $ref: '#/components/parameters/IncludePrivate' }
+      responses:
+        '200':
+          description: File content
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '404': { description: Variant not found or private }
+  /api/v1/library/rescan:
+    post:
+      summary: Reconcile the filesystem catalog
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Scan result }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: A scan is already running }
+        '429': { description: Administrative rate limit exceeded }

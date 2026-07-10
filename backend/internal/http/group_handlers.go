@@ -10,9 +10,10 @@ import (
 )
 
 type groupTreeResponse struct {
-	Group    model.LibraryGroup   `json:"group"`
-	Children []model.LibraryGroup `json:"children"`
-	Melodies []model.Melody       `json:"melodies"`
+	Group        model.LibraryGroup   `json:"group"`
+	Children     []model.LibraryGroup `json:"children"`
+	Melodies     []model.Melody       `json:"melodies"`
+	MelodiesMeta listMeta             `json:"melodies_meta"`
 }
 
 func (h *Handler) ListGroups(c fiber.Ctx) error {
@@ -21,6 +22,13 @@ func (h *Handler) ListGroups(c fiber.Ctx) error {
 	var total int64
 
 	query := h.db.Model(&model.LibraryGroup{}).Preload("Tags")
+	if !includePrivate(c) {
+		query = query.Where("is_public = ?", true)
+	} else if value, err := parseOptionalBool(c, "public"); err != nil {
+		return sendError(c, fiber.StatusBadRequest, err.Error())
+	} else if value != nil {
+		query = query.Where("is_public = ?", *value)
+	}
 	if parentID := parseQueryInt(c, "parent_id", -1); parentID >= 0 {
 		if parentID == 0 {
 			query = query.Where("parent_id IS NULL")
@@ -30,16 +38,21 @@ func (h *Handler) ListGroups(c fiber.Ctx) error {
 	}
 	if parentPath := cleanURLPath(c.Query("parent_path")); parentPath != "" || strings.TrimSpace(c.Query("parent_path")) != "" {
 		var parent model.LibraryGroup
-		if err := h.db.Where("path = ?", parentPath).First(&parent).Error; err != nil {
+		parentQuery := h.db.Where("path = ?", parentPath)
+		if !includePrivate(c) {
+			parentQuery = parentQuery.Where("is_public = ?", true)
+		}
+		if err := parentQuery.First(&parent).Error; err != nil {
 			return notFoundOrError(c, err, "parent group not found")
 		}
 		query = query.Where("parent_id = ?", parent.ID)
 	}
 	if prefix := cleanURLPath(c.Query("path_prefix")); prefix != "" {
-		query = query.Where("path = ? OR path LIKE ?", prefix, prefix+"/%")
+		query = query.Where("path = ? OR path LIKE ? ESCAPE '\\'", prefix, descendantPattern(prefix))
 	}
 	if q := strings.TrimSpace(c.Query("q")); q != "" {
-		query = query.Where("LOWER(name) LIKE ? OR LOWER(path) LIKE ?", "%"+strings.ToLower(q)+"%", "%"+strings.ToLower(q)+"%")
+		needle := containsPattern(strings.ToLower(q))
+		query = query.Where("LOWER(name) LIKE ? ESCAPE '\\' OR LOWER(path) LIKE ? ESCAPE '\\'", needle, needle)
 	}
 
 	if err := query.Count(&total).Error; err != nil {
@@ -58,7 +71,11 @@ func (h *Handler) GetGroup(c fiber.Ctx) error {
 	}
 
 	var group model.LibraryGroup
-	if err := h.db.Preload("Parent").Preload("Tags").First(&group, id).Error; err != nil {
+	query := h.db.Preload("Parent").Preload("Tags")
+	if !includePrivate(c) {
+		query = query.Where("is_public = ?", true)
+	}
+	if err := query.First(&group, id).Error; err != nil {
 		return notFoundOrError(c, err, "group not found")
 	}
 	return h.sendGroupTree(c, group, parseBoolQuery(c, "recursive", false))
@@ -84,7 +101,11 @@ func (h *Handler) GetGroupByDynamicPath(c fiber.Ctx) error {
 func (h *Handler) getGroupByPath(c fiber.Ctx, rawPath string) error {
 	groupPath := cleanURLPath(rawPath)
 	var group model.LibraryGroup
-	if err := h.db.Preload("Parent").Preload("Tags").Where("path = ?", groupPath).First(&group).Error; err != nil {
+	query := h.db.Preload("Parent").Preload("Tags").Where("path = ?", groupPath)
+	if !includePrivate(c) {
+		query = query.Where("is_public = ?", true)
+	}
+	if err := query.First(&group).Error; err != nil {
 		return notFoundOrError(c, err, "group not found")
 	}
 	return h.sendGroupTree(c, group, parseBoolQuery(c, "recursive", false))
@@ -92,37 +113,51 @@ func (h *Handler) getGroupByPath(c fiber.Ctx, rawPath string) error {
 
 func (h *Handler) sendGroupTree(c fiber.Ctx, group model.LibraryGroup, recursive bool) error {
 	var children []model.LibraryGroup
-	if err := h.db.Preload("Tags").
-		Where("parent_id = ?", group.ID).
+	childrenQuery := h.db.Preload("Tags").Where("parent_id = ?", group.ID)
+	if !includePrivate(c) {
+		childrenQuery = childrenQuery.Where("is_public = ?", true)
+	}
+	if err := childrenQuery.
 		Order("sort_order asc, name asc").
 		Find(&children).Error; err != nil {
 		return err
 	}
 
 	var melodies []model.Melody
-	melodyQuery := h.db.Preload("Tags").Preload("Variants").Preload("Group").
-		Order("sort_order asc, title asc")
+	limit, offset := parsePagination(c)
+	melodyQuery := h.db.Model(&model.Melody{}).
+		Preload("Tags").Preload("Variants").Preload("Group").
+		Joins("JOIN library_groups ON library_groups.id = melodies.group_id").
+		Where("library_groups.deleted_at IS NULL")
+	if !includePrivate(c) {
+		melodyQuery = melodyQuery.Where("melodies.is_public = ? AND library_groups.is_public = ?", true, true)
+	}
 	if recursive {
 		if group.Path == "" {
-			melodyQuery = melodyQuery.Joins("JOIN library_groups ON library_groups.id = melodies.group_id")
+			// The root group includes every visible descendant.
 		} else {
-			melodyQuery = melodyQuery.Joins("JOIN library_groups ON library_groups.id = melodies.group_id").
-				Where("library_groups.path = ? OR library_groups.path LIKE ?", group.Path, group.Path+"/%")
+			melodyQuery = melodyQuery.Where("library_groups.path = ? OR library_groups.path LIKE ? ESCAPE '\\'", group.Path, descendantPattern(group.Path))
 		}
 	} else {
-		melodyQuery = melodyQuery.Where("group_id = ?", group.ID)
+		melodyQuery = melodyQuery.Where("melodies.group_id = ?", group.ID)
 	}
 
-	if err := melodyQuery.Find(&melodies).Error; err != nil {
+	var total int64
+	if err := melodyQuery.Distinct("melodies.id").Count(&total).Error; err != nil {
+		return err
+	}
+	if err := melodyQuery.
+		Select("melodies.*").
+		Order("melodies.sort_order asc, melodies.title asc, melodies.id asc").
+		Limit(limit).Offset(offset).
+		Find(&melodies).Error; err != nil {
 		return err
 	}
 
-	if !recursive && len(children) == 0 && len(melodies) == 0 {
-		// Keep empty folders visible; callers can distinguish an empty group from a missing path.
-		return sendData(c, fiber.StatusOK, groupTreeResponse{Group: group, Children: children, Melodies: melodies})
-	}
-
-	return sendData(c, fiber.StatusOK, groupTreeResponse{Group: group, Children: children, Melodies: melodies})
+	return sendData(c, fiber.StatusOK, groupTreeResponse{
+		Group: group, Children: children, Melodies: melodies,
+		MelodiesMeta: listMeta{Limit: limit, Offset: offset, Total: total},
+	})
 }
 
 func withGroupPathFilter(query *gorm.DB, groupPath string, recursive bool) *gorm.DB {
@@ -130,9 +165,8 @@ func withGroupPathFilter(query *gorm.DB, groupPath string, recursive bool) *gorm
 	if groupPath == "" {
 		return query
 	}
-	query = query.Joins("JOIN library_groups ON library_groups.id = melodies.group_id")
 	if recursive {
-		return query.Where("library_groups.path = ? OR library_groups.path LIKE ?", groupPath, groupPath+"/%")
+		return query.Where("library_groups.path = ? OR library_groups.path LIKE ? ESCAPE '\\'", groupPath, descendantPattern(groupPath))
 	}
 	return query.Where("library_groups.path = ?", groupPath)
 }

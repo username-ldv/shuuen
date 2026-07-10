@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -13,7 +14,9 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
+	"unicode/utf8"
 
 	"gorm.io/gorm"
 
@@ -28,6 +31,21 @@ type Scanner struct {
 	root                 string
 	folderMetadataFile   string
 	melodyMetadataSuffix string
+	scanMu               sync.Mutex
+}
+
+var ErrScanInProgress = errors.New("catalog scan is already in progress")
+
+type scanState struct {
+	groups          map[string]model.LibraryGroup
+	melodies        map[string]model.Melody
+	variants        map[string]model.FileVariant
+	primaryByMelody map[uint]uint
+	primaryAssigned map[uint]bool
+	demotedVariants map[uint]bool
+	groupIDs        []uint
+	melodyIDs       []uint
+	variantIDs      []uint
 }
 
 type Result struct {
@@ -42,7 +60,8 @@ type FolderMetadata struct {
 	Description string   `json:"description"`
 	Tags        []string `json:"tags"`
 	SortOrder   int      `json:"sort_order"`
-	IsActive    *bool    `json:"is_active"`
+	IsPublic    *bool    `json:"is_public"`
+	IsActive    *bool    `json:"is_active,omitempty"`
 }
 
 type MelodyMetadata struct {
@@ -52,7 +71,8 @@ type MelodyMetadata struct {
 	Difficulty    string   `json:"difficulty"`
 	Tags          []string `json:"tags"`
 	SortOrder     int      `json:"sort_order"`
-	IsPublished   *bool    `json:"is_published"`
+	IsPublic      *bool    `json:"is_public"`
+	IsPublished   *bool    `json:"is_published,omitempty"`
 	PrimaryFormat string   `json:"primary_format"`
 }
 
@@ -73,14 +93,23 @@ func NewScanner(db *gorm.DB, cfg config.CatalogConfig) (*Scanner, error) {
 }
 
 func (s *Scanner) Scan(ctx context.Context) (Result, error) {
+	if !s.scanMu.TryLock() {
+		return Result{}, ErrScanInProgress
+	}
+	defer s.scanMu.Unlock()
+
 	scanID := time.Now().UTC().Format("20060102150405.000000000")
 	result := Result{ScanID: scanID}
-	seenMelodies := map[string]struct{}{}
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		state, err := loadScanState(tx)
+		if err != nil {
+			return err
+		}
 		groupsByPath := map[string]model.LibraryGroup{}
+		indexedMelodies := map[string]model.Melody{}
 
-		err := filepath.WalkDir(s.root, func(absPath string, entry fs.DirEntry, walkErr error) error {
+		err = filepath.WalkDir(s.root, func(absPath string, entry fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
 				return walkErr
 			}
@@ -92,7 +121,7 @@ func (s *Scanner) Scan(ctx context.Context) (Result, error) {
 				if entry.Name() != "." && strings.HasPrefix(entry.Name(), ".") && absPath != s.root {
 					return filepath.SkipDir
 				}
-				group, err := s.indexGroup(tx, absPath, groupsByPath, scanID)
+				group, err := s.indexGroup(tx, absPath, groupsByPath, state, scanID)
 				if err != nil {
 					return err
 				}
@@ -105,21 +134,30 @@ func (s *Scanner) Scan(ctx context.Context) (Result, error) {
 				return nil
 			}
 
-			melody, _, err := s.indexMelodyForFile(tx, absPath, groupsByPath, scanID)
+			melody, created, err := s.indexMelodyForFile(tx, absPath, groupsByPath, indexedMelodies, state, scanID)
 			if err != nil {
 				return err
 			}
-			if _, ok := seenMelodies[melody.SourcePath]; !ok {
+			if created {
 				result.MelodiesFound++
-				seenMelodies[melody.SourcePath] = struct{}{}
 			}
-			if err := s.indexVariant(tx, absPath, melody, scanID); err != nil {
+			if err := s.indexVariant(tx, absPath, melody, state, scanID); err != nil {
 				return err
 			}
 			result.VariantsFound++
 			return nil
 		})
 		if err != nil {
+			return err
+		}
+		result.MelodiesFound = len(indexedMelodies)
+		if err := markSeen(tx, &model.LibraryGroup{}, state.groupIDs, scanID); err != nil {
+			return err
+		}
+		if err := markSeen(tx, &model.Melody{}, state.melodyIDs, scanID); err != nil {
+			return err
+		}
+		if err := markSeen(tx, &model.FileVariant{}, state.variantIDs, scanID); err != nil {
 			return err
 		}
 
@@ -132,14 +170,17 @@ func (s *Scanner) Scan(ctx context.Context) (Result, error) {
 	return result, nil
 }
 
-func (s *Scanner) indexGroup(tx *gorm.DB, absPath string, groupsByPath map[string]model.LibraryGroup, scanID string) (model.LibraryGroup, error) {
+func (s *Scanner) indexGroup(tx *gorm.DB, absPath string, groupsByPath map[string]model.LibraryGroup, state *scanState, scanID string) (model.LibraryGroup, error) {
 	relPath, err := relativeSlashPath(s.root, absPath)
 	if err != nil {
 		return model.LibraryGroup{}, err
 	}
 
 	meta := FolderMetadata{}
-	_ = readJSON(filepath.Join(absPath, s.folderMetadataFile), &meta)
+	metadataPath := filepath.Join(absPath, s.folderMetadataFile)
+	if err := readJSON(metadataPath, &meta); err != nil {
+		return model.LibraryGroup{}, fmt.Errorf("read group metadata %s: %w", metadataPath, err)
+	}
 
 	name := strings.TrimSpace(meta.Name)
 	if name == "" {
@@ -149,10 +190,7 @@ func (s *Scanner) indexGroup(tx *gorm.DB, absPath string, groupsByPath map[strin
 			name = filepath.Base(absPath)
 		}
 	}
-	isActive := true
-	if meta.IsActive != nil {
-		isActive = *meta.IsActive
-	}
+	isPublic := publicValue(meta.IsPublic, meta.IsActive)
 
 	var parentID *uint
 	if relPath != "" {
@@ -165,15 +203,16 @@ func (s *Scanner) indexGroup(tx *gorm.DB, absPath string, groupsByPath map[strin
 			return model.LibraryGroup{}, errors.New("parent group was not indexed")
 		}
 		parentID = &parent.ID
+		if !parent.IsPublic {
+			isPublic = false
+		}
 	}
 
-	group := model.LibraryGroup{}
-	err = tx.Where("path = ?", relPath).First(&group).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	group, found := state.groups[relPath]
+	if !found {
 		group = model.LibraryGroup{Path: relPath}
-	} else if err != nil {
-		return model.LibraryGroup{}, err
 	}
+	previous := group
 
 	group.ParentID = parentID
 	group.Name = name
@@ -183,15 +222,23 @@ func (s *Scanner) indexGroup(tx *gorm.DB, absPath string, groupsByPath map[strin
 	}
 	group.Description = strings.TrimSpace(meta.Description)
 	group.SortOrder = meta.SortOrder
-	group.IsActive = isActive
+	group.IsPublic = isPublic
 	group.ScanID = scanID
+	group.DeletedAt = gorm.DeletedAt{}
+	if err := validateLengths(
+		lengthField{"group path", group.Path, 640},
+		lengthField{"group name", group.Name, 180},
+		lengthField{"group slug", group.Slug, 220},
+	); err != nil {
+		return model.LibraryGroup{}, err
+	}
 
 	if group.ID == 0 {
-		if err := tx.Create(&group).Error; err != nil {
+		if err := tx.Omit("Parent", "Tags", "Children", "Melodies").Create(&group).Error; err != nil {
 			return model.LibraryGroup{}, err
 		}
-	} else {
-		if err := tx.Save(&group).Error; err != nil {
+	} else if previous.DeletedAt.Valid || !sameGroup(previous, group) {
+		if err := tx.Unscoped().Omit("Parent", "Tags", "Children", "Melodies").Save(&group).Error; err != nil {
 			return model.LibraryGroup{}, err
 		}
 	}
@@ -200,14 +247,19 @@ func (s *Scanner) indexGroup(tx *gorm.DB, absPath string, groupsByPath map[strin
 	if err != nil {
 		return model.LibraryGroup{}, err
 	}
-	if err := tx.Model(&group).Association("Tags").Replace(tags); err != nil {
-		return model.LibraryGroup{}, err
+	if previous.ID == 0 || previous.DeletedAt.Valid || !sameTagSet(previous.Tags, tags) {
+		if err := tx.Model(&group).Association("Tags").Replace(tags); err != nil {
+			return model.LibraryGroup{}, err
+		}
 	}
+	group.Tags = tags
+	state.groups[relPath] = group
+	state.groupIDs = append(state.groupIDs, group.ID)
 
 	return group, nil
 }
 
-func (s *Scanner) indexMelodyForFile(tx *gorm.DB, absPath string, groupsByPath map[string]model.LibraryGroup, scanID string) (model.Melody, bool, error) {
+func (s *Scanner) indexMelodyForFile(tx *gorm.DB, absPath string, groupsByPath map[string]model.LibraryGroup, indexed map[string]model.Melody, state *scanState, scanID string) (model.Melody, bool, error) {
 	dir := filepath.Dir(absPath)
 	groupPath, err := relativeSlashPath(s.root, dir)
 	if err != nil {
@@ -225,28 +277,31 @@ func (s *Scanner) indexMelodyForFile(tx *gorm.DB, absPath string, groupsByPath m
 	if groupPath == "" {
 		sourcePath = fileStem
 	}
+	if melody, ok := indexed[sourcePath]; ok {
+		return melody, false, nil
+	}
 
 	meta := MelodyMetadata{}
-	_ = readJSON(filepath.Join(dir, fileStem+s.melodyMetadataSuffix), &meta)
+	metadataPath := filepath.Join(dir, fileStem+s.melodyMetadataSuffix)
+	if err := readJSON(metadataPath, &meta); err != nil {
+		return model.Melody{}, false, fmt.Errorf("read melody metadata %s: %w", metadataPath, err)
+	}
 
 	title := strings.TrimSpace(meta.Title)
 	if title == "" {
 		title = humanTitle(fileStem)
 	}
-	isPublished := true
-	if meta.IsPublished != nil {
-		isPublished = *meta.IsPublished
+	isPublic := publicValue(meta.IsPublic, meta.IsPublished)
+	if !group.IsPublic {
+		isPublic = false
 	}
 
-	melody := model.Melody{}
-	err = tx.Where("source_path = ?", sourcePath).First(&melody).Error
-	created := false
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	melody, found := state.melodies[sourcePath]
+	created := !found
+	if !found {
 		melody = model.Melody{SourcePath: sourcePath}
-		created = true
-	} else if err != nil {
-		return model.Melody{}, false, err
 	}
+	previous := melody
 
 	melody.GroupID = group.ID
 	melody.FileStem = fileStem
@@ -256,15 +311,26 @@ func (s *Scanner) indexMelodyForFile(tx *gorm.DB, absPath string, groupsByPath m
 	melody.Composer = strings.TrimSpace(meta.Composer)
 	melody.Difficulty = strings.TrimSpace(meta.Difficulty)
 	melody.SortOrder = meta.SortOrder
-	melody.IsPublished = isPublished
+	melody.IsPublic = isPublic
 	melody.ScanID = scanID
+	melody.DeletedAt = gorm.DeletedAt{}
+	if err := validateLengths(
+		lengthField{"melody source path", melody.SourcePath, 640},
+		lengthField{"melody file stem", melody.FileStem, 260},
+		lengthField{"melody title", melody.Title, 220},
+		lengthField{"melody slug", melody.Slug, 260},
+		lengthField{"melody composer", melody.Composer, 180},
+		lengthField{"melody difficulty", melody.Difficulty, 80},
+	); err != nil {
+		return model.Melody{}, false, err
+	}
 
 	if melody.ID == 0 {
-		if err := tx.Create(&melody).Error; err != nil {
+		if err := tx.Omit("Group", "Tags", "Variants").Create(&melody).Error; err != nil {
 			return model.Melody{}, false, err
 		}
-	} else {
-		if err := tx.Save(&melody).Error; err != nil {
+	} else if previous.DeletedAt.Valid || !sameMelody(previous, melody) {
+		if err := tx.Unscoped().Omit("Group", "Tags", "Variants").Save(&melody).Error; err != nil {
 			return model.Melody{}, false, err
 		}
 	}
@@ -273,14 +339,20 @@ func (s *Scanner) indexMelodyForFile(tx *gorm.DB, absPath string, groupsByPath m
 	if err != nil {
 		return model.Melody{}, false, err
 	}
-	if err := tx.Model(&melody).Association("Tags").Replace(tags); err != nil {
-		return model.Melody{}, false, err
+	if previous.ID == 0 || previous.DeletedAt.Valid || !sameTagSet(previous.Tags, tags) {
+		if err := tx.Model(&melody).Association("Tags").Replace(tags); err != nil {
+			return model.Melody{}, false, err
+		}
 	}
+	melody.Tags = tags
+	state.melodies[sourcePath] = melody
+	state.melodyIDs = append(state.melodyIDs, melody.ID)
+	indexed[sourcePath] = melody
 
 	return melody, created, nil
 }
 
-func (s *Scanner) indexVariant(tx *gorm.DB, absPath string, melody model.Melody, scanID string) error {
+func (s *Scanner) indexVariant(tx *gorm.DB, absPath string, melody model.Melody, state *scanState, scanID string) error {
 	relPath, err := relativeSlashPath(s.root, absPath)
 	if err != nil {
 		return err
@@ -289,21 +361,34 @@ func (s *Scanner) indexVariant(tx *gorm.DB, absPath string, melody model.Melody,
 	fileName := filepath.Base(absPath)
 	ext := filepath.Ext(fileName)
 	format := storage.InferFormat(fileName)
-	checksum, size, err := checksumAndSize(absPath)
+	info, err := os.Stat(absPath)
 	if err != nil {
 		return err
 	}
 
 	meta := MelodyMetadata{}
-	_ = readJSON(filepath.Join(filepath.Dir(absPath), melody.FileStem+s.melodyMetadataSuffix), &meta)
+	metadataPath := filepath.Join(filepath.Dir(absPath), melody.FileStem+s.melodyMetadataSuffix)
+	if err := readJSON(metadataPath, &meta); err != nil {
+		return fmt.Errorf("read melody metadata %s: %w", metadataPath, err)
+	}
 	primaryFormat := storage.NormalizeFormat(meta.PrimaryFormat)
 
-	variant := model.FileVariant{}
-	err = tx.Where("storage_path = ?", relPath).First(&variant).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	variant, found := state.variants[relPath]
+	if !found {
 		variant = model.FileVariant{StoragePath: relPath}
-	} else if err != nil {
-		return err
+	}
+	previous := variant
+	if state.demotedVariants[variant.ID] {
+		variant.IsPrimary = false
+	}
+	checksum := variant.ChecksumSHA
+	size := info.Size()
+	modTime := info.ModTime().UnixNano()
+	if variant.ID == 0 || checksum == "" || variant.SizeBytes != size || variant.FileModTime != modTime {
+		checksum, size, err = checksumAndSize(absPath)
+		if err != nil {
+			return err
+		}
 	}
 
 	variant.MelodyID = melody.ID
@@ -312,14 +397,133 @@ func (s *Scanner) indexVariant(tx *gorm.DB, absPath string, melody model.Melody,
 	variant.StoredName = fileName
 	variant.MimeType = storage.MimeTypeForExtension(ext)
 	variant.SizeBytes = size
+	variant.FileModTime = modTime
 	variant.ChecksumSHA = checksum
-	variant.IsPrimary = primaryFormat == format || (primaryFormat == "" && format == "midi")
+	wantsPrimary := primaryFormat == format || primaryFormat == ""
+	if wantsPrimary && !state.primaryAssigned[melody.ID] {
+		state.primaryAssigned[melody.ID] = true
+		oldPrimaryID := state.primaryByMelody[melody.ID]
+		if oldPrimaryID != 0 && oldPrimaryID != variant.ID {
+			if err := tx.Model(&model.FileVariant{}).Where("id = ?", oldPrimaryID).Update("is_primary", false).Error; err != nil {
+				return err
+			}
+			state.demotedVariants[oldPrimaryID] = true
+		}
+		variant.IsPrimary = true
+	}
 	variant.ScanID = scanID
+	variant.DeletedAt = gorm.DeletedAt{}
+	if err := validateLengths(
+		lengthField{"variant storage path", variant.StoragePath, 640},
+		lengthField{"variant original name", variant.OriginalName, 255},
+		lengthField{"variant stored name", variant.StoredName, 255},
+		lengthField{"variant MIME type", variant.MimeType, 120},
+	); err != nil {
+		return err
+	}
 
 	if variant.ID == 0 {
-		return tx.Create(&variant).Error
+		if err := tx.Omit("Melody").Create(&variant).Error; err != nil {
+			return err
+		}
+	} else if previous.DeletedAt.Valid || !sameVariant(previous, variant) {
+		if err := tx.Unscoped().Omit("Melody").Save(&variant).Error; err != nil {
+			return err
+		}
 	}
-	return tx.Save(&variant).Error
+	state.variants[relPath] = variant
+	state.variantIDs = append(state.variantIDs, variant.ID)
+	return nil
+}
+
+func loadScanState(tx *gorm.DB) (*scanState, error) {
+	state := &scanState{
+		groups:          map[string]model.LibraryGroup{},
+		melodies:        map[string]model.Melody{},
+		variants:        map[string]model.FileVariant{},
+		primaryByMelody: map[uint]uint{},
+		primaryAssigned: map[uint]bool{},
+		demotedVariants: map[uint]bool{},
+	}
+	var groups []model.LibraryGroup
+	if err := tx.Unscoped().Preload("Tags").Find(&groups).Error; err != nil {
+		return nil, err
+	}
+	for _, group := range groups {
+		state.groups[group.Path] = group
+	}
+	var melodies []model.Melody
+	if err := tx.Unscoped().Preload("Tags").Find(&melodies).Error; err != nil {
+		return nil, err
+	}
+	for _, melody := range melodies {
+		state.melodies[melody.SourcePath] = melody
+	}
+	var variants []model.FileVariant
+	if err := tx.Unscoped().Find(&variants).Error; err != nil {
+		return nil, err
+	}
+	for _, variant := range variants {
+		state.variants[variant.StoragePath] = variant
+		if variant.IsPrimary && !variant.DeletedAt.Valid {
+			state.primaryByMelody[variant.MelodyID] = variant.ID
+		}
+	}
+	return state, nil
+}
+
+func markSeen(tx *gorm.DB, value any, ids []uint, scanID string) error {
+	const batchSize = 500
+	for start := 0; start < len(ids); start += batchSize {
+		end := min(start+batchSize, len(ids))
+		if err := tx.Unscoped().Model(value).Where("id IN ?", ids[start:end]).UpdateColumn("scan_id", scanID).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func sameGroup(left model.LibraryGroup, right model.LibraryGroup) bool {
+	return sameUintPointer(left.ParentID, right.ParentID) &&
+		left.Path == right.Path && left.Name == right.Name && left.Slug == right.Slug &&
+		left.Description == right.Description && left.SortOrder == right.SortOrder && left.IsPublic == right.IsPublic
+}
+
+func sameMelody(left model.Melody, right model.Melody) bool {
+	return left.GroupID == right.GroupID && left.SourcePath == right.SourcePath && left.FileStem == right.FileStem &&
+		left.Title == right.Title && left.Slug == right.Slug && left.Description == right.Description &&
+		left.Composer == right.Composer && left.Difficulty == right.Difficulty && left.SortOrder == right.SortOrder &&
+		left.IsPublic == right.IsPublic
+}
+
+func sameVariant(left model.FileVariant, right model.FileVariant) bool {
+	return left.MelodyID == right.MelodyID && left.Format == right.Format && left.OriginalName == right.OriginalName &&
+		left.StoredName == right.StoredName && left.StoragePath == right.StoragePath && left.MimeType == right.MimeType &&
+		left.SizeBytes == right.SizeBytes && left.FileModTime == right.FileModTime && left.ChecksumSHA == right.ChecksumSHA &&
+		left.IsPrimary == right.IsPrimary
+}
+
+func sameUintPointer(left *uint, right *uint) bool {
+	if left == nil || right == nil {
+		return left == nil && right == nil
+	}
+	return *left == *right
+}
+
+func sameTagSet(left []model.Tag, right []model.Tag) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	ids := make(map[uint]struct{}, len(left))
+	for _, tag := range left {
+		ids[tag.ID] = struct{}{}
+	}
+	for _, tag := range right {
+		if _, ok := ids[tag.ID]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func cleanupStale(tx *gorm.DB, scanID string) error {
@@ -372,13 +576,16 @@ func loadOrCreateTags(tx *gorm.DB, names []string) ([]model.Tag, error) {
 			continue
 		}
 		slug := util.Slugify(name)
+		if err := validateLengths(lengthField{"tag name", name, 80}, lengthField{"tag slug", slug, 100}); err != nil {
+			return nil, err
+		}
 		if _, ok := seen[slug]; ok {
 			continue
 		}
 		seen[slug] = struct{}{}
 
 		tag := model.Tag{}
-		err := tx.Where("slug = ?", slug).First(&tag).Error
+		err := tx.Unscoped().Where("slug = ?", slug).First(&tag).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			tag = model.Tag{Name: name, Slug: slug}
 			if err := tx.Create(&tag).Error; err != nil {
@@ -386,6 +593,13 @@ func loadOrCreateTags(tx *gorm.DB, names []string) ([]model.Tag, error) {
 			}
 		} else if err != nil {
 			return nil, err
+		}
+		if tag.DeletedAt.Valid {
+			tag.DeletedAt = gorm.DeletedAt{}
+			tag.Name = name
+			if err := tx.Unscoped().Save(&tag).Error; err != nil {
+				return nil, err
+			}
 		}
 		tags = append(tags, tag)
 	}
@@ -402,7 +616,19 @@ func readJSON(file string, out any) error {
 		return err
 	}
 	defer handle.Close()
-	return json.NewDecoder(handle).Decode(out)
+	decoder := json.NewDecoder(handle)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(out); err != nil {
+		return err
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return errors.New("metadata must contain exactly one JSON value")
+		}
+		return err
+	}
+	return nil
 }
 
 func relativeSlashPath(root string, absolute string) (string, error) {
@@ -439,4 +665,29 @@ func humanTitle(stem string) string {
 		return "Untitled"
 	}
 	return stem
+}
+
+func publicValue(current *bool, legacy *bool) bool {
+	if current != nil {
+		return *current
+	}
+	if legacy != nil {
+		return *legacy
+	}
+	return true
+}
+
+type lengthField struct {
+	name  string
+	value string
+	max   int
+}
+
+func validateLengths(fields ...lengthField) error {
+	for _, field := range fields {
+		if utf8.RuneCountInString(field.value) > field.max {
+			return fmt.Errorf("%s exceeds %d characters", field.name, field.max)
+		}
+	}
+	return nil
 }

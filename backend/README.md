@@ -1,14 +1,15 @@
 # Shuuen Backend
 
-Production-minded Go backend foundation for a Fiber v3 API with GORM, JWT auth, recursive filesystem-backed catalog indexing, and file retrieval.
+Go backend for a Fiber v3 API with GORM, role-aware JWT authentication, recursive filesystem-backed catalog indexing, and file retrieval. It is designed for a single application instance today while keeping storage and catalog responsibilities separable for a future multi-instance deployment.
 
 ## Stack
 
-- Go 1.25+ and Fiber v3.
+- Go 1.25 language baseline with the security-patched Go 1.26.5 toolchain, and Fiber v3.
 - GORM with SQLite for fast local development and Postgres for production.
 - JWT bearer auth with bcrypt password hashing.
 - Filesystem catalog under `DATA_ROOT`, indexed into the database on startup and on demand.
-- Soft deletes and timestamps on indexed resources, leaving a straightforward path for future user-data sync.
+- Versioned database migrations, query-oriented indexes, connection-pool configuration, and soft-delete restoration for indexed resources.
+- Incremental reconciliation: unchanged files reuse cached checksums and unchanged catalog rows are not rewritten.
 
 ## Project Layout
 
@@ -93,7 +94,7 @@ Folder metadata lives in `.shuuen.json`:
   "description": "Beginner melodies",
   "tags": ["grade-1", "textbook"],
   "sort_order": 10,
-  "is_active": true
+  "is_public": true
 }
 ```
 
@@ -106,12 +107,14 @@ Melody metadata lives beside the file as `<stem>.shuuen.json`:
   "difficulty": "easy",
   "tags": ["warmup", "midi"],
   "sort_order": 1,
-  "is_published": true,
+  "is_public": true,
   "primary_format": "musicxml"
 }
 ```
 
-If metadata is missing, names are derived from folders and file names. Tags from metadata are created automatically during scans.
+If metadata is missing, names are derived from folders and file names. Resources are public by default. A private group makes all of its descendant groups and melodies private. The legacy `is_active` and `is_published` metadata keys are still read for compatibility, but new metadata should use only `is_public`.
+
+Malformed metadata fails the scan instead of silently falling back to public visibility.
 
 ## Authentication
 
@@ -120,10 +123,13 @@ Main endpoints:
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
 - `GET /api/v1/auth/me`
+- `POST /api/v1/auth/password`
 
 Register and login with a `username` of 3-20 letters, numbers, or underscores
 plus a password. Username display casing is preserved, but login and uniqueness
 checks are case-insensitive.
+
+Changing a password returns a replacement access token and immediately revokes all previously issued tokens for that account.
 
 Send authenticated mutation requests with:
 
@@ -131,11 +137,26 @@ Send authenticated mutation requests with:
 Authorization: Bearer <access_token>
 ```
 
-For production, set `APP_ENV=production` and use a strong `JWT_SECRET` of at least 32 characters.
+Catalog mutations require an administrator account. Ordinary registered users cannot upload, delete, change tags, or rescan the catalog.
+
+To create the initial administrator, set these for one startup:
+
+```text
+BOOTSTRAP_ADMIN_USERNAME=admin
+BOOTSTRAP_ADMIN_PASSWORD=<8-72 byte password>
+```
+
+Remove the bootstrap password from the environment after the account exists. Re-running bootstrap never resets an existing administrator password and refuses to promote an existing ordinary account.
+
+Registration defaults to enabled in development/test and disabled in other environments. Override it with `REGISTRATION_ENABLED`. Authentication and administrative operations have separate configurable per-IP rate limits.
+
+For production or staging, use a `JWT_SECRET` of at least 32 characters and configure explicit `CORS_ALLOWED_ORIGINS`; wildcard CORS is rejected outside development/test.
 
 ## API Surface
 
-Public catalog endpoints:
+The machine-readable contract is in [`openapi.yaml`](openapi.yaml).
+
+Public catalog endpoints return only public resources:
 
 - `GET /api/:group_path...`
 - `GET /api/v1/library/path/:group_path...`
@@ -149,7 +170,7 @@ Public catalog endpoints:
 - `GET /api/v1/library/variants/:id`
 - `GET /api/v1/library/variants/:id/download`
 
-Authenticated catalog endpoints:
+Administrator-only catalog endpoints:
 
 - `POST /api/v1/library/rescan`
 - `POST /api/v1/library/melodies/:id/variants`
@@ -166,11 +187,13 @@ List endpoints support `limit` and `offset`. Melody listing supports:
 - `tag_id`
 - `tag`
 - `format=midi|musicxml`
-- `published=true|false`
+- `public=true|false` with administrator `include_private=true`
 - `q`
 - `sort=title|-title|path|-path|created_at|-created_at|updated_at|-updated_at|sort_order`
 
-Group path responses include the group, direct child groups, and melodies in that group. Add `?recursive=true` to include melodies from descendant folders.
+Group path responses include the group, direct child groups, and a bounded page of melodies. Add `?recursive=true` to include melodies from descendant folders. Melody pages use the same `limit`/`offset` parameters and include `melodies_meta`.
+
+Administrators can inspect private resources by sending their bearer token and adding `?include_private=true`. Without that explicit scope, administrator reads have the same visibility as public reads.
 
 ## Uploading Variants
 
@@ -183,16 +206,40 @@ curl -X POST http://localhost:9999/api/v1/library/melodies/1/variants \
   -F "file=@warmup.mid"
 ```
 
-The uploaded file is written into the melody's source folder and the catalog is rescanned.
+The uploaded file is written into the melody's source folder and its variant row is created directly. Uploads do not trigger a whole-library rescan. Deletes first stage files under the hidden `.trash` directory, so database failures can roll back the filesystem change; interrupted staged deletes are reconciled on the next startup.
 
 Allowed formats:
 
 - MIDI: `.mid`, `.midi`
 - MusicXML: `.musicxml`, `.mxl`, `.xml`
 
-## Future Sync Direction
+## Catalog Reconciliation and Large Libraries
 
-The current foundation leaves user-data sync out of the first pass, but indexed models already include `created_at`, `updated_at`, and soft-delete state. A practical next step is adding per-user syncable tables with monotonically increasing revision numbers and endpoints such as:
+The startup scan is enabled by default and can be disabled with `CATALOG_SCAN_ON_STARTUP=false` once the database is already indexed. An administrator can run reconciliation with `POST /api/v1/library/rescan`.
+
+Reconciliation is serialized within the process, loads existing catalog identities in batches, hashes only new or changed files using size and modification time, and updates scan markers in batches. This keeps repeat scans practical for libraries with tens of thousands of files. The database remains the fast read index; the filesystem remains the current source of catalog file content.
+
+SQLite connections use WAL mode, foreign keys, a busy timeout, and a small read-capable pool by default. Postgres and SQLite pool sizes/lifetimes are configurable. Recursive API responses are bounded and default list ordering is backed by composite indexes.
+
+For a future multi-machine deployment, replace local file storage with shared/object storage and run reconciliation in a separately leased worker. That distributed coordination is intentionally not implemented yet.
+
+## Migrations and Production Checklist
+
+Migrations are versioned in the `schema_migrations` table and are safe to rerun. Existing `is_active`/`is_published` database columns are migrated to `is_public` while preserving values. Keep `AUTO_MIGRATE=true` during normal deployments so pending versioned migrations run before scanning.
+
+Before production:
+
+- Set `APP_ENV=production`, a strong `JWT_SECRET`, and explicit CORS origins.
+- Bootstrap an administrator, then remove the bootstrap password.
+- Decide whether public registration and startup scanning should be enabled.
+- Back up both the database and `DATA_ROOT` together.
+- Run the application behind TLS and monitor `/healthz`.
+
+The Docker image runs as a non-root user, excludes local data/secrets from its build context, and includes a health check. Docker Compose values are development-only and must not be reused as production secrets.
+
+## Future User-Data Sync
+
+User-data sync remains intentionally out of scope. Timestamps and catalog tombstones are useful groundwork, but a real sync protocol still needs stable public identifiers, per-user ownership, a monotonically increasing change log, conflict rules, and a tombstone-retention policy. A practical future API could include:
 
 - `GET /api/v1/sync/changes?since_revision=...`
 - `POST /api/v1/sync/push`
