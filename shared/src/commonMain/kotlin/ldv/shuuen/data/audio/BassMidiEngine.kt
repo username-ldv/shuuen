@@ -1,6 +1,7 @@
 package ldv.shuuen.data.audio
 
 import io.github.aakira.napier.Napier
+import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.first
 import ldv.shuuen.bass.Bass
 import ldv.shuuen.core.audio.engine.MidiEngine
@@ -20,6 +21,7 @@ class BassMidiEngine(
   private var soundFontHandle: Int = 0
   private var initialized: Boolean = false
   private val channelFineTuneCents = mutableMapOf<MidiChannel, Int>()
+  private val channelBendRange = mutableMapOf<MidiChannel, Int>()
 
   override suspend fun initialize(): MidiEngineStatus {
     if (initialized) return MidiEngineStatus.Ready
@@ -110,6 +112,25 @@ class BassMidiEngine(
     }.all { it }
   }
 
+  override fun setPitchBendRange(channel: MidiChannel, semitones: Int): Boolean {
+    if (!initialized) return false
+    val applied =
+      Bass.streamEvent(midiStreamHandle, channel.id, Bass.MIDI_EVENT_PITCHRANGE, semitones)
+    if (applied) channelBendRange[channel] = semitones
+    return applied
+  }
+
+  override fun setPitchBend(channel: MidiChannel, semitones: Double): Boolean {
+    if (!initialized) return false
+    val range = channelBendRange.getOrElse(channel) { DefaultBendRangeSemitones }
+    return Bass.streamEvent(
+      midiStreamHandle,
+      channel.id,
+      Bass.MIDI_EVENT_PITCH,
+      pitchWheelParam(semitones, range),
+    )
+  }
+
   override fun setPreset(channel: MidiChannel, preset: Preset): Boolean {
     if (midiStreamHandle == 0) return false
     val bankChanged =
@@ -150,6 +171,7 @@ class BassMidiEngine(
     Bass.free()
     initialized = false
     channelFineTuneCents.clear()
+    channelBendRange.clear()
   }
 
   private companion object {
@@ -157,9 +179,18 @@ class BassMidiEngine(
     const val DeviceBufferMs = 40
     const val StreamUpdatePeriodMs = 10
     const val LiveStreamBufferMs = 30
+
+    /** Pitch wheel reach when no MIDI_EVENT_PITCHRANGE was sent, per the MIDI standard. */
+    const val DefaultBendRangeSemitones = 2
   }
 }
 
 /** MIDI_EVENT_FINETUNE parameter for a cent offset: 0 = -100¢, 8192 = in tune, 16383 = +100¢. */
 internal fun fineTuneParam(cents: Int): Int =
   (8192 + cents * 8192 / 100).coerceIn(0, 16383)
+
+/** MIDI_EVENT_PITCH parameter for a bend of [semitones] on a wheel spanning ±[rangeSemitones]. */
+internal fun pitchWheelParam(semitones: Double, rangeSemitones: Int): Int {
+  val deflection = (semitones / rangeSemitones).coerceIn(-1.0, 1.0)
+  return (8192 + deflection * 8191).roundToInt().coerceIn(0, 16383)
+}

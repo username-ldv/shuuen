@@ -10,6 +10,8 @@ sealed interface AppRoute : NavKey {
 
   @Serializable data object FreePlay : AppRoute
 
+  @Serializable data object PitchSlide : AppRoute
+
   @Serializable data object Settings : AppRoute
 
   @Serializable data class Context(

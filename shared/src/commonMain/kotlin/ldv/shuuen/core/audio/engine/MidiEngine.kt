@@ -38,6 +38,15 @@ interface MidiEngine {
 
   fun stopAll(channel: MidiChannel? = null): Boolean
 
+  /** Sets how far the channel's pitch wheel reaches at full deflection (MIDI RPN 0). */
+  fun setPitchBendRange(channel: MidiChannel, semitones: Int): Boolean
+
+  /**
+   * Moves the channel's pitch wheel to [semitones] away from center, bending any sounding notes
+   * in real time. Clamped to the range configured by [setPitchBendRange] (±2 by MIDI default).
+   */
+  fun setPitchBend(channel: MidiChannel, semitones: Double): Boolean
+
   fun setPreset(channel: MidiChannel, preset: Preset): Boolean
 
   fun setVolume(channel: MidiChannel, value: Int): Boolean

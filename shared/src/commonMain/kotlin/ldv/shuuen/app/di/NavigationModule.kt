@@ -4,6 +4,7 @@ import ldv.shuuen.features.settings.settingsNavigationModule
 import ldv.shuuen.features.context.contextNavigationModule
 import ldv.shuuen.features.free_play.freePlayNavigationModule
 import ldv.shuuen.features.main.mainMenuNavigationModule
+import ldv.shuuen.features.pitch_slide.pitchSlideNavigationModule
 import ldv.shuuen.features.training.chords.chordsTrainingNavigationModule
 import ldv.shuuen.features.training.level_end.LevelCompleteViewModel
 import ldv.shuuen.features.training.melodies.melodiesTrainingNavigationModule
@@ -18,6 +19,7 @@ val navigationModule = module {
   includes(
       mainMenuNavigationModule,
       freePlayNavigationModule,
+      pitchSlideNavigationModule,
       settingsNavigationModule,
       contextNavigationModule,
       singlesTrainingNavigationModule,

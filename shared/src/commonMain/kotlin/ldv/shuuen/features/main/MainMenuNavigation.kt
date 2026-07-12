@@ -15,6 +15,7 @@ val mainMenuNavigationModule = module {
         onOpenMelodies = { navigator.add(AppRoute.MelodiesLevelSelect) },
         onOpenSingles = { navigator.add(AppRoute.SinglesLevelSelect) },
         onOpenChords = { navigator.add(AppRoute.ChordsLevelSelect) },
+        onOpenPitchSlide = { navigator.add(AppRoute.PitchSlide) },
         onOpenSettings = { navigator.add(AppRoute.Settings) },
     )
   }

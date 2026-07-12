@@ -37,6 +37,10 @@ object Bass {
     get() = BassConstants.MIDI_EVENT_EXPRESSION
   val MIDI_EVENT_FINETUNE: Int
     get() = BassConstants.MIDI_EVENT_FINETUNE
+  val MIDI_EVENT_PITCH: Int
+    get() = BassConstants.MIDI_EVENT_PITCH
+  val MIDI_EVENT_PITCHRANGE: Int
+    get() = BassConstants.MIDI_EVENT_PITCHRANGE
   val MIDI_EVENT_REVERB_LEVEL: Int
     get() = BassConstants.MIDI_EVENT_REVERB_LEVEL
   val MIDI_EVENT_CHORUS_LEVEL: Int

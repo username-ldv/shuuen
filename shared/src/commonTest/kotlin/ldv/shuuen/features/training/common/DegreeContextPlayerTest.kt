@@ -169,6 +169,10 @@ private class FakeMidiEngine : MidiEngine {
 
   override fun stopAll(channel: MidiChannel?): Boolean = true
 
+  override fun setPitchBendRange(channel: MidiChannel, semitones: Int): Boolean = true
+
+  override fun setPitchBend(channel: MidiChannel, semitones: Double): Boolean = true
+
   override fun setPreset(channel: MidiChannel, preset: Preset): Boolean = true
 
   override fun setVolume(channel: MidiChannel, value: Int): Boolean = true

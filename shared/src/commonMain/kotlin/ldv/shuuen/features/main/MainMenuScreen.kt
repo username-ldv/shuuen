@@ -20,6 +20,7 @@ import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.ModeNight
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Waves
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -51,6 +52,7 @@ fun MainMenuScreen(
   onOpenMelodies: () -> Unit,
   onOpenSingles: () -> Unit,
   onOpenChords: () -> Unit,
+  onOpenPitchSlide: () -> Unit,
   onOpenSettings: () -> Unit,
 ) {
   StaticScreenFrame(
@@ -77,7 +79,7 @@ fun MainMenuScreen(
           contentScale = ContentScale.Fit,
         )
         Text(
-          text = "The last ear trainer app you need.",
+          text = "The last ear trainer app you'll need.",
           color = ShuuenUi.Muted,
           style = MaterialTheme.typography.titleSmall,
           textAlign = TextAlign.Center,
@@ -91,6 +93,7 @@ fun MainMenuScreen(
       onOpenSingles = onOpenSingles,
       onOpenMelodies = onOpenMelodies,
       onOpenChords = onOpenChords,
+      onOpenPitchSlide = onOpenPitchSlide,
       onOpenFreePlay = onOpenFreePlay,
     )
 
@@ -154,6 +157,7 @@ private fun ExerciseList(
   onOpenSingles: () -> Unit,
   onOpenMelodies: () -> Unit,
   onOpenChords: () -> Unit,
+  onOpenPitchSlide: () -> Unit,
   onOpenFreePlay: () -> Unit,
 ) {
   SurfaceCard(
@@ -185,6 +189,13 @@ private fun ExerciseList(
       title = "PROGRESSIONS",
       subtitle = "Identify chord progressions.",
       icon = Icons.Rounded.BarChart,
+    )
+    Hairline(Modifier.padding(horizontal = 18.dp))
+    ExerciseRow(
+      title = "PITCH SLIDE",
+      subtitle = "Recreate a tone by sliding the pitch (PoC).",
+      icon = Icons.Rounded.Waves,
+      onClick = onOpenPitchSlide,
     )
     Hairline(Modifier.padding(horizontal = 18.dp))
     ExerciseRow(

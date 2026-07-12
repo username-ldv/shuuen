@@ -19,6 +19,8 @@ internal actual object BassConstants {
   actual val MIDI_EVENT_VOLUME: Int = 12
   actual val MIDI_EVENT_EXPRESSION: Int = 14
   actual val MIDI_EVENT_FINETUNE: Int = 7
+  actual val MIDI_EVENT_PITCH: Int = 4
+  actual val MIDI_EVENT_PITCHRANGE: Int = 5
   actual val MIDI_EVENT_REVERB_LEVEL: Int = 36
   actual val MIDI_EVENT_CHORUS_LEVEL: Int = 41
   actual val MIDI_EVENT_CHORUS_MACRO: Int = 31
