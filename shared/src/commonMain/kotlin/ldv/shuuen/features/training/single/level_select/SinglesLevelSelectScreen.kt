@@ -17,6 +17,7 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Keyboard
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -216,12 +217,15 @@ private fun LevelParameterRow(
     level: SinglesLevel,
     modifier: Modifier = Modifier,
 ) {
-  val items =
-      listOf(
-          (level.questionsNumber?.let { "$it questions" } ?: "Unlimited") to
-              Icons.AutoMirrored.Rounded.HelpOutline,
-          level.range.toPair().toList().joinToString(" - ") to Icons.Rounded.Keyboard,
-      )
+  val items = buildList {
+    add(
+        (level.questionsNumber?.let { "$it questions" } ?: "Unlimited") to
+            Icons.AutoMirrored.Rounded.HelpOutline
+    )
+    add(level.range.toPair().toList().joinToString(" - ") to Icons.Rounded.Keyboard)
+    val tune = level.levelConfig.tuneInconsistencyCents
+    if (tune > 0) add("±$tune¢ tune" to Icons.Rounded.Tune)
+  }
 
   LevelParametersFlow(items, modifier = modifier)
 }

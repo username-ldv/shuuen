@@ -23,6 +23,7 @@ import ldv.shuuen.features.training.domain.LevelSource
 import ldv.shuuen.features.training.domain.ScaleConfig
 import ldv.shuuen.features.training.single.domain.SinglesLevel
 import ldv.shuuen.features.training.common.asConfigDegreeStates
+import ldv.shuuen.features.training.common.components.TuneInconsistencyRange
 
 class SinglesSetupScreenViewModel(
     editLevelId: String,
@@ -87,12 +88,14 @@ class SinglesSetupScreenViewModel(
             is ScaleConfig.AbsoluteScaleConfig ->
                 LevelConfig.Singles.Absolute(
                     scales = listOf(scaleConfig),
+                    tuneInconsistencyCents = it.levelConfig.tuneInconsistencyCents,
                 )
 
             is ScaleConfig.RelativeScaleConfig ->
                 LevelConfig.Singles.Relative(
                     scaleConfig = scaleConfig,
                     rotateEveryQuestions = it.levelConfig.rotateEveryQuestions,
+                    tuneInconsistencyCents = it.levelConfig.tuneInconsistencyCents,
                 )
           }
       it.copy(levelConfig = levelConfig)
@@ -105,6 +108,18 @@ class SinglesSetupScreenViewModel(
           when (val config = it.levelConfig) {
             is LevelConfig.Singles.Absolute -> config.copy(rotateEveryQuestions = v)
             is LevelConfig.Singles.Relative -> config.copy(rotateEveryQuestions = v)
+          }
+      it.copy(levelConfig = levelConfig)
+    }
+  }
+
+  fun changeTuneInconsistency(v: Int) {
+    val cents = v.coerceIn(TuneInconsistencyRange)
+    _singlesLevelState.update {
+      val levelConfig =
+          when (val config = it.levelConfig) {
+            is LevelConfig.Singles.Absolute -> config.copy(tuneInconsistencyCents = cents)
+            is LevelConfig.Singles.Relative -> config.copy(tuneInconsistencyCents = cents)
           }
       it.copy(levelConfig = levelConfig)
     }

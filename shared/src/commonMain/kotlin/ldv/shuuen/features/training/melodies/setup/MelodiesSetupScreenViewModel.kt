@@ -26,6 +26,7 @@ import ldv.shuuen.core.music.generator.MelodyStyles
 import ldv.shuuen.core.music.toNoteRange
 import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.features.training.common.asConfigDegreeStates
+import ldv.shuuen.features.training.common.components.TuneInconsistencyRange
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.LevelSource
 import ldv.shuuen.features.training.domain.ScaleConfig
@@ -53,6 +54,8 @@ data class MelodiesSetupState(
   /** Move to a new random tonic every this many questions; null is off. Relative scales only. */
   val rotateEveryQuestions: Int? = 10,
   val tempo: Int = 96,
+  /** Each note plays randomly out of tune by up to ± this many cents; 0 is off. */
+  val tuneInconsistencyCents: Int = 0,
   /** Rhythm figures + note-picker weights of the generated melodies. */
   val melodyStyle: MelodyStyle = MelodyStyles.Default,
   val range: NoteRange = NoteRange(Note(Pitch.C, 2), Note(Pitch.C, 7)),
@@ -124,6 +127,10 @@ class MelodiesSetupScreenViewModel(
     _state.update { it.copy(tempo = v.coerceIn(TempoRange)) }
   }
 
+  fun changeTuneInconsistency(v: Int) {
+    _state.update { it.copy(tuneInconsistencyCents = v.coerceIn(TuneInconsistencyRange)) }
+  }
+
   fun changeMelodyStyle(style: MelodyStyle) {
     _state.update { it.copy(melodyStyle = style) }
   }
@@ -182,6 +189,7 @@ class MelodiesSetupScreenViewModel(
             questionsNumber = if (current.endlessNotes) null else current.questionsNumber,
             notesPerSequence = if (current.endlessNotes) null else current.notesPerSequence,
             tempo = current.tempo,
+            tuneInconsistencyCents = current.tuneInconsistencyCents,
             range = current.range,
             melodyStyle = current.melodyStyle,
             rotateEveryQuestions =
@@ -232,6 +240,7 @@ class MelodiesSetupScreenViewModel(
           endlessNotes = levelConfig.notesPerSequence == null,
           rotateEveryQuestions = levelConfig.rotateEveryQuestions,
           tempo = levelConfig.tempo,
+          tuneInconsistencyCents = levelConfig.tuneInconsistencyCents,
           melodyStyle = levelConfig.melodyStyle,
           range = levelConfig.range,
           loadedMidi = null,

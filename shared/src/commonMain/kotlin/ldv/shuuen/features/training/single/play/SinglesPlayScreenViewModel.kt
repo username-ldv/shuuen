@@ -218,7 +218,7 @@ class SinglesPlayScreenViewModel(
         if (sessionStartMark == null) sessionStartMark = TimeSource.Monotonic.markNow()
         questionStartMark = TimeSource.Monotonic.markNow()
         rootsPracticed += quizState.root
-        playNote(quizState.currentNote)
+        playNote(quizState.currentNote, quizState.detuneCents)
       }
     }
   }
@@ -280,9 +280,9 @@ class SinglesPlayScreenViewModel(
   }
 
   fun repeatNote() {
-    val note = quizzer?.quizState?.value?.currentNote ?: return
+    val quizState = quizzer?.quizState?.value ?: return
     replayCount += 1
-    playNote(note)
+    playNote(quizState.currentNote, quizState.detuneCents)
   }
 
   /** Ends the session before its natural end, saving whatever was answered so far. */
@@ -354,12 +354,12 @@ class SinglesPlayScreenViewModel(
    * repeat could let an earlier coroutine's stopNote land after a later note-on and cut it off —
    * both target the same MIDI note.
    */
-  private fun playNote(note: Note) {
+  private fun playNote(note: Note, detuneCents: Int = 0) {
     val previous = playNoteJob
     playNoteJob = viewModelScope.launch {
       previous?.cancelAndJoin()
       try {
-        midiEngine.playNote(note)
+        midiEngine.playNote(note, detuneCents = detuneCents)
         delay(playNoteDuration)
       } finally {
         midiEngine.stopNote(note)

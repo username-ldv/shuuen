@@ -4,6 +4,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.BufferOverflow
@@ -109,11 +110,57 @@ class MelodiesPlayScreenViewModelTest {
       assertEquals(listOf("play:C4", "stop:C4", "play:C4"), engine.events)
       advanceUntilIdle()
     }
+
+  @Test
+  fun playedNotesCarryDetunesWithinTheLevelsTuneInconsistency() = runTest(dispatcher) {
+    val engine = FakeMidiEngine()
+    MelodiesPlayScreenViewModel(
+        levelId = TestLevelId,
+        levelRepository =
+          FakeMelodiesRepository(
+            finiteRandomLevel(notesPerSequence = 12, tuneInconsistencyCents = 30)
+          ),
+        midiEngine = engine,
+        player = FakeMidiFilePlayer(),
+        settingsRepository = FakeSettingsRepository(),
+        trainingSessionRepository = FakeTrainingSessionRepository(),
+        midiKeyboardInput = FakeMidiKeyboardInput(),
+      )
+    advanceUntilIdle()
+
+    assertEquals(12, engine.playedDetunes.size)
+    assertTrue(
+      engine.playedDetunes.all { it in -30..30 },
+      "all detunes within ±30, got ${engine.playedDetunes}",
+    )
+    // 12 independent draws from -30..30 are all zero with odds ~2e-22.
+    assertTrue(engine.playedDetunes.any { it != 0 }, "the detune actually varies")
+  }
+
+  @Test
+  fun playedNotesAreInTuneWhenTheSettingIsOff() = runTest(dispatcher) {
+    val engine = FakeMidiEngine()
+    MelodiesPlayScreenViewModel(
+        levelId = TestLevelId,
+        levelRepository = FakeMelodiesRepository(finiteRandomLevel(notesPerSequence = 6)),
+        midiEngine = engine,
+        player = FakeMidiFilePlayer(),
+        settingsRepository = FakeSettingsRepository(),
+        trainingSessionRepository = FakeTrainingSessionRepository(),
+        midiKeyboardInput = FakeMidiKeyboardInput(),
+      )
+    advanceUntilIdle()
+
+    assertEquals(List(6) { 0 }, engine.playedDetunes)
+  }
 }
 
 private const val TestLevelId = "level"
 
-private fun finiteRandomLevel(notesPerSequence: Int): MelodiesLevel =
+private fun finiteRandomLevel(
+  notesPerSequence: Int,
+  tuneInconsistencyCents: Int = 0,
+): MelodiesLevel =
   MelodiesLevel(
     id = TestLevelId,
     name = "Finite",
@@ -129,6 +176,7 @@ private fun finiteRandomLevel(notesPerSequence: Int): MelodiesLevel =
         notesPerSequence = notesPerSequence,
         tempo = 60_000,
         range = NoteRange(Note(Pitch.C, 4), Note(Pitch.C, 4)),
+        tuneInconsistencyCents = tuneInconsistencyCents,
       ),
     context = null,
     source = LevelSource.User,
@@ -202,12 +250,14 @@ private class FakeMidiKeyboardInput : MidiKeyboardInput {
 private class FakeMidiEngine : MidiEngine {
   val events = mutableListOf<String>()
   val playedNotes = mutableListOf<Pair<Note, MidiChannel>>()
+  val playedDetunes = mutableListOf<Int>()
 
   override suspend fun initialize(): MidiEngineStatus = MidiEngineStatus.Ready
 
-  override fun playNote(note: Note, channel: MidiChannel, velocity: Int): Boolean {
+  override fun playNote(note: Note, channel: MidiChannel, velocity: Int, detuneCents: Int): Boolean {
     events += "play:${note.name}"
     playedNotes += note to channel
+    playedDetunes += detuneCents
     return true
   }
 

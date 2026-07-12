@@ -1,5 +1,6 @@
 package ldv.shuuen.data.audio
 
+import io.github.aakira.napier.Napier
 import kotlinx.coroutines.flow.first
 import ldv.shuuen.bass.Bass
 import ldv.shuuen.core.audio.engine.MidiEngine
@@ -18,6 +19,7 @@ class BassMidiEngine(
   private var midiStreamHandle: Int = 0
   private var soundFontHandle: Int = 0
   private var initialized: Boolean = false
+  private val channelFineTuneCents = mutableMapOf<MidiChannel, Int>()
 
   override suspend fun initialize(): MidiEngineStatus {
     if (initialized) return MidiEngineStatus.Ready
@@ -64,14 +66,24 @@ class BassMidiEngine(
     }
   }
 
-  override fun playNote(note: Note, channel: MidiChannel, velocity: Int): Boolean {
+  override fun playNote(note: Note, channel: MidiChannel, velocity: Int, detuneCents: Int): Boolean {
     if (!initialized) return false
+    Napier.v { "Detune note cents: $detuneCents" }
+    applyFineTune(channel, detuneCents)
     return Bass.streamEvent(
       streamHandle = midiStreamHandle,
       channel = channel.id,
       event = Bass.MIDI_EVENT_NOTE,
       parameter = Bass.makeWord(note.midiIndex, velocity.coerceIn(0, 127)),
     )
+  }
+
+  /** Sets the channel's fine tuning (MIDI RPN 1) ahead of a note-on, skipped when unchanged. */
+  private fun applyFineTune(channel: MidiChannel, cents: Int) {
+    if (channelFineTuneCents.getOrElse(channel) { 0 } == cents) return
+    val applied =
+      Bass.streamEvent(midiStreamHandle, channel.id, Bass.MIDI_EVENT_FINETUNE, fineTuneParam(cents))
+    if (applied) channelFineTuneCents[channel] = cents
   }
 
   override fun stopNote(note: Note, channel: MidiChannel): Boolean {
@@ -137,6 +149,7 @@ class BassMidiEngine(
     Bass.freePlugins()
     Bass.free()
     initialized = false
+    channelFineTuneCents.clear()
   }
 
   private companion object {
@@ -146,3 +159,7 @@ class BassMidiEngine(
     const val LiveStreamBufferMs = 30
   }
 }
+
+/** MIDI_EVENT_FINETUNE parameter for a cent offset: 0 = -100¢, 8192 = in tune, 16383 = +100¢. */
+internal fun fineTuneParam(cents: Int): Int =
+  (8192 + cents * 8192 / 100).coerceIn(0, 16383)

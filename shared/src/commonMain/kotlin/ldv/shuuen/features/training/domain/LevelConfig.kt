@@ -18,14 +18,24 @@ sealed interface LevelConfig {
   sealed interface Singles {
     val rotateEveryQuestions: Int?
 
+    /**
+     * Each quiz note plays randomly out of tune by up to ± this many cents; 0 is off. The default
+     * matches levels saved before the setting existed: perfectly tuned notes.
+     */
+    val tuneInconsistencyCents: Int
+
     @Serializable
     data class Absolute(
-      val scales: List<ScaleConfig.AbsoluteScaleConfig>, override val rotateEveryQuestions: Int? = null
+      val scales: List<ScaleConfig.AbsoluteScaleConfig>,
+      override val rotateEveryQuestions: Int? = null,
+      override val tuneInconsistencyCents: Int = 0,
     ) : Singles
 
     @Serializable
     data class Relative(
-      val scaleConfig: ScaleConfig.RelativeScaleConfig, override val rotateEveryQuestions: Int? = 10
+      val scaleConfig: ScaleConfig.RelativeScaleConfig,
+      override val rotateEveryQuestions: Int? = 10,
+      override val tuneInconsistencyCents: Int = 0,
     ) : Singles
   }
 
@@ -78,6 +88,8 @@ sealed interface LevelConfig {
        * matches levels saved before styles existed: uniformly random quarter notes.
        */
       val melodyStyle: MelodyStyle = MelodyStyles.Default,
+      /** Each note plays randomly out of tune by up to ± this many cents; 0 is off. */
+      val tuneInconsistencyCents: Int = 0,
     ) : Melodies
 
     /**

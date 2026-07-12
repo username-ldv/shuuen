@@ -543,8 +543,18 @@ class MelodiesPlayScreenViewModel(
         note = timed.note,
         tick = (startIndex + i).toLong(),
         durationQuarters = timed.value.quarters,
+        detuneCents = rollDetune(),
       )
     }
+
+  /**
+   * A fresh detune for a generated note: uniform within ± the level's tune inconsistency. Rolled
+   * once at generation and kept on the note, so rewinds replay the same detunes.
+   */
+  private fun rollDetune(): Int {
+    val delta = randomConfig?.tuneInconsistencyCents ?: 0
+    return if (delta > 0) Random.nextInt(-delta, delta + 1) else 0
+  }
 
   /** Plays the current finite sequence at the level tempo, one note per its rhythm value. */
   private fun playSequence(startIndex: Int = 0) {
@@ -567,7 +577,7 @@ class MelodiesPlayScreenViewModel(
               val activeNote = ActivePlaybackNote(runId, melodyNote.note)
               activePlaybackNote = activeNote
               try {
-                midiEngine.playNote(melodyNote.note)
+                midiEngine.playNote(melodyNote.note, detuneCents = melodyNote.detuneCents)
                 delay(ofQuarters(melodyNote.durationQuarters))
               } finally {
                 stopActivePlaybackNote(activeNote)
@@ -722,7 +732,7 @@ class MelodiesPlayScreenViewModel(
               val activeNote = ActivePlaybackNote(runId, melodyNote.note)
               activePlaybackNote = activeNote
               try {
-                midiEngine.playNote(melodyNote.note)
+                midiEngine.playNote(melodyNote.note, detuneCents = melodyNote.detuneCents)
                 delay(ofQuarters(melodyNote.durationQuarters))
               } finally {
                 stopActivePlaybackNote(activeNote)

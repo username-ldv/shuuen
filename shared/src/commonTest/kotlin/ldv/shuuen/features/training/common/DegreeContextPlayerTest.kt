@@ -153,7 +153,7 @@ private class FakeMidiEngine : MidiEngine {
 
   override suspend fun initialize(): MidiEngineStatus = MidiEngineStatus.Ready
 
-  override fun playNote(note: Note, channel: MidiChannel, velocity: Int): Boolean {
+  override fun playNote(note: Note, channel: MidiChannel, velocity: Int, detuneCents: Int): Boolean {
     playedNotes += note to channel
     return true
   }

@@ -22,6 +22,7 @@ import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -266,6 +267,9 @@ private fun LevelParameterRow(
             add("$notesPerSequence-note sequences" to Icons.Rounded.MusicNote)
           }
           add("${config.tempo} BPM" to Icons.Rounded.Speed)
+          if (config.tuneInconsistencyCents > 0) {
+            add("±${config.tuneInconsistencyCents}¢ tune" to Icons.Rounded.Tune)
+          }
           add(config.melodyStyle.name to Icons.Rounded.Casino)
           add(config.range.toPair().toList().joinToString(" - ") to Icons.Rounded.Keyboard)
         }

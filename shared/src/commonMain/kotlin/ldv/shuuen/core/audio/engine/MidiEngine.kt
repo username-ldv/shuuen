@@ -8,10 +8,16 @@ import ldv.shuuen.core.music.Note
 interface MidiEngine {
   suspend fun initialize(): MidiEngineStatus
 
+  /**
+   * [detuneCents] plays the note out of tune by that many cents (±100 max). The offset applies to
+   * the whole channel until another note changes it, so it is passed per note-on rather than set
+   * separately — a caller that plays without it re-centers the channel.
+   */
   fun playNote(
     note: Note,
     channel: MidiChannel = MidiChannel.Notes,
     velocity: Int = 127,
+    detuneCents: Int = 0,
   ): Boolean
 
   fun stopNote(

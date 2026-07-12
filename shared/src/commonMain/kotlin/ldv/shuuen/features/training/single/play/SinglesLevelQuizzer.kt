@@ -28,6 +28,11 @@ data class QuizState(
   val incorrectAnswers: List<IncorrectSinglesAnswer>,
   /** Sharp/flat orientation chosen for [root]; re-decided whenever the root changes. */
   val accidentalType: ScaleAccidentalType,
+  /**
+   * Cents [currentNote] plays out of tune by, rolled per question within the level's tune
+   * inconsistency. Kept with the question so replays sound identical.
+   */
+  val detuneCents: Int = 0,
 )
 
 class SinglesLevelQuizzer(
@@ -76,9 +81,16 @@ class SinglesLevelQuizzer(
         incorrectAnswers = listOf(),
         questionsNumber = level.questionsNumber,
         accidentalType = accidentalTypeFor(root),
+        detuneCents = rollDetune(),
       )
     )
     quizState = _quizState.asStateFlow()
+  }
+
+  /** A fresh detune for the next note: uniform within ± the level's tune inconsistency. */
+  private fun rollDetune(): Int {
+    val delta = level.levelConfig.tuneInconsistencyCents
+    return if (delta > 0) random.nextInt(-delta, delta + 1) else 0
   }
 
   /** Sharp/flat orientation for [root], re-rolled (randomly for ambiguous keys) on each root change. */
@@ -114,6 +126,7 @@ class SinglesLevelQuizzer(
           currentQuestionNumber = nextQuestionNumber,
           currentNote = generator.next(),
           accidentalType = nextAccidentalType,
+          detuneCents = rollDetune(),
         )
       }
     } else {

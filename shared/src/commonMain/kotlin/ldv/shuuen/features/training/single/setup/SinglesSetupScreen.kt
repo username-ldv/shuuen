@@ -34,6 +34,7 @@ import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.music.NoteRow
 import ldv.shuuen.features.training.common.components.ScaleChooser
+import ldv.shuuen.features.training.common.components.TuneInconsistencySection
 
 @Composable
 fun SinglesSetupScreen(
@@ -119,6 +120,14 @@ fun SinglesSetupScreen(
       NoteRow(value = saveableScreenState.range.from) { viewModel.changeRangeStart(it) }
       NoteRow(value = saveableScreenState.range.to) { viewModel.changeRangeEnd(it) }
     }
+
+    Hairline()
+
+    TuneInconsistencySection(
+        label = "5 · TUNE INCONSISTENCY",
+        cents = levelConfig.tuneInconsistencyCents,
+        onChange = viewModel::changeTuneInconsistency,
+    )
 
     val scope = rememberCoroutineScope()
     PrimaryCta(

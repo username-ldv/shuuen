@@ -5,9 +5,15 @@ import ldv.shuuen.core.music.Note
 /**
  * A note within a loaded melody: the pitch plus its start position in MIDI ticks.
  * [durationQuarters] is the note's rhythm value in quarter-note beats; only generated (random)
- * melodies play by it — a MIDI file's own player keeps the file's real timing.
+ * melodies play by it — a MIDI file's own player keeps the file's real timing. [detuneCents]
+ * plays the note out of tune by that many cents; also generated melodies only.
  */
-data class MelodyNote(val note: Note, val tick: Long, val durationQuarters: Double = 1.0)
+data class MelodyNote(
+  val note: Note,
+  val tick: Long,
+  val durationQuarters: Double = 1.0,
+  val detuneCents: Int = 0,
+)
 
 /** The outcome of loading a MIDI file: its note-on sequence and total length. */
 data class LoadedMelody(

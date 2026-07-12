@@ -589,6 +589,9 @@ private fun parameterChips(level: CompletedLevel): List<Pair<ImageVector, String
           Icons.Rounded.Replay to
             (l.levelConfig.rotateEveryQuestions?.let { "Rotate every $it" } ?: "No rotation")
         )
+        if (l.levelConfig.tuneInconsistencyCents > 0) {
+          add(Icons.Rounded.Tune to "±${l.levelConfig.tuneInconsistencyCents}¢ tune")
+        }
         add(Icons.Rounded.Bookmark to sourceLabel(l.source))
       }
     }
@@ -609,6 +612,9 @@ private fun parameterChips(level: CompletedLevel): List<Pair<ImageVector, String
               add(Icons.Rounded.MusicNote to "$notesPerSequence-note sequences")
             }
             add(Icons.Rounded.Speed to "${config.tempo} BPM")
+            if (config.tuneInconsistencyCents > 0) {
+              add(Icons.Rounded.Tune to "±${config.tuneInconsistencyCents}¢ tune")
+            }
             add(Icons.Rounded.Casino to config.melodyStyle.name)
             add(Icons.Rounded.Keyboard to config.range.toPair().toList().joinToString(" - "))
             add(

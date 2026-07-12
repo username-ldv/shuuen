@@ -54,8 +54,10 @@ import ldv.shuuen.core.ui.components.SoftControl
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.music.generator.MelodyStyles
 import ldv.shuuen.core.ui.components.music.NoteRow
+import ldv.shuuen.features.training.common.components.NumberInputBox
 import ldv.shuuen.features.training.common.components.ScaleChooser
 import ldv.shuuen.features.training.common.components.StylePickerSheet
+import ldv.shuuen.features.training.common.components.TuneInconsistencySection
 import ldv.shuuen.features.training.domain.ScaleConfig
 
 @Composable
@@ -183,6 +185,12 @@ private fun RandomTrailingSections(
   NotesPerSequenceSection(state, viewModel)
   Hairline()
   TempoSection(state, viewModel)
+  Hairline()
+  TuneInconsistencySection(
+    label = "7 · TUNE INCONSISTENCY",
+    cents = state.tuneInconsistencyCents,
+    onChange = viewModel::changeTuneInconsistency,
+  )
   Hairline()
   RhythmSection(state, viewModel)
   Hairline()
@@ -416,7 +424,14 @@ private fun TempoSection(
   FlatSection(
     label = "6 · TEMPO",
     supporting = "Playback speed of the sequences.",
-    trailing = { TempoInputBox(state.tempo, viewModel::changeTempo) },
+    trailing = {
+      NumberInputBox(
+        value = state.tempo,
+        range = MelodiesSetupScreenViewModel.TempoRange,
+        suffix = "BPM",
+        onChange = viewModel::changeTempo,
+      )
+    },
   ) {
     Slider(
       value = state.tempo.toFloat(),
@@ -451,40 +466,6 @@ private fun TempoSection(
   }
 }
 
-@Composable
-private fun TempoInputBox(tempo: Int, onTempoChange: (Int) -> Unit) {
-  val tempoRange = MelodiesSetupScreenViewModel.TempoRange
-  // Recreated whenever the VM value changes (e.g. slider drags); incomplete input like "3" while
-  // typing "360" stays local until it becomes a valid tempo.
-  var text by remember(tempo) { mutableStateOf(tempo.toString()) }
-  SoftControl(modifier = Modifier.width(110.dp)) {
-    BasicTextField(
-      value = text,
-      onValueChange = { newText ->
-        text = newText
-        val value = newText.toIntOrNull() ?: return@BasicTextField
-        when {
-          value in tempoRange -> onTempoChange(value)
-          value > tempoRange.last -> onTempoChange(tempoRange.last)
-        }
-      },
-      textStyle =
-        MaterialTheme.typography.titleSmall.copy(
-          color = ShuuenUi.Text,
-          textAlign = TextAlign.End,
-        ),
-      singleLine = true,
-      cursorBrush = SolidColor(ShuuenUi.Text),
-      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-      modifier = Modifier.weight(1f),
-    )
-    Text(
-      "BPM",
-      color = ShuuenUi.Muted,
-      style = MaterialTheme.typography.titleSmall,
-    )
-  }
-}
 
 @Composable
 private fun RhythmSection(
@@ -493,7 +474,7 @@ private fun RhythmSection(
 ) {
   var showSheet by remember { mutableStateOf(false) }
   SetupNavRow(
-    label = "7 · RHYTHM",
+    label = "8 · RHYTHM",
     supporting = "${state.melodyStyle.name} · ${state.melodyStyle.tier.label}",
     onClick = { showSheet = true },
   ) {
@@ -527,7 +508,7 @@ private fun MelodyRangeSection(
   viewModel: MelodiesSetupScreenViewModel,
 ) {
   FlatSection(
-    label = "8 · RANGE",
+    label = "9 · RANGE",
     supporting = "Select the note range.",
   ) {
     Text(

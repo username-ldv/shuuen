@@ -145,6 +145,55 @@ class MelodiesLevelConfigJsonTest {
   }
 
   @Test
+  fun randomConfigRoundTripsANonDefaultTuneInconsistency() {
+    val config: LevelConfig.Melodies =
+      LevelConfig.Melodies.Random(
+        scaleConfig =
+          ScaleConfig.RelativeScaleConfig(
+            scaleType = ScaleType.Major,
+            degreeStates = Scale.major(Pitch.C).asConfigDegreeStates(),
+          ),
+        questionsNumber = 20,
+        notesPerSequence = 4,
+        tempo = 96,
+        range = NoteRange(Note(Pitch.C, 3), Note(Pitch.C, 5)),
+        tuneInconsistencyCents = 25,
+      )
+
+    val decoded: LevelConfig.Melodies = RoomJson.decode(RoomJson.encode(config))
+
+    assertEquals(config, decoded)
+  }
+
+  @Test
+  fun randomConfigSavedBeforeTuneInconsistencyFieldStillDecodes() {
+    val config: LevelConfig.Melodies =
+      LevelConfig.Melodies.Random(
+        scaleConfig =
+          ScaleConfig.RelativeScaleConfig(
+            scaleType = ScaleType.Major,
+            degreeStates = Scale.major(Pitch.C).asConfigDegreeStates(),
+          ),
+        questionsNumber = 20,
+        notesPerSequence = 4,
+        tempo = 96,
+        range = NoteRange(Note(Pitch.C, 3), Note(Pitch.C, 5)),
+      )
+    // A level saved by the previous app version has no tuneInconsistencyCents key.
+    val legacyJson =
+      JsonObject(
+        Json.parseToJsonElement(RoomJson.encode(config)).jsonObject.filterKeys {
+          it != "tuneInconsistencyCents"
+        }
+      ).toString()
+
+    val decoded: LevelConfig.Melodies = RoomJson.decode(legacyJson)
+
+    assertTrue(decoded is LevelConfig.Melodies.Random)
+    assertEquals(0, decoded.tuneInconsistencyCents)
+  }
+
+  @Test
   fun midiConfigRoundTripsTheFileReference() {
     val original = File("D:/melodies/tune.mid")
     val config: LevelConfig.Melodies =
