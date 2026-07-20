@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Audiotrack
 import androidx.compose.material.icons.rounded.Casino
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Save
@@ -299,6 +301,88 @@ private fun SourceModeSection(
           onCheckedChange = null,
         )
       }
+      BackingTrackControls(state, viewModel)
+    }
+  }
+}
+
+/**
+ * Backing-track picker for a MIDI melody: an audio file played in sync with the melody, plus the
+ * millisecond offset aligning the two.
+ */
+@Composable
+private fun BackingTrackControls(
+  state: MelodiesSetupState,
+  viewModel: MelodiesSetupScreenViewModel,
+) {
+  Row(
+    modifier = Modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.spacedBy(10.dp),
+  ) {
+    PillControl(
+      text =
+        when {
+          state.isLoadingBacking -> "Loading…"
+          state.loadedBackingName != null -> state.loadedBackingName
+          else -> "Load backing track"
+        },
+      selected = state.loadedBacking != null,
+      leadingIcon = Icons.Rounded.Audiotrack,
+      onClick = { if (!state.isLoadingBacking) viewModel.loadBackingFile() },
+      modifier = Modifier.weight(1f),
+    )
+    if (state.loadedBacking != null) {
+      PillControl(
+        text = "Remove",
+        leadingIcon = Icons.Rounded.Close,
+        onClick = viewModel::clearBackingFile,
+      )
+    }
+  }
+  if (state.loadedBacking != null) {
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(
+          "Audio offset",
+          color = ShuuenUi.Text,
+          style = MaterialTheme.typography.titleSmall,
+        )
+        Text(
+          "Backing-track position (ms) at the melody's first tick.",
+          color = ShuuenUi.Muted,
+          style = MaterialTheme.typography.bodySmall,
+        )
+      }
+      // Local text state so a partial entry ("-", empty) doesn't fight the stored value.
+      var offsetText by remember(state.backingOffsetMs) {
+        mutableStateOf(state.backingOffsetMs.toString())
+      }
+      SoftControl(
+        modifier = Modifier.width(96.dp),
+        selected = state.backingOffsetMs != 0L,
+      ) {
+        BasicTextField(
+          value = offsetText,
+          onValueChange = { text ->
+            offsetText = text
+            text.toLongOrNull()?.let(viewModel::changeBackingOffsetMs)
+          },
+          textStyle =
+            MaterialTheme.typography.titleSmall.copy(
+              color = ShuuenUi.Text,
+              textAlign = TextAlign.Center,
+            ),
+          singleLine = true,
+          cursorBrush = SolidColor(ShuuenUi.Text),
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+          modifier = Modifier.weight(1f),
+        )
+      }
+      Text("ms", color = ShuuenUi.Dim, style = MaterialTheme.typography.bodySmall)
     }
   }
 }

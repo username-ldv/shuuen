@@ -10,6 +10,9 @@ internal expect object BassConstants {
   val BASS_ATTRIB_BUFFER: Int
   val BASS_ATTRIB_VOL: Int
   val BASS_STREAM_DECODE: Int
+
+  /** Pre-scan MP3/MP2/MP1 files at stream creation for accurate seeking and length reading. */
+  val BASS_STREAM_PRESCAN: Int
   val BASS_MIDI_DECAYEND: Int
   val BASS_CONFIG_MIDI_VOICES: Int
   val MIDI_EVENT_NOTE: Int

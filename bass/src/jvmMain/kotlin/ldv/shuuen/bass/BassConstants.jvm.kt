@@ -10,6 +10,7 @@ internal actual object BassConstants {
   actual val BASS_ATTRIB_BUFFER: Int = 13
   actual val BASS_ATTRIB_VOL: Int = 2
   actual val BASS_STREAM_DECODE: Int = 0x200000
+  actual val BASS_STREAM_PRESCAN: Int = 0x20000
   actual val BASS_MIDI_DECAYEND: Int = 0x1000
   actual val BASS_CONFIG_MIDI_VOICES: Int = 0x10401
   actual val MIDI_EVENT_NOTE: Int = 1

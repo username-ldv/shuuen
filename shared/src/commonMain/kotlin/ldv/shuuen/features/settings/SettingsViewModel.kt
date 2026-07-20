@@ -40,6 +40,8 @@ class SettingsViewModel(
             selectedPresets = settings.presets,
             selectedVolumes = settings.volumes,
             melodyOriginalVolumeBoost = settings.melodyOriginalVolumeBoost,
+            backingTrackVolume = settings.backingTrackVolume,
+            backingTrackMutesMelody = settings.backingTrackMutesMelody,
             inputMethod = settings.inputMethod,
             midiRespectOctaves = settings.midiRespectOctaves,
             allowSevenAccidentalKeys = settings.allowSevenAccidentalKeys,
@@ -147,7 +149,21 @@ class SettingsViewModel(
 
       is SettingsAction.CommitMelodyOriginalVolumeBoost ->
         commitMelodyOriginalVolumeBoost(action.value)
+
+      is SettingsAction.SetBackingTrackVolume ->
+        mutableState.update { it.copy(backingTrackVolume = action.value.coerceIn(0, 127)) }
+
+      is SettingsAction.CommitBackingTrackVolume -> commitBackingTrackVolume(action.value)
+
+      is SettingsAction.SetBackingTrackMutesMelody ->
+        viewModelScope.launch { settingsRepository.setBackingTrackMutesMelody(action.value) }
     }
+  }
+
+  private fun commitBackingTrackVolume(value: Int) {
+    val coerced = value.coerceIn(0, 127)
+    mutableState.update { it.copy(backingTrackVolume = coerced) }
+    viewModelScope.launch { settingsRepository.setBackingTrackVolume(coerced) }
   }
 
   private fun setNoteName(index: Int, value: String) {

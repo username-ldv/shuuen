@@ -46,6 +46,14 @@ class KStoreSettingsRepository(
     store.update { it?.copy(melodyOriginalVolumeBoost = value.coerceIn(0, MidiValueMax)) }
   }
 
+  override suspend fun setBackingTrackVolume(value: Int) {
+    store.update { it?.copy(backingTrackVolume = value.coerceIn(0, MidiValueMax)) }
+  }
+
+  override suspend fun setBackingTrackMutesMelody(value: Boolean) {
+    store.update { it?.copy(backingTrackMutesMelody = value) }
+  }
+
   override suspend fun setInputMethod(inputMethod: InputMethod) {
     store.update { it?.copy(inputMethod = inputMethod) }
   }

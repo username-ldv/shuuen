@@ -19,6 +19,8 @@ object Bass {
     get() = BassConstants.BASS_ATTRIB_VOL
   val BASS_STREAM_DECODE: Int
     get() = BassConstants.BASS_STREAM_DECODE
+  val BASS_STREAM_PRESCAN: Int
+    get() = BassConstants.BASS_STREAM_PRESCAN
   val BASS_MIDI_DECAYEND: Int
     get() = BassConstants.BASS_MIDI_DECAYEND
   val BASS_CONFIG_MIDI_VOICES: Int
@@ -108,6 +110,22 @@ object Bass {
     flags: Int = 0,
     frequency: Int = 44_100,
   ): Int = BassPlatform.createMidiStreamFromMemory(data, flags, frequency)
+
+  /**
+   * Creates an audio file stream (MP3/OGG/WAV/AIFF) from [data]; the platform keeps the native
+   * copy of [data] alive until [freeStream]. Pass [BASS_STREAM_PRESCAN] in [flags] when the
+   * stream needs accurate seeking (MP3 seeking is approximate without it).
+   */
+  fun createFileStreamFromMemory(data: ByteArray, flags: Int = 0): Int =
+    BassPlatform.createFileStreamFromMemory(data, flags)
+
+  /**
+   * Links [chan] to [handle] so they start/stop/pause/resume together; linked channels on the
+   * same device start playing simultaneously. One-way: operations on [handle] drive [chan].
+   */
+  fun linkChannels(handle: Int, chan: Int): Boolean = BassPlatform.linkChannels(handle, chan)
+
+  fun unlinkChannels(handle: Int, chan: Int): Boolean = BassPlatform.unlinkChannels(handle, chan)
 
   /** Retrieves events from a MIDI stream. track = -1 for all tracks; filter e.g. [MIDI_EVENT_NOTES]. */
   fun streamGetEvents(

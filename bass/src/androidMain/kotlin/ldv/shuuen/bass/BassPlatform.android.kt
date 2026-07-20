@@ -7,6 +7,10 @@ import java.nio.ByteBuffer
 internal actual object BassPlatform {
   private val melodyFilters = mutableMapOf<Int, BASSMIDI.MIDIFILTERPROC>()
 
+  // File streams read their memory block lazily during playback, so the direct buffer must stay
+  // referenced (not collected) until the stream is freed.
+  private val fileStreamBuffers = mutableMapOf<Int, ByteBuffer>()
+
   actual fun load() {
     BASS.BASS_GetVersion()
     BASSMIDI.BASS_MIDI_GetVersion()
@@ -42,6 +46,22 @@ internal actual object BassPlatform {
     }
     return BASSMIDI.BASS_MIDI_StreamCreateFile(buffer, 0, data.size.toLong(), flags, frequency)
   }
+
+  actual fun createFileStreamFromMemory(data: ByteArray, flags: Int): Int {
+    val buffer = ByteBuffer.allocateDirect(data.size).apply {
+      put(data)
+      position(0)
+    }
+    val handle = BASS.BASS_StreamCreateFile(buffer, 0, data.size.toLong(), flags)
+    if (handle != 0) fileStreamBuffers[handle] = buffer
+    return handle
+  }
+
+  actual fun linkChannels(handle: Int, chan: Int): Boolean =
+    BASS.BASS_ChannelSetLink(handle, chan)
+
+  actual fun unlinkChannels(handle: Int, chan: Int): Boolean =
+    BASS.BASS_ChannelRemoveLink(handle, chan)
 
   actual fun streamGetEvents(streamHandle: Int, track: Int, filter: Int): List<BassMidiEvent> {
     val count = BASSMIDI.BASS_MIDI_StreamGetEvents(streamHandle, track, filter, null)
@@ -179,6 +199,7 @@ internal actual object BassPlatform {
   actual fun freeStream(streamHandle: Int): Boolean {
     val freed = BASS.BASS_StreamFree(streamHandle)
     melodyFilters.remove(streamHandle)
+    fileStreamBuffers.remove(streamHandle)
     return freed
   }
 

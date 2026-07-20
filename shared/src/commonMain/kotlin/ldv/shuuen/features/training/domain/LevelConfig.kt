@@ -95,12 +95,19 @@ sealed interface LevelConfig {
     /**
      * A melody read from a user-picked MIDI file. Only a reference to the file is stored (path on
      * desktop, URI on Android) — the bytes are re-read when the level is played.
+     *
+     * [backingFile] is an optional audio file (e.g. the real song's MP3) played in sync with the
+     * melody; [backingOffsetMs] is the position in that audio matching the MIDI's time zero
+     * (positive when the audio has an intro before the MIDI's first tick).
      */
     @Serializable
     data class Midi(
       @Serializable(with = PlatformFileSerializer::class) val file: PlatformFile,
       val fileName: String,
       val useOriginalVelocities: Boolean = false,
+      @Serializable(with = PlatformFileSerializer::class) val backingFile: PlatformFile? = null,
+      val backingFileName: String? = null,
+      val backingOffsetMs: Long = 0,
     ) : Melodies
   }
 }

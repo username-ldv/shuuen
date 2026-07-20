@@ -23,12 +23,14 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import ldv.shuuen.core.audio.engine.BackingTrackData
 import ldv.shuuen.core.audio.engine.MelodyNote
 import ldv.shuuen.core.audio.engine.MidiEngine
 import ldv.shuuen.core.audio.engine.MidiEngineStatus
@@ -161,7 +163,7 @@ data class MelodiesPlayState(
 }
 
 private val pollInterval = 50.milliseconds
-private const val SeekSeconds = 5.0
+private const val SeekSeconds = 3.0
 
 /** How far rewind jumps back in note-based melody playback. */
 private const val RewindNotes = 4
@@ -263,6 +265,15 @@ class MelodiesPlayScreenViewModel(
       }
     }
 
+    // Volume tweaks land mid-session: the backing stream (when one is playing) follows the
+    // setting without a reload.
+    viewModelScope.launch {
+      settingsRepository.settings
+        .map { it.backingTrackVolume }
+        .distinctUntilChanged()
+        .collect { player.setBackingTrackVolume(it) }
+    }
+
     viewModelScope.launch {
       when (val status = midiEngine.initialize()) {
         MidiEngineStatus.Ready -> Napier.v { "MIDI engine ready for melodies player" }
@@ -304,11 +315,35 @@ class MelodiesPlayScreenViewModel(
       return
     }
 
+    val backingFile = config.backingFile
+    val backingTrack =
+      if (backingFile != null) {
+        val backingBytes = runCatching { backingFile.readBytes() }.getOrNull()
+        if (backingBytes == null || backingBytes.isEmpty()) {
+          _state.update {
+            it.copy(
+              title = level.name,
+              isLoading = false,
+              error =
+                "Couldn't read the backing track ${config.backingFileName ?: ""}. " +
+                  "Has the file moved?",
+            )
+          }
+          return
+        }
+        BackingTrackData(bytes = backingBytes, offsetMs = config.backingOffsetMs)
+      } else {
+        null
+      }
+
     val loaded =
       runCatching {
         player.load(
           bytes,
-          MidiFilePlaybackOptions(useOriginalVelocities = config.useOriginalVelocities),
+          MidiFilePlaybackOptions(
+            useOriginalVelocities = config.useOriginalVelocities,
+            backingTrack = backingTrack,
+          ),
         )
       }
         .getOrElse { throwable ->
@@ -398,6 +433,7 @@ class MelodiesPlayScreenViewModel(
   }
 
   private fun refreshTransportState() {
+    player.syncBackingTrack()
     _state.update {
       it.copy(
         positionTicks = player.positionTicks(),

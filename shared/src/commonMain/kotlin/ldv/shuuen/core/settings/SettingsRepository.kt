@@ -19,6 +19,10 @@ interface SettingsRepository {
 
   suspend fun setMelodyOriginalVolumeBoost(value: Int)
 
+  suspend fun setBackingTrackVolume(value: Int)
+
+  suspend fun setBackingTrackMutesMelody(value: Boolean)
+
   suspend fun setInputMethod(inputMethod: InputMethod)
 
   suspend fun setMidiRespectOctaves(value: Boolean)
@@ -73,4 +77,11 @@ data class AppSettings(
    */
   val allowSevenAccidentalKeys: Boolean = false,
   val levelStatsWindow: Int = DefaultLevelStatsWindow,
+  /** Volume (0..127) of a melody level's backing track, applied when the level loads. */
+  val backingTrackVolume: Int = 100,
+  /**
+   * When true, a melody level that has a backing track plays only that audio — the MIDI melody
+   * stream is silenced (the quiz still follows the MIDI notes). When false both sound together.
+   */
+  val backingTrackMutesMelody: Boolean = false,
 )

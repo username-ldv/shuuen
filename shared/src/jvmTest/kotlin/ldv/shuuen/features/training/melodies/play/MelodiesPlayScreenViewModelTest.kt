@@ -223,6 +223,10 @@ private class FakeSettingsRepository : SettingsRepository {
 
   override suspend fun setMelodyOriginalVolumeBoost(value: Int) = Unit
 
+  override suspend fun setBackingTrackVolume(value: Int) = Unit
+
+  override suspend fun setBackingTrackMutesMelody(value: Boolean) = Unit
+
   override suspend fun setInputMethod(inputMethod: InputMethod) = Unit
 
   override suspend fun setMidiRespectOctaves(value: Boolean) = Unit

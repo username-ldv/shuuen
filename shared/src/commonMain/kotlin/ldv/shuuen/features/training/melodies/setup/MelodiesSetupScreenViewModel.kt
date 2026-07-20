@@ -64,6 +64,12 @@ data class MelodiesSetupState(
   val isLoadingMidi: Boolean = false,
   val midiError: String? = null,
   val useOriginalVelocities: Boolean = false,
+  /** Optional audio (e.g. MP3 of the real song) played in sync with the MIDI melody. */
+  val loadedBacking: PlatformFile? = null,
+  val loadedBackingName: String? = null,
+  val isLoadingBacking: Boolean = false,
+  /** Position in the backing audio (ms) matching the MIDI's start; negative when audio lags. */
+  val backingOffsetMs: Long = 0,
 )
 
 @OptIn(ExperimentalUuidApi::class)
@@ -173,6 +179,41 @@ class MelodiesSetupScreenViewModel(
     }
   }
 
+  fun loadBackingFile() {
+    _state.update { it.copy(isLoadingBacking = true, midiError = null) }
+    viewModelScope.launch {
+      val file = FileKit.openFilePicker(type = FileKitType.File(listOf("mp3", "ogg", "wav")))
+      if (file == null) {
+        _state.update { it.copy(isLoadingBacking = false) }
+        return@launch
+      }
+      // Like the MIDI pick, only the reference is stored; the read just validates the pick.
+      val bytes = runCatching { file.readBytes() }.getOrNull()
+      if (bytes == null || bytes.isEmpty()) {
+        _state.update {
+          it.copy(isLoadingBacking = false, midiError = "Couldn't read ${file.name}.")
+        }
+        return@launch
+      }
+      _state.update {
+        it.copy(
+          loadedBacking = file,
+          loadedBackingName = file.name,
+          isLoadingBacking = false,
+          midiError = null,
+        )
+      }
+    }
+  }
+
+  fun clearBackingFile() {
+    _state.update { it.copy(loadedBacking = null, loadedBackingName = null) }
+  }
+
+  fun changeBackingOffsetMs(value: Long) {
+    _state.update { it.copy(backingOffsetMs = value.coerceIn(BackingOffsetRangeMs)) }
+  }
+
   fun updateContext(context: DegreeContext) {
     Napier.v { "Melodies setup: updating context to $context" }
     _state.update { it.copy(context = context) }
@@ -208,6 +249,9 @@ class MelodiesSetupScreenViewModel(
             file = file,
             fileName = current.loadedMidiName ?: file.name,
             useOriginalVelocities = current.useOriginalVelocities,
+            backingFile = current.loadedBacking,
+            backingFileName = current.loadedBacking?.let { current.loadedBackingName ?: it.name },
+            backingOffsetMs = if (current.loadedBacking != null) current.backingOffsetMs else 0,
           )
         }
       }
@@ -258,6 +302,10 @@ class MelodiesSetupScreenViewModel(
           isLoadingMidi = false,
           midiError = null,
           useOriginalVelocities = levelConfig.useOriginalVelocities,
+          loadedBacking = levelConfig.backingFile,
+          loadedBackingName = levelConfig.backingFileName,
+          isLoadingBacking = false,
+          backingOffsetMs = levelConfig.backingOffsetMs,
         )
     }
 
@@ -274,5 +322,8 @@ class MelodiesSetupScreenViewModel(
 
   companion object {
     val TempoRange = 20..360
+
+    /** ±10 minutes: any sane lead-in fits, and typos can't push the backing out of reach. */
+    val BackingOffsetRangeMs = -600_000L..600_000L
   }
 }

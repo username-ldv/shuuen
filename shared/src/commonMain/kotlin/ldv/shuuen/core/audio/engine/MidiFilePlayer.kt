@@ -22,8 +22,16 @@ data class LoadedMelody(
   val lengthSeconds: Double,
 )
 
+/**
+ * A backing audio file (e.g. an MP3 of the real song) played in sync with the MIDI melody.
+ * [offsetMs] is the position in the audio that lines up with the MIDI's time zero: positive when
+ * the audio has an intro before the MIDI's first tick, negative when the audio starts late.
+ */
+class BackingTrackData(val bytes: ByteArray, val offsetMs: Long)
+
 data class MidiFilePlaybackOptions(
   val useOriginalVelocities: Boolean = false,
+  val backingTrack: BackingTrackData? = null,
 )
 
 /**
@@ -53,6 +61,17 @@ interface MidiFilePlayer {
   fun positionSeconds(): Double
 
   fun isPlaying(): Boolean
+
+  /**
+   * Keeps the backing track (when one is loaded) aligned with the melody; the caller invokes it
+   * periodically, e.g. from the same timer that polls the position. Play/pause/seek keep the two
+   * in sync on their own — this covers what they can't: starting a late backing track (negative
+   * offset), silencing it past the melody's end, and correcting drift after audio hiccups.
+   */
+  fun syncBackingTrack() {}
+
+  /** Applies a new backing-track volume (0..127) mid-playback. A no-op without a backing track. */
+  fun setBackingTrackVolume(volume: Int) {}
 
   /** Frees the underlying stream. Safe to call repeatedly. */
   fun release()

@@ -12,6 +12,17 @@ internal expect object BassPlatform {
   fun createLiveMidiStream(channels: Int, flags: Int, frequency: Int): Int
   fun createMidiStream(filePath: String, flags: Int, frequency: Int): Int
   fun createMidiStreamFromMemory(data: ByteArray, flags: Int, frequency: Int): Int
+
+  /**
+   * Creates an audio stream (MP3/OGG/WAV/AIFF) from [data]. Unlike MIDI streams, BASS decodes
+   * file streams lazily, so the implementation pins [data]'s native copy until [freeStream].
+   */
+  fun createFileStreamFromMemory(data: ByteArray, flags: Int): Int
+
+  /** BASS_ChannelSetLink: [chan] starts/stops/pauses/resumes together with [handle]. */
+  fun linkChannels(handle: Int, chan: Int): Boolean
+
+  fun unlinkChannels(handle: Int, chan: Int): Boolean
   fun streamGetEvents(streamHandle: Int, track: Int, filter: Int): List<BassMidiEvent>
   fun setMidiStreamMelodyFilter(
     streamHandle: Int,

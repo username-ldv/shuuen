@@ -16,6 +16,10 @@ internal actual object BassPlatform {
   private val libraries: NativeLibraries by lazy { NativeLibraries.load() }
   private val melodyFilters = mutableMapOf<Int, MidiFilterProc>()
 
+  // File streams read their BASS_FILE_MEM block lazily during playback, so the native copy must
+  // stay referenced until the stream is freed (unlike BASSMIDI, which loads at creation).
+  private val fileStreamMemory = mutableMapOf<Int, Memory>()
+
   actual fun load() {
     libraries
   }
@@ -50,6 +54,22 @@ internal actual object BassPlatform {
       BassConstants.BASS_FILE_MEM, memory, 0, data.size.toLong(), flags, frequency,
     )
   }
+
+  actual fun createFileStreamFromMemory(data: ByteArray, flags: Int): Int {
+    val memory = Memory(data.size.toLong())
+    memory.write(0, data, 0, data.size)
+    val handle = libraries.bass.BASS_StreamCreateFile(
+      BassConstants.BASS_FILE_MEM, memory, 0, data.size.toLong(), flags,
+    )
+    if (handle != 0) fileStreamMemory[handle] = memory
+    return handle
+  }
+
+  actual fun linkChannels(handle: Int, chan: Int): Boolean =
+    libraries.bass.BASS_ChannelSetLink(handle, chan)
+
+  actual fun unlinkChannels(handle: Int, chan: Int): Boolean =
+    libraries.bass.BASS_ChannelRemoveLink(handle, chan)
 
   actual fun streamGetEvents(streamHandle: Int, track: Int, filter: Int): List<BassMidiEvent> {
     val count = libraries.midi.BASS_MIDI_StreamGetEvents(streamHandle, track, filter, null)
@@ -184,6 +204,7 @@ internal actual object BassPlatform {
   actual fun freeStream(streamHandle: Int): Boolean {
     val freed = libraries.bass.BASS_StreamFree(streamHandle)
     melodyFilters.remove(streamHandle)
+    fileStreamMemory.remove(streamHandle)
     return freed
   }
 
@@ -274,7 +295,10 @@ private interface BassNative : Library {
   fun BASS_ChannelBytes2Seconds(handle: Int, pos: Long): Double
   fun BASS_ChannelSeconds2Bytes(handle: Int, pos: Double): Long
   fun BASS_ChannelSetAttribute(handle: Int, attrib: Int, value: Float): Boolean
+  fun BASS_ChannelSetLink(handle: Int, chan: Int): Boolean
+  fun BASS_ChannelRemoveLink(handle: Int, chan: Int): Boolean
   fun BASS_StreamFree(handle: Int): Boolean
+  fun BASS_StreamCreateFile(filetype: Int, file: Pointer, offset: Long, length: Long, flags: Int): Int
 }
 
 private interface BassMidiNative : Library {

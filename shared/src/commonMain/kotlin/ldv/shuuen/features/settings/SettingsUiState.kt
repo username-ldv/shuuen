@@ -24,6 +24,10 @@ data class SettingsUiState(
   val selectedPresets: ChannelPresets = ChannelPresets(),
   val selectedVolumes: ChannelVolumes = ChannelVolumes(),
   val melodyOriginalVolumeBoost: Int = 0,
+  /** Volume (0..127) of a melody level's backing track. */
+  val backingTrackVolume: Int = 100,
+  /** A backing track silences the MIDI melody so only the audio sounds. */
+  val backingTrackMutesMelody: Boolean = false,
   val inputMethod: InputMethod = InputMethod(),
   /** Names of the connected hardware MIDI keyboards; empty when none. */
   val midiKeyboardDevices: List<String> = emptyList(),
@@ -86,6 +90,13 @@ sealed interface SettingsAction {
   data class SetMelodyOriginalVolumeBoost(val value: Int) : SettingsAction
 
   data class CommitMelodyOriginalVolumeBoost(val value: Int) : SettingsAction
+
+  /** Local slider state while dragging; persisted on commit. */
+  data class SetBackingTrackVolume(val value: Int) : SettingsAction
+
+  data class CommitBackingTrackVolume(val value: Int) : SettingsAction
+
+  data class SetBackingTrackMutesMelody(val value: Boolean) : SettingsAction
 }
 
 /** Bank 0 is the General MIDI set by convention; other banks are shown by number. */

@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.Audiotrack
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Piano
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -441,6 +442,20 @@ private fun SoundfontSection(
       onChange = { onAction(SettingsAction.SetMelodyOriginalVolumeBoost(it)) },
       onCommit = { onAction(SettingsAction.CommitMelodyOriginalVolumeBoost(it)) },
     )
+    Hairline()
+    BackingTrackVolumeRow(
+      value = state.backingTrackVolume,
+      onChange = { onAction(SettingsAction.SetBackingTrackVolume(it)) },
+      onCommit = { onAction(SettingsAction.CommitBackingTrackVolume(it)) },
+    )
+    Hairline()
+    SwitchRow(
+      icon = Icons.Rounded.Audiotrack,
+      title = "Backing track replaces melody",
+      subtitle = "Silence the MIDI melody when a level has a backing track.",
+      checked = state.backingTrackMutesMelody,
+      onCheckedChange = { onAction(SettingsAction.SetBackingTrackMutesMelody(it)) },
+    )
 
     if (state.errorMessage != null) {
       Text(
@@ -723,6 +738,51 @@ private fun MelodyOriginalVolumeBoostRow(
       onChange = onChange,
       onCommit = onCommit,
       valueLabel = ::melodyVolumeBoostLabel,
+      iconForValue = { Icons.AutoMirrored.Rounded.VolumeUp },
+    )
+  }
+}
+
+@Composable
+private fun BackingTrackVolumeRow(
+  value: Int,
+  onChange: (Int) -> Unit,
+  onCommit: (Int) -> Unit,
+) {
+  Column(
+    modifier = Modifier.fillMaxWidth(),
+    verticalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+      Icon(
+        Icons.Rounded.Audiotrack,
+        contentDescription = null,
+        tint = ShuuenUi.Muted,
+        modifier = Modifier.size(22.dp),
+      )
+      Column(modifier = Modifier.weight(1f)) {
+        Text(
+          "Backing track volume",
+          color = ShuuenUi.Text,
+          style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+        )
+        Text(
+          "Audio played along imported melodies. Real recordings are mastered much louder " +
+            "than the MIDI instruments, so low values are normal here.",
+          color = ShuuenUi.Dim,
+          style = MaterialTheme.typography.bodySmall,
+        )
+      }
+    }
+    ValueSlider(
+      value = value,
+      onChange = onChange,
+      onCommit = onCommit,
+      valueLabel = { "$it" },
       iconForValue = { Icons.AutoMirrored.Rounded.VolumeUp },
     )
   }
