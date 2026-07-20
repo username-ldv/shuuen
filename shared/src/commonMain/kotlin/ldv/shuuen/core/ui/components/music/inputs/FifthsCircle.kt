@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.music.Palette
 import kotlin.math.PI
 import kotlin.math.abs
@@ -150,8 +151,12 @@ object FifthsCircleDefalts {
   )
 
 
-  /** Monotone active-item color — the app default. */
-  fun colors(count: Int): List<Color> = List(count) { Color(0xFFE8E8E8) }
+  /** Monotone active-item color — the app default. Inverts on light themes. */
+  @Composable
+  fun colors(count: Int): List<Color> {
+    val active = if (ShuuenUi.IsDark) Color(0xFFE8E8E8) else Color(0xFF17171A)
+    return List(count) { active }
+  }
 
   /** Opt-in per-item colors for a future settings choice. */
   fun colorfulColors(count: Int): List<Color> =
@@ -216,12 +221,12 @@ fun FifthsCircle(
   onItemPressedChange: (index: Int, pressed: Boolean) -> Unit = { _, _ -> },
 
   backgroundColor: Color = Color.Transparent,
-  ringColor: Color = Color.White.copy(alpha = 0.18f),
-  inactiveDotColor: Color = Color(0xFF7A7A80),
-  disabledDotColor: Color = Color(0xFF4B4B50),
-  inactiveLabelColor: Color = Color(0xFF9B9BA1),
-  activeLabelColor: Color = Color.White,
-  disabledLabelColor: Color = Color(0xFF5D5D63),
+  ringColor: Color = ShuuenUi.Ink.copy(alpha = 0.18f),
+  inactiveDotColor: Color = if (ShuuenUi.IsDark) Color(0xFF7A7A80) else Color(0xFF85858B),
+  disabledDotColor: Color = if (ShuuenUi.IsDark) Color(0xFF4B4B50) else Color(0xFFB4B4B9),
+  inactiveLabelColor: Color = if (ShuuenUi.IsDark) Color(0xFF9B9BA1) else Color(0xFF64646A),
+  activeLabelColor: Color = ShuuenUi.Ink,
+  disabledLabelColor: Color = if (ShuuenUi.IsDark) Color(0xFF5D5D63) else Color(0xFFA2A2A8),
 
   ringStrokeWidth: Dp = 1.dp,
   outerPadding: Dp = 30.dp,

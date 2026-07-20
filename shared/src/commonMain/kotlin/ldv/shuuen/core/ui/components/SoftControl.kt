@@ -27,7 +27,7 @@ fun SoftControl(
   val shape = ShuuenUi.ControlShape
   Row(
     modifier = modifier.clip(shape)
-      .background(if (selected) Color.White.copy(alpha = 0.13f) else Color.White.copy(alpha = 0.05f))
+      .background(if (selected) ShuuenUi.Ink.copy(alpha = 0.13f) else ShuuenUi.Ink.copy(alpha = 0.05f))
       .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
       .padding(horizontal = 10.dp, vertical = 9.dp),
     verticalAlignment = Alignment.CenterVertically,

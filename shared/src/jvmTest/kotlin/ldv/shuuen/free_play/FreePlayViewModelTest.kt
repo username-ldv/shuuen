@@ -22,6 +22,7 @@ import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.settings.AppSettings
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.SettingsRepository
+import ldv.shuuen.core.settings.ThemeSettings
 import ldv.shuuen.core.music.Chord
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.Pitch
@@ -127,6 +128,8 @@ private class FakeSettingsRepository : SettingsRepository {
   override suspend fun setBackingTrackMutesMelody(value: Boolean) = Unit
 
   override suspend fun setInputMethod(inputMethod: InputMethod) = Unit
+
+  override suspend fun setTheme(theme: ThemeSettings) = Unit
 
   override suspend fun setMidiRespectOctaves(value: Boolean) = Unit
 

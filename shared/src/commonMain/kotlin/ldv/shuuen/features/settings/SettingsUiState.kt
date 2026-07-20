@@ -7,6 +7,7 @@ import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.settings.DefaultLevelStatsWindow
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.MusicLabelSettings
+import ldv.shuuen.core.settings.ThemeSettings
 
 /** A MIDI bank paired with the presets it contains. */
 data class Soundbank(
@@ -29,6 +30,7 @@ data class SettingsUiState(
   /** A backing track silences the MIDI melody so only the audio sounds. */
   val backingTrackMutesMelody: Boolean = false,
   val inputMethod: InputMethod = InputMethod(),
+  val theme: ThemeSettings = ThemeSettings(),
   /** Names of the connected hardware MIDI keyboards; empty when none. */
   val midiKeyboardDevices: List<String> = emptyList(),
   /** MIDI keyboard answers must match the asked note's exact octave (off = octave independent). */
@@ -57,6 +59,8 @@ enum class LabelEditor {
 
 sealed interface SettingsAction {
   data class SelectInputMethod(val inputMethod: InputMethod) : SettingsAction
+
+  data class SetTheme(val theme: ThemeSettings) : SettingsAction
 
   data class SetMidiRespectOctaves(val value: Boolean) : SettingsAction
 

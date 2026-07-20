@@ -35,9 +35,10 @@ fun DashedAddButton(
       .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
     contentAlignment = Alignment.Center,
   ) {
+    val dashColor = ldv.shuuen.core.ui.components.ShuuenUi.Ink.copy(alpha = 0.28f)
     Canvas(Modifier.fillMaxSize()) {
       drawRoundRect(
-        color = Color.White.copy(alpha = 0.28f),
+        color = dashColor,
         topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
         size = Size(size.width - 2.dp.toPx(), size.height - 2.dp.toPx()),
         cornerRadius = CornerRadius(14.dp.toPx()),

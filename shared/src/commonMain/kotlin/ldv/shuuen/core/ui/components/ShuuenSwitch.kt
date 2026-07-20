@@ -18,7 +18,7 @@ fun ShuuenSwitch(
       checkedThumbColor = ldv.shuuen.core.ui.components.ShuuenUi.OnInverse,
       checkedTrackColor = ldv.shuuen.core.ui.components.ShuuenUi.Inverse,
       uncheckedThumbColor = ldv.shuuen.core.ui.components.ShuuenUi.Muted,
-      uncheckedTrackColor = Color.White.copy(alpha = 0.07f),
+      uncheckedTrackColor = ShuuenUi.Ink.copy(alpha = 0.07f),
       uncheckedBorderColor = Color.Transparent,
     ),
   )

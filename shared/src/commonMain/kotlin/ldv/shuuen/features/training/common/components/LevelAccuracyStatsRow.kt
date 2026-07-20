@@ -72,10 +72,11 @@ private fun LevelAccuracyBar(
   accuracy: Float?,
   modifier: Modifier = Modifier,
 ) {
+  val trackColor = ShuuenUi.Ink.copy(alpha = 0.10f)
   Canvas(modifier = modifier.fillMaxWidth().height(7.dp)) {
     val radius = size.height / 2f
     drawRoundRect(
-      color = Color.White.copy(alpha = 0.10f),
+      color = trackColor,
       size = size,
       cornerRadius = CornerRadius(radius, radius),
     )

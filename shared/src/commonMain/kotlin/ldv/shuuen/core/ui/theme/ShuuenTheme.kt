@@ -1,130 +1,109 @@
 package ldv.shuuen.core.ui.theme
 
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import ldv.shuuen.core.settings.ThemeStyle
 
-private val DarkColorScheme = darkColorScheme(
-  primary = md_theme_dark_primary,
-  onPrimary = md_theme_dark_onPrimary,
-  primaryContainer = md_theme_dark_primaryContainer,
-  onPrimaryContainer = md_theme_dark_onPrimaryContainer,
-  inversePrimary = md_theme_dark_inversePrimary,
-  secondary = md_theme_dark_secondary,
-  onSecondary = md_theme_dark_onSecondary,
-  secondaryContainer = md_theme_dark_secondaryContainer,
-  onSecondaryContainer = md_theme_dark_onSecondaryContainer,
-  tertiary = md_theme_dark_tertiary,
-  onTertiary = md_theme_dark_onTertiary,
-  tertiaryContainer = md_theme_dark_tertiaryContainer,
-  onTertiaryContainer = md_theme_dark_onTertiaryContainer,
-  background = md_theme_dark_background,
-  onBackground = md_theme_dark_onBackground,
-  surface = md_theme_dark_surface,
-  onSurface = md_theme_dark_onSurface,
-  surfaceVariant = md_theme_dark_surfaceVariant,
-  onSurfaceVariant = md_theme_dark_onSurfaceVariant,
-  surfaceTint = md_theme_dark_surfaceTint,
-  inverseSurface = md_theme_dark_inverseSurface,
-  inverseOnSurface = md_theme_dark_inverseOnSurface,
-  error = md_theme_dark_error,
-  onError = md_theme_dark_onError,
-  errorContainer = md_theme_dark_errorContainer,
-  onErrorContainer = md_theme_dark_onErrorContainer,
-  outline = md_theme_dark_outline,
-  outlineVariant = md_theme_dark_outlineVariant,
-  scrim = md_theme_dark_scrim,
-  surfaceBright = md_theme_dark_surfaceBright,
-  surfaceDim = md_theme_dark_surfaceDim,
-  surfaceContainer = md_theme_dark_surfaceContainer,
-  surfaceContainerHigh = md_theme_dark_surfaceContainerHigh,
-  surfaceContainerHighest = md_theme_dark_surfaceContainerHighest,
-  surfaceContainerLow = md_theme_dark_surfaceContainerLow,
-  surfaceContainerLowest = md_theme_dark_surfaceContainerLowest,
-  primaryFixed = md_theme_dark_primaryFixed,
-  primaryFixedDim = md_theme_dark_primaryFixedDim,
-  onPrimaryFixed = md_theme_dark_onPrimaryFixed,
-  onPrimaryFixedVariant = md_theme_dark_onPrimaryFixedVariant,
-  secondaryFixed = md_theme_dark_secondaryFixed,
-  secondaryFixedDim = md_theme_dark_secondaryFixedDim,
-  onSecondaryFixed = md_theme_dark_onSecondaryFixed,
-  onSecondaryFixedVariant = md_theme_dark_onSecondaryFixedVariant,
-  tertiaryFixed = md_theme_dark_tertiaryFixed,
-  tertiaryFixedDim = md_theme_dark_tertiaryFixedDim,
-  onTertiaryFixed = md_theme_dark_onTertiaryFixed,
-  onTertiaryFixedVariant = md_theme_dark_onTertiaryFixedVariant,
-)
+/**
+ * Maps a [ShuuenPalette] onto the Material roles. Direct colorScheme reads are
+ * rare (the design tokens in ShuuenUi carry the look), but Material components
+ * (text fields, menus, ripples) still pull their defaults from here, so every
+ * colored role must stay monochrome. All roles are passed explicitly, which
+ * makes the light/dark builder choice irrelevant — a ColorScheme is only a bag
+ * of colors.
+ */
+private fun shuuenColorScheme(palette: ShuuenPalette): ColorScheme {
+  // Stepped neutral containers: background tinted with progressively more ink.
+  fun container(inkFraction: Float): Color = lerp(palette.background, palette.ink, inkFraction)
 
-private val LightColorScheme = lightColorScheme(
-  primary = md_theme_light_primary,
-  onPrimary = md_theme_light_onPrimary,
-  primaryContainer = md_theme_light_primaryContainer,
-  onPrimaryContainer = md_theme_light_onPrimaryContainer,
-  inversePrimary = md_theme_light_inversePrimary,
-  secondary = md_theme_light_secondary,
-  onSecondary = md_theme_light_onSecondary,
-  secondaryContainer = md_theme_light_secondaryContainer,
-  onSecondaryContainer = md_theme_light_onSecondaryContainer,
-  tertiary = md_theme_light_tertiary,
-  onTertiary = md_theme_light_onTertiary,
-  tertiaryContainer = md_theme_light_tertiaryContainer,
-  onTertiaryContainer = md_theme_light_onTertiaryContainer,
-  background = md_theme_light_background,
-  onBackground = md_theme_light_onBackground,
-  surface = md_theme_light_surface,
-  onSurface = md_theme_light_onSurface,
-  surfaceVariant = md_theme_light_surfaceVariant,
-  onSurfaceVariant = md_theme_light_onSurfaceVariant,
-  surfaceTint = md_theme_light_surfaceTint,
-  inverseSurface = md_theme_light_inverseSurface,
-  inverseOnSurface = md_theme_light_inverseOnSurface,
-  error = md_theme_light_error,
-  onError = md_theme_light_onError,
-  errorContainer = md_theme_light_errorContainer,
-  onErrorContainer = md_theme_light_onErrorContainer,
-  outline = md_theme_light_outline,
-  outlineVariant = md_theme_light_outlineVariant,
-  scrim = md_theme_light_scrim,
-  surfaceBright = md_theme_light_surfaceBright,
-  surfaceDim = md_theme_light_surfaceDim,
-  surfaceContainer = md_theme_light_surfaceContainer,
-  surfaceContainerHigh = md_theme_light_surfaceContainerHigh,
-  surfaceContainerHighest = md_theme_light_surfaceContainerHighest,
-  surfaceContainerLow = md_theme_light_surfaceContainerLow,
-  surfaceContainerLowest = md_theme_light_surfaceContainerLowest,
-  primaryFixed = md_theme_light_primaryFixed,
-  primaryFixedDim = md_theme_light_primaryFixedDim,
-  onPrimaryFixed = md_theme_light_onPrimaryFixed,
-  onPrimaryFixedVariant = md_theme_light_onPrimaryFixedVariant,
-  secondaryFixed = md_theme_light_secondaryFixed,
-  secondaryFixedDim = md_theme_light_secondaryFixedDim,
-  onSecondaryFixed = md_theme_light_onSecondaryFixed,
-  onSecondaryFixedVariant = md_theme_light_onSecondaryFixedVariant,
-  tertiaryFixed = md_theme_light_tertiaryFixed,
-  tertiaryFixedDim = md_theme_light_tertiaryFixedDim,
-  onTertiaryFixed = md_theme_light_onTertiaryFixed,
-  onTertiaryFixedVariant = md_theme_light_onTertiaryFixedVariant
-)
+  val error = if (palette.isDark) ErrorDark else ErrorLight
+  val errorContainer = if (palette.isDark) ErrorDarkContainer else ErrorLightContainer
+
+  return lightColorScheme(
+    // Primary follows the app's inverted-selection language.
+    primary = palette.inverse,
+    onPrimary = palette.onInverse,
+    primaryContainer = palette.surfaceHigh,
+    onPrimaryContainer = palette.text,
+    inversePrimary = palette.surfaceHigh,
+    secondary = palette.muted,
+    onSecondary = palette.background,
+    secondaryContainer = palette.surface,
+    onSecondaryContainer = palette.text,
+    tertiary = palette.dim,
+    onTertiary = palette.background,
+    tertiaryContainer = palette.surface,
+    onTertiaryContainer = palette.text,
+    background = palette.background,
+    onBackground = palette.text,
+    surface = palette.surface,
+    onSurface = palette.text,
+    surfaceVariant = palette.surfaceHigh,
+    onSurfaceVariant = palette.muted,
+    surfaceTint = Color.Transparent,
+    inverseSurface = palette.inverse,
+    inverseOnSurface = palette.onInverse,
+    error = error,
+    onError = palette.background,
+    errorContainer = errorContainer,
+    onErrorContainer = palette.text,
+    outline = palette.dim,
+    outlineVariant = container(0.16f),
+    scrim = AppScrim,
+    surfaceBright = container(0.14f),
+    surfaceDim = container(0.05f),
+    surfaceContainer = container(0.08f),
+    surfaceContainerHigh = container(0.11f),
+    surfaceContainerHighest = container(0.15f),
+    surfaceContainerLow = container(0.06f),
+    surfaceContainerLowest = container(0.04f),
+    // Fixed roles intentionally stay visually stable across variants.
+    primaryFixed = Neutral90,
+    primaryFixedDim = Neutral80,
+    onPrimaryFixed = Neutral0,
+    onPrimaryFixedVariant = Neutral20,
+    secondaryFixed = Neutral90,
+    secondaryFixedDim = Neutral80,
+    onSecondaryFixed = Neutral0,
+    onSecondaryFixedVariant = Neutral20,
+    tertiaryFixed = Neutral90,
+    tertiaryFixedDim = Neutral80,
+    onTertiaryFixed = Neutral0,
+    onTertiaryFixedVariant = Neutral20,
+  )
+}
 
 @Composable
 fun ShuuenTheme(
   modifier: Modifier = Modifier,
+  style: ThemeStyle = ThemeStyle.Mono,
   darkTheme: Boolean = true,
   content: @Composable () -> Unit,
 ) {
-  MaterialTheme(
-    colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
-    typography = AppTypography,
-    shapes = AppShapes,
-  ) {
-    Surface(
-      color = MaterialTheme.colorScheme.background,
-      modifier = modifier,
+  val palette = shuuenPalette(style, darkTheme)
+  val colorScheme = remember(palette) { shuuenColorScheme(palette) }
+  SyncSystemBarsWithTheme(darkTheme)
+  CompositionLocalProvider(LocalShuuenPalette provides palette) {
+    MaterialTheme(
+      colorScheme = colorScheme,
+      typography = AppTypography,
+      shapes = AppShapes,
     ) {
-      content()
+      Surface(
+        color = MaterialTheme.colorScheme.background,
+        contentColor = palette.text,
+        modifier = modifier,
+      ) {
+        content()
+      }
     }
   }
 }

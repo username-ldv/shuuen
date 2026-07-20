@@ -15,6 +15,7 @@ fun LinearTrainingProgress(
   progress: Float,
   modifier: Modifier = Modifier.Companion,
   color: Color = ldv.shuuen.core.ui.components.ShuuenUi.Text,
+  trackColor: Color = ldv.shuuen.core.ui.components.ShuuenUi.Ink.copy(alpha = 0.10f),
 ) {
   Canvas(
     modifier = modifier.fillMaxWidth().height(4.dp),
@@ -22,7 +23,7 @@ fun LinearTrainingProgress(
     val stroke = size.height
     val y = size.height / 2f
     drawLine(
-      color = Color.White.copy(alpha = 0.10f),
+      color = trackColor,
       start = Offset(0f, y),
       end = Offset(size.width, y),
       strokeWidth = stroke,

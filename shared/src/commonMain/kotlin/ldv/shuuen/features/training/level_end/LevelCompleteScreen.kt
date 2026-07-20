@@ -269,20 +269,22 @@ private fun ScoreHero(session: TrainingSession) {
 
 @Composable
 private fun ScoreRing(accuracy: Float) {
+  val trackColor = ShuuenUi.Ink.copy(alpha = 0.10f)
+  val ringColor = ShuuenUi.Text
   Box(modifier = Modifier.size(116.dp), contentAlignment = Alignment.Center) {
     Canvas(Modifier.size(116.dp)) {
       // Flat caps and a thin stroke keep the gap readable near 100%: rounded caps would swallow a
       // small gap and make a near-perfect score look broken instead of nearly full.
       val stroke = 5.dp.toPx()
       drawArc(
-        color = Color.White.copy(alpha = 0.10f),
+        color = trackColor,
         startAngle = 0f,
         sweepAngle = 360f,
         useCenter = false,
         style = Stroke(stroke, cap = StrokeCap.Butt),
       )
       drawArc(
-        color = ShuuenUi.Text,
+        color = ringColor,
         startAngle = -90f,
         sweepAngle = 360f * accuracy.coerceIn(0f, 1f),
         useCenter = false,
@@ -479,7 +481,7 @@ private fun AccuracyRangeBar(buckets: List<AccuracyBucket>) {
         Box(
           modifier = Modifier.weight(1f).fillMaxWidth()
             .height(14.dp)
-            .background(Color.White.copy(alpha = alpha), MaterialTheme.shapes.extraSmall),
+            .background(ShuuenUi.Ink.copy(alpha = alpha), MaterialTheme.shapes.extraSmall),
         )
       }
     }

@@ -313,8 +313,8 @@ private fun ChordCell(
               .clip(shape)
               .background(
                   when {
-                    target -> Color.White.copy(alpha = 0.08f)
-                    answered -> Color.White.copy(alpha = 0.04f)
+                    target -> ShuuenUi.Ink.copy(alpha = 0.08f)
+                    answered -> ShuuenUi.Ink.copy(alpha = 0.04f)
                     else -> Color.Transparent
                   }
               )

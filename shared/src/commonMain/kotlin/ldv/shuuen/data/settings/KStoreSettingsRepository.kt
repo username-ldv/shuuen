@@ -9,6 +9,7 @@ import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.settings.AppSettings
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.SettingsRepository
+import ldv.shuuen.core.settings.ThemeSettings
 import ldv.shuuen.core.settings.coerceLevelStatsWindow
 import org.koin.core.annotation.Named
 
@@ -56,6 +57,10 @@ class KStoreSettingsRepository(
 
   override suspend fun setInputMethod(inputMethod: InputMethod) {
     store.update { it?.copy(inputMethod = inputMethod) }
+  }
+
+  override suspend fun setTheme(theme: ThemeSettings) {
+    store.update { it?.copy(theme = theme) }
   }
 
   override suspend fun setMidiRespectOctaves(value: Boolean) {

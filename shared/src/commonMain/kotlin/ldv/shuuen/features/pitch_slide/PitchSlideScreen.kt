@@ -211,6 +211,8 @@ private fun PitchWave(
     }
   }
 
+  val handleLineColor = ShuuenUi.Ink.copy(alpha = 0.25f)
+  val handleColor = ShuuenUi.Ink
   Canvas(modifier = modifier) {
     val w = size.width
     val h = size.height
@@ -252,12 +254,12 @@ private fun PitchWave(
 
     val handleY = (1f - logPos) * h
     drawLine(
-      color = Color.White.copy(alpha = 0.25f),
+      color = handleLineColor,
       start = Offset(cx - 46.dp.toPx(), handleY),
       end = Offset(cx + 46.dp.toPx(), handleY),
       strokeWidth = 1.dp.toPx(),
     )
-    drawCircle(color = Color.White, radius = 5.dp.toPx(), center = Offset(cx, handleY))
+    drawCircle(color = handleColor, radius = 5.dp.toPx(), center = Offset(cx, handleY))
 
     if (targetHz != null) {
       val targetPos = (ln(targetHz / PitchSlideMinHz) / logSpan).toFloat().coerceIn(0f, 1f)

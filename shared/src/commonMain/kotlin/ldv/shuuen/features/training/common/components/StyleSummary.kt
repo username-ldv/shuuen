@@ -134,12 +134,13 @@ private val GlyphHeight = 32.dp
 
 @Composable
 private fun RhythmFigureChip(figure: RhythmFigure, emphasis: Float) {
-  val color = Color.White.copy(alpha = chipAlpha(emphasis))
+  val color = ShuuenUi.Ink.copy(alpha = chipAlpha(emphasis))
   val isArpeggio = figure.ladder == FigureLadder.Chord
+  val arpeggioLineColor = ShuuenUi.Text.copy(alpha = 0.6f)
   Column(
     modifier = Modifier
       .clip(ShuuenUi.ControlShape)
-      .background(Color.White.copy(alpha = 0.05f))
+      .background(ShuuenUi.Ink.copy(alpha = 0.05f))
       .padding(horizontal = 9.dp, vertical = 4.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.spacedBy(3.dp),
@@ -149,7 +150,7 @@ private fun RhythmFigureChip(figure: RhythmFigure, emphasis: Float) {
       // Marks figures that arpeggiate the context chord instead of walking the scale.
       Canvas(modifier = Modifier.width(16.dp).height(2.dp)) {
         drawLine(
-          color = ShuuenUi.Text.copy(alpha = 0.6f),
+          color = arpeggioLineColor,
           start = Offset(0f, size.height / 2),
           end = Offset(size.width, size.height / 2),
           strokeWidth = size.height,
@@ -261,11 +262,11 @@ private fun DrawScope.drawNote(center: Offset, value: NoteValue, color: Color) {
 
 @Composable
 private fun ChordFigureChip(figure: ChordFigure, emphasis: Float) {
-  val color = Color.White.copy(alpha = chipAlpha(emphasis))
+  val color = ShuuenUi.Ink.copy(alpha = chipAlpha(emphasis))
   Row(
     modifier = Modifier
       .clip(ShuuenUi.ControlShape)
-      .background(Color.White.copy(alpha = 0.05f))
+      .background(ShuuenUi.Ink.copy(alpha = 0.05f))
       .padding(horizontal = 9.dp, vertical = 6.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(6.dp),

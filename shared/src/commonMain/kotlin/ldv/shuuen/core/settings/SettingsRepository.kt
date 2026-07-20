@@ -25,6 +25,8 @@ interface SettingsRepository {
 
   suspend fun setInputMethod(inputMethod: InputMethod)
 
+  suspend fun setTheme(theme: ThemeSettings)
+
   suspend fun setMidiRespectOctaves(value: Boolean)
 
   suspend fun setAllowSevenAccidentalKeys(value: Boolean)
@@ -63,6 +65,7 @@ data class AppSettings(
   @SerialName("melodyOriginalVelocityBoost")
   val melodyOriginalVolumeBoost: Int = 0,
   val inputMethod: InputMethod = InputMethod(),
+  val theme: ThemeSettings = ThemeSettings(),
   /**
    * MIDI keyboard answers only: when true, a guess must land in the exact octave of the asked
    * note; when false (default) any octave of the right pitch class counts, matching the

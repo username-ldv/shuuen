@@ -205,7 +205,7 @@ private fun PreviewButton(onClick: () -> Unit) {
   Row(
     modifier = Modifier
       .clip(ShuuenUi.PillShape)
-      .background(Color.White.copy(alpha = 0.06f))
+      .background(ShuuenUi.Ink.copy(alpha = 0.06f))
       .clickable(onClick = onClick)
       .padding(horizontal = 12.dp, vertical = 7.dp),
     verticalAlignment = Alignment.CenterVertically,
@@ -227,7 +227,7 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
     modifier = Modifier
       .fillMaxWidth()
       .clip(ShuuenUi.ControlShape)
-      .background(Color.White.copy(alpha = 0.05f))
+      .background(ShuuenUi.Ink.copy(alpha = 0.05f))
       .padding(horizontal = 12.dp, vertical = 11.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -271,7 +271,7 @@ private fun BankChip(label: String, selected: Boolean, onClick: () -> Unit) {
   Row(
     modifier = Modifier
       .clip(ShuuenUi.PillShape)
-      .background(if (selected) ShuuenUi.Inverse else Color.White.copy(alpha = 0.05f))
+      .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
       .clickable(onClick = onClick)
       .padding(horizontal = 14.dp, vertical = 8.dp),
     verticalAlignment = Alignment.CenterVertically,
@@ -296,7 +296,7 @@ private fun PresetRow(
     modifier = Modifier
       .fillMaxWidth()
       .clip(ShuuenUi.ControlShape)
-      .background(if (selected) ShuuenUi.Inverse else Color.White.copy(alpha = 0.05f))
+      .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
       .clickable(onClick = onClick)
       .padding(horizontal = 12.dp, vertical = 11.dp),
     verticalAlignment = Alignment.CenterVertically,

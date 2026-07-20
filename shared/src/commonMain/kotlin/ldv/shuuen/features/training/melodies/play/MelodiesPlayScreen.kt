@@ -419,9 +419,9 @@ private fun MelodyCell(
         .clip(shape)
         .background(
           when {
-            playing -> Color.White.copy(alpha = 0.12f)
-            target -> Color.White.copy(alpha = 0.08f)
-            answered -> Color.White.copy(alpha = 0.04f)
+            playing -> ShuuenUi.Ink.copy(alpha = 0.12f)
+            target -> ShuuenUi.Ink.copy(alpha = 0.08f)
+            answered -> ShuuenUi.Ink.copy(alpha = 0.04f)
             else -> Color.Transparent
           }
         )

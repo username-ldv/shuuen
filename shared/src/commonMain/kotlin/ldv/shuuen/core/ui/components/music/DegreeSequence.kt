@@ -60,7 +60,7 @@ fun DegreeChip(
   val currentOnClick by rememberUpdatedState(onClick)
   Box(
     modifier = modifier.height(34.dp).widthIn(min = 38.dp).clip(shape)
-      .background(if (inverted) ShuuenUi.Inverse else Color.White.copy(alpha = 0.05f))
+      .background(if (inverted) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
       .then(
         if (selected) {
           Modifier.border(
@@ -181,7 +181,7 @@ private fun SequenceIconButton(
   val currentOnClick by rememberUpdatedState(onClick)
   Box(
     modifier = Modifier.size(34.dp).clip(ShuuenUi.ControlShape)
-      .background(if (selected) ShuuenUi.Inverse else Color.White.copy(alpha = 0.05f))
+      .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
       .clickable { currentOnClick() },
     contentAlignment = Alignment.Center,
   ) {
@@ -363,7 +363,7 @@ fun OctaveStepper(
 ) {
   Row(
     modifier = modifier.height(34.dp).clip(ShuuenUi.PillShape)
-      .background(Color.White.copy(alpha = 0.05f)),
+      .background(ShuuenUi.Ink.copy(alpha = 0.05f)),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     StepperPiece("−") { if (value > range.first) onChange(value - 1) }

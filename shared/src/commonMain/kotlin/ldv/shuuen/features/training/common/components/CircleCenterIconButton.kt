@@ -31,7 +31,7 @@ fun CircleCenterIconButton(
     modifier = modifier
       .size(52.dp)
       .clip(CircleShape)
-      .background(Color.White.copy(alpha = 0.05f))
+      .background(ShuuenUi.Ink.copy(alpha = 0.05f))
       .clickable(onClick = onClick),
     contentAlignment = Alignment.Center,
   ) {

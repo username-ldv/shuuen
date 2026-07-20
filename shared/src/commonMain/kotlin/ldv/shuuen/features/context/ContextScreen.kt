@@ -516,7 +516,7 @@ private fun DurationPicker(
       modifier =
           Modifier.fillMaxWidth()
               .clip(ShuuenUi.ControlShape)
-              .background(Color.White.copy(alpha = 0.05f)),
+              .background(ShuuenUi.Ink.copy(alpha = 0.05f)),
   ) {
     DurationRow(
         durations = topDurations,
@@ -860,7 +860,7 @@ private fun SetupMelodyRepeatPicker(
           Modifier.fillMaxWidth()
               .height(42.dp)
               .clip(ShuuenUi.ControlShape)
-              .background(Color.White.copy(alpha = 0.05f)),
+              .background(ShuuenUi.Ink.copy(alpha = 0.05f)),
   ) {
     SetupMelodyRepeat.entries.forEachIndexed { index, option ->
       SetupMelodyRepeatSegment(
@@ -956,7 +956,7 @@ private fun GroupLabel(text: String) {
 @Composable
 private fun NodeNumber(number: Int) {
   Box(
-      modifier = Modifier.size(30.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.07f)),
+      modifier = Modifier.size(30.dp).clip(CircleShape).background(ShuuenUi.Ink.copy(alpha = 0.07f)),
       contentAlignment = Alignment.Center,
   ) {
     Text(
@@ -1005,7 +1005,7 @@ private fun CompactCounter(
           modifier
               .height(38.dp)
               .clip(ShuuenUi.PillShape)
-              .background(Color.White.copy(alpha = 0.05f)),
+              .background(ShuuenUi.Ink.copy(alpha = 0.05f)),
       verticalAlignment = Alignment.CenterVertically,
   ) {
     CounterPiece("-", onClick = { if (value > 1) onChange(value - 1) })
@@ -1074,7 +1074,7 @@ private fun SmallPill(
           modifier
               .height(30.dp)
               .clip(ShuuenUi.PillShape)
-              .background(if (selected) ShuuenUi.Inverse else Color.White.copy(alpha = 0.05f))
+              .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
               .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
       contentAlignment = Alignment.Center,
   ) {
@@ -1108,6 +1108,8 @@ private fun MiniWaveform(
     modifier: Modifier = Modifier,
     pieces: Int = 3,
 ) {
+  val barColor = ShuuenUi.Ink.copy(alpha = 0.55f)
+  val gapColor = ShuuenUi.Ink.copy(alpha = 0.22f)
   Canvas(modifier = modifier) {
     val segmentWidth = size.width / (pieces * 5f)
     val centerY = size.height / 2f
@@ -1117,7 +1119,7 @@ private fun MiniWaveform(
       listOf(0.35f, 0.7f, 1f, 0.55f).forEach { heightFraction ->
         val lineHeight = size.height * heightFraction
         drawLine(
-            color = Color.White.copy(alpha = 0.55f),
+            color = barColor,
             start = Offset(x, centerY - lineHeight / 2f),
             end = Offset(x, centerY + lineHeight / 2f),
             strokeWidth = 2.dp.toPx(),
@@ -1127,7 +1129,7 @@ private fun MiniWaveform(
       }
       if (it < pieces - 1) {
         drawLine(
-            color = Color.White.copy(alpha = 0.22f),
+            color = gapColor,
             start = Offset(x, centerY),
             end = Offset(x + segmentWidth * 0.8f, centerY),
             strokeWidth = 1.dp.toPx(),

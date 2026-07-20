@@ -39,7 +39,7 @@ fun SegmentedPlusMinus(
 ) {
   Row(
     modifier = Modifier.height(34.dp).clip(ShuuenUi.PillShape)
-      .background(Color.White.copy(alpha = 0.05f)).then(modifier),
+      .background(ShuuenUi.Ink.copy(alpha = 0.05f)).then(modifier),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     SegmentedPart("—", onClick = {

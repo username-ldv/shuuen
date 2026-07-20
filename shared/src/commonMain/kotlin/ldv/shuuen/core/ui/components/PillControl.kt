@@ -37,7 +37,7 @@ fun PillControl(
   val contentColor = if (selected) ldv.shuuen.core.ui.components.ShuuenUi.OnInverse else ldv.shuuen.core.ui.components.ShuuenUi.Muted
   Row(
     modifier = modifier.clip(shape)
-      .background(if (selected) ldv.shuuen.core.ui.components.ShuuenUi.Inverse else Color.White.copy(alpha = 0.05f))
+      .background(if (selected) ldv.shuuen.core.ui.components.ShuuenUi.Inverse else ldv.shuuen.core.ui.components.ShuuenUi.Ink.copy(alpha = 0.05f))
       .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier.Companion)
       .padding(horizontal = 12.dp, vertical = 9.dp),
     verticalAlignment = Alignment.CenterVertically,

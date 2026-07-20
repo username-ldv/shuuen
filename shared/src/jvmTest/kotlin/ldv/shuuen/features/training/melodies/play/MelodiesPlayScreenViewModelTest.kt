@@ -38,6 +38,7 @@ import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.core.settings.AppSettings
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.SettingsRepository
+import ldv.shuuen.core.settings.ThemeSettings
 import ldv.shuuen.features.training.common.LevelAccuracyStats
 import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.domain.LevelConfig
@@ -228,6 +229,8 @@ private class FakeSettingsRepository : SettingsRepository {
   override suspend fun setBackingTrackMutesMelody(value: Boolean) = Unit
 
   override suspend fun setInputMethod(inputMethod: InputMethod) = Unit
+
+  override suspend fun setTheme(theme: ThemeSettings) = Unit
 
   override suspend fun setMidiRespectOctaves(value: Boolean) = Unit
 

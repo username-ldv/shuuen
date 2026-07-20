@@ -43,6 +43,7 @@ class SettingsViewModel(
             backingTrackVolume = settings.backingTrackVolume,
             backingTrackMutesMelody = settings.backingTrackMutesMelody,
             inputMethod = settings.inputMethod,
+            theme = settings.theme,
             midiRespectOctaves = settings.midiRespectOctaves,
             allowSevenAccidentalKeys = settings.allowSevenAccidentalKeys,
             levelStatsWindow = coerceLevelStatsWindow(settings.levelStatsWindow),
@@ -87,6 +88,10 @@ class SettingsViewModel(
     when (action) {
       is SettingsAction.SelectInputMethod -> {
         viewModelScope.launch { settingsRepository.setInputMethod(action.inputMethod) }
+      }
+
+      is SettingsAction.SetTheme -> {
+        viewModelScope.launch { settingsRepository.setTheme(action.theme) }
       }
 
       is SettingsAction.SetAllowSevenAccidentalKeys -> {

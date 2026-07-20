@@ -131,7 +131,7 @@ fun CompactDropdownMenu(
         .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
         .height(34.dp)
         .clip(ShuuenUi.PillShape)
-        .background(Color.White.copy(alpha = 0.05f))
+        .background(ShuuenUi.Ink.copy(alpha = 0.05f))
         .padding(start = 16.dp, end = 10.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(4.dp),

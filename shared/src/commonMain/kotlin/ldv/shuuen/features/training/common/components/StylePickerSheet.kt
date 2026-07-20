@@ -123,7 +123,7 @@ private fun StyleRow(
     modifier = Modifier
       .fillMaxWidth()
       .clip(ShuuenUi.ControlShape)
-      .background(if (selected) ShuuenUi.Inverse else Color.White.copy(alpha = 0.05f))
+      .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
       .clickable(onClick = onClick)
       .padding(horizontal = 14.dp, vertical = 12.dp),
     verticalAlignment = Alignment.CenterVertically,

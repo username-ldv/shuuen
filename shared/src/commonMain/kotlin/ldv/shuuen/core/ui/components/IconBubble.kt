@@ -20,7 +20,7 @@ fun IconBubble(
   icon: ImageVector,
   modifier: Modifier = Modifier.Companion,
   tint: Color = ldv.shuuen.core.ui.components.ShuuenUi.Muted,
-  background: Color = Color.White.copy(alpha = 0.06f),
+  background: Color = ldv.shuuen.core.ui.components.ShuuenUi.Ink.copy(alpha = 0.06f),
   size: Dp = 58.dp,
 ) {
   Box(

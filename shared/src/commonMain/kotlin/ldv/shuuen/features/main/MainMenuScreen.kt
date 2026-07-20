@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -77,6 +78,9 @@ fun MainMenuScreen(
           contentDescription = "Shuuen",
           modifier = Modifier.fillMaxWidth(0.62f),
           contentScale = ContentScale.Fit,
+          // The asset's strokes are white; tint follows the theme so the logo
+          // reads on light backgrounds too.
+          colorFilter = ColorFilter.tint(ShuuenUi.Ink),
         )
         Text(
           text = "The last ear trainer app you'll need.",

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -65,6 +66,9 @@ import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.InputMode
 import ldv.shuuen.core.settings.MaxLevelStatsWindow
 import ldv.shuuen.core.settings.MinLevelStatsWindow
+import ldv.shuuen.core.settings.ThemeAppearance
+import ldv.shuuen.core.settings.ThemeSettings
+import ldv.shuuen.core.settings.ThemeStyle
 import ldv.shuuen.core.ui.components.FlatSection
 import ldv.shuuen.core.ui.components.Hairline
 import ldv.shuuen.core.ui.components.IconBubble
@@ -115,11 +119,16 @@ fun SettingsScreen(
             Hairline()
             MidiKeyboardSection(state = state, onAction = viewModel::onAction)
             Hairline()
+            ThemeSection(
+              theme = state.theme,
+              onSelect = { viewModel.onAction(SettingsAction.SetTheme(it)) },
+            )
+            Hairline()
             GeneralSection(
               state = state,
               onAction = viewModel::onAction,
             )
-          }
+}
           Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(26.dp),
@@ -140,6 +149,11 @@ fun SettingsScreen(
           MidiKeyboardSection(state = state, onAction = viewModel::onAction)
           Hairline()
           SoundfontSection(state = state, onAction = viewModel::onAction)
+          Hairline()
+          ThemeSection(
+            theme = state.theme,
+            onSelect = { viewModel.onAction(SettingsAction.SetTheme(it)) },
+          )
           Hairline()
           GeneralSection(
             state = state,
@@ -294,6 +308,80 @@ private fun InputMethodSection(
         }
       }
     }
+  }
+}
+
+/**
+ * Theme choice: appearance decides which brightness variant is active (System follows
+ * the device), contrast switches between the standard and the softer monochrome look.
+ */
+@Composable
+private fun ThemeSection(
+  theme: ThemeSettings,
+  onSelect: (ThemeSettings) -> Unit,
+) {
+  FlatSection(
+    label = "THEME",
+    supporting = "System follows the device's dark or light mode.",
+  ) {
+    ThemePickerRow("APPEARANCE") {
+      PillControl(
+        text = "System",
+        selected = theme.appearance == ThemeAppearance.System,
+        trailingCheck = true,
+        onClick = { onSelect(theme.copy(appearance = ThemeAppearance.System)) },
+        modifier = Modifier.weight(1f),
+      )
+      PillControl(
+        text = "Dark",
+        selected = theme.appearance == ThemeAppearance.Dark,
+        trailingCheck = true,
+        onClick = { onSelect(theme.copy(appearance = ThemeAppearance.Dark)) },
+        modifier = Modifier.weight(1f),
+      )
+      PillControl(
+        text = "Light",
+        selected = theme.appearance == ThemeAppearance.Light,
+        trailingCheck = true,
+        onClick = { onSelect(theme.copy(appearance = ThemeAppearance.Light)) },
+        modifier = Modifier.weight(1f),
+      )
+    }
+    ThemePickerRow("CONTRAST") {
+      PillControl(
+        text = "Standard",
+        selected = theme.style == ThemeStyle.Mono,
+        trailingCheck = true,
+        onClick = { onSelect(theme.copy(style = ThemeStyle.Mono)) },
+        modifier = Modifier.weight(1f),
+      )
+      PillControl(
+        text = "Soft",
+        selected = theme.style == ThemeStyle.MonoSoft,
+        trailingCheck = true,
+        onClick = { onSelect(theme.copy(style = ThemeStyle.MonoSoft)) },
+        modifier = Modifier.weight(1f),
+      )
+    }
+  }
+}
+
+@Composable
+private fun ThemePickerRow(
+  label: String,
+  content: @Composable RowScope.() -> Unit,
+) {
+  Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Text(
+      text = label,
+      color = ShuuenUi.Dim,
+      style = MaterialTheme.typography.labelSmall.copy(letterSpacing = ShuuenUi.labelSpacing),
+    )
+    Row(
+      horizontalArrangement = Arrangement.spacedBy(10.dp),
+      modifier = Modifier.fillMaxWidth(),
+      content = content,
+    )
   }
 }
 
@@ -881,7 +969,7 @@ private fun ValueSlider(
       colors = SliderDefaults.colors(
         thumbColor = ShuuenUi.Text,
         activeTrackColor = ShuuenUi.Inverse,
-        inactiveTrackColor = Color.White.copy(alpha = 0.12f),
+        inactiveTrackColor = ShuuenUi.Ink.copy(alpha = 0.12f),
       ),
       modifier = Modifier.weight(1f),
     )
