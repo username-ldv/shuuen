@@ -10,6 +10,7 @@ dependencies {
   implementation(projects.shared)
 
   implementation(compose.desktop.currentOs)
+  implementation(libs.compose.components.resources)
   implementation(libs.kotlinx.coroutinesSwing)
 
   implementation(libs.napier)
@@ -18,6 +19,10 @@ dependencies {
 
   testImplementation(libs.kotlin.testJunit)
   testImplementation(libs.junit)
+}
+
+compose.resources {
+  packageOfResClass = "ldv.shuuen.desktop.generated.resources"
 }
 
 compose.desktop {
@@ -31,6 +36,16 @@ compose.desktop {
       targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
       packageName = "ldv.shuuen"
       packageVersion = "1.0.0"
+
+      windows {
+        iconFile.set(project.file("src/main/resources/icons/shuuen.ico"))
+      }
+      macOS {
+        iconFile.set(project.file("src/main/resources/icons/shuuen.icns"))
+      }
+      linux {
+        iconFile.set(project.file("src/main/resources/icons/shuuen.png"))
+      }
     }
   }
 }
