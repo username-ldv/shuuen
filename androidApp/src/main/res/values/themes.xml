@@ -3,6 +3,7 @@
     <style name="Theme.Shuuen" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/ic_launcher_background</item>
         <item name="android:windowNoTitle">true</item>
+        <item name="android:forceDarkAllowed">false</item>
     </style>
 
     <style name="Theme.Shuuen.Starting" parent="Theme.SplashScreen">
