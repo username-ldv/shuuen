@@ -17,10 +17,12 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -39,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -52,6 +55,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 import ldv.shuuen.core.audio.midi.FullPresetVolume
 import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.audio.midi.PresetVolumes
@@ -134,21 +138,32 @@ private fun ColumnScope.PresetPickerContent(
   }
   val selectedPacked = remember(selectedPresets) { selectedPresets.map { it.toPacked() }.toSet() }
 
-  val visiblePresets = remember(query, selectedBank, soundbanks) {
+  // Which presets ride at the top — snapshotted when the sheet opens, and refreshed only by the
+  // re-sort button. Choosing one must not slide the list out from under the finger that tapped it.
+  var pinned by remember(title) { mutableStateOf(selectedPacked) }
+  val listState = rememberLazyListState()
+  val scope = rememberCoroutineScope()
+
+  val visiblePresets = remember(query, selectedBank, soundbanks, pinned) {
     val scoped = when (val bank = selectedBank) {
       null -> soundbanks.flatMap { it.presets }
       else -> soundbanks.firstOrNull { it.bank == bank }?.presets.orEmpty()
     }
     val trimmed = query.trim()
-    if (trimmed.isEmpty()) {
-      scoped
-    } else {
-      scoped.filter { preset ->
-        presetName(preset).contains(trimmed, ignoreCase = true) ||
-          presetNumber(preset).contains(trimmed) ||
-          preset.id.toString() == trimmed
+    val matching =
+      if (trimmed.isEmpty()) {
+        scoped
+      } else {
+        scoped.filter { preset ->
+          presetName(preset).contains(trimmed, ignoreCase = true) ||
+            presetNumber(preset).contains(trimmed) ||
+            preset.id.toString() == trimmed
+        }
       }
-    }
+    // A stable sort on nothing but "is it chosen", so both halves keep the soundbank's own order:
+    // the chosen ones rise to the top still in ascending preset number, and one dropped here lands
+    // back in its numbered slot.
+    matching.sortedBy { if (it.toPacked() in pinned) 0 else 1 }
   }
 
   Column(
@@ -176,6 +191,14 @@ private fun ColumnScope.PresetPickerContent(
           modifier = Modifier.weight(1f),
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
+        )
+        HeaderIconButton(
+          icon = Icons.AutoMirrored.Rounded.Sort,
+          contentDescription = "Move the chosen presets back to the top",
+          onClick = {
+            pinned = selectedPacked
+            scope.launch { listState.animateScrollToItem(0) }
+          },
         )
       }
       Text(
@@ -214,6 +237,7 @@ private fun ColumnScope.PresetPickerContent(
       )
     } else {
       LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
       ) {
@@ -400,6 +424,30 @@ private fun PresetRow(
         onCommit = onVolumeCommit,
       )
     }
+  }
+}
+
+/** Icon-only action beside the sheet's title. */
+@Composable
+private fun HeaderIconButton(
+  icon: ImageVector,
+  contentDescription: String,
+  onClick: () -> Unit,
+) {
+  Box(
+    modifier = Modifier
+      .size(36.dp)
+      .clip(ShuuenUi.PillShape)
+      .background(ShuuenUi.Ink.copy(alpha = 0.06f))
+      .clickable(onClick = onClick),
+    contentAlignment = Alignment.Center,
+  ) {
+    Icon(
+      icon,
+      contentDescription = contentDescription,
+      tint = ShuuenUi.Text,
+      modifier = Modifier.size(20.dp),
+    )
   }
 }
 
