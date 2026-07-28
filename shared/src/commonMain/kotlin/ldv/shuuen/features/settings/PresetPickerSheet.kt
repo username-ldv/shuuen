@@ -22,7 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
-import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Search
@@ -342,19 +341,22 @@ private fun PresetRow(
       .clip(ShuuenUi.ControlShape)
       .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f)),
   ) {
+    // Instrument names are long and the trailing controls are fixed, so the row gives them every
+    // dp it can: tight gaps, no check mark (the inverted fill already says "chosen"), and a
+    // second line where a name still won't fit on one.
     Row(
       modifier = Modifier
         .fillMaxWidth()
         .clickable(onClick = onClick)
-        .padding(start = 12.dp, end = 6.dp, top = 5.dp, bottom = 5.dp),
+        .padding(start = 12.dp, end = 4.dp, top = 5.dp, bottom = 5.dp),
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(10.dp),
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       Text(
         text = number,
         color = quiet,
         style = MaterialTheme.typography.labelMedium,
-        modifier = Modifier.widthIn(min = 30.dp),
+        modifier = Modifier.widthIn(min = 26.dp),
       )
       Text(
         text = name,
@@ -363,7 +365,7 @@ private fun PresetRow(
           fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
         ),
         modifier = Modifier.weight(1f),
-        maxLines = 1,
+        maxLines = 2,
         overflow = TextOverflow.Ellipsis,
       )
       Text(
@@ -371,26 +373,23 @@ private fun PresetRow(
         color = if (volumePercent == FullPresetVolume) quiet else content,
         style = MaterialTheme.typography.labelMedium,
         textAlign = TextAlign.End,
-        modifier = Modifier.widthIn(min = 34.dp),
+        modifier = Modifier.widthIn(min = 30.dp),
       )
-      RowIconButton(
-        icon = if (volumeExpanded) Icons.Rounded.Close else Icons.AutoMirrored.Rounded.VolumeUp,
-        contentDescription = if (volumeExpanded) "Close volume" else "Volume of $name",
-        tint = content,
-        onClick = onToggleVolume,
-      )
-      RowIconButton(
-        icon = Icons.Rounded.PlayArrow,
-        contentDescription = "Preview $name",
-        tint = content,
-        onClick = onPreview,
-      )
-      Icon(
-        Icons.Rounded.Check,
-        contentDescription = null,
-        tint = if (selected) ShuuenUi.OnInverse else Color.Transparent,
-        modifier = Modifier.size(18.dp),
-      )
+      // The two buttons read as one control cluster, so they sit closer than the row's own gap.
+      Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        RowIconButton(
+          icon = if (volumeExpanded) Icons.Rounded.Close else Icons.AutoMirrored.Rounded.VolumeUp,
+          contentDescription = if (volumeExpanded) "Close volume" else "Volume of $name",
+          tint = content,
+          onClick = onToggleVolume,
+        )
+        RowIconButton(
+          icon = Icons.Rounded.PlayArrow,
+          contentDescription = "Preview $name",
+          tint = content,
+          onClick = onPreview,
+        )
+      }
     }
 
     AnimatedVisibility(volumeExpanded) {
