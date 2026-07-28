@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.features.training.common.DegreeContextPlayer
+import ldv.shuuen.features.training.common.LevelPresetController
 import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.level_end.domain.QuestionResult
 import ldv.shuuen.features.training.level_end.domain.TrainingSession
@@ -85,6 +86,14 @@ class SinglesPlayScreenViewModel(
 ) : ViewModel() {
   private val _state = MutableStateFlow(SinglesPlayScreenState())
   val state = _state.asStateFlow()
+
+  private val presets = LevelPresetController(midiEngine, settingsRepository)
+
+  /** Whether any channel has alternative instruments, i.e. whether the shuffle button is useful. */
+  val canShufflePresets: StateFlow<Boolean> =
+      settingsRepository.settings
+          .map { it.presets.hasChoices }
+          .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
   /** The input component + interpretation mode chosen in settings. */
   val inputMethod: StateFlow<InputMethod> =
@@ -168,6 +177,7 @@ class SinglesPlayScreenViewModel(
         level = responseState.result
       }
       val allowSevenAccidentalKeys = settingsRepository.settings.map { it.allowSevenAccidentalKeys }.first()
+      presets.begin()
       quizzer = SinglesLevelQuizzer(level, allowSevenAccidentalKeys)
 
       val c = level.context
@@ -186,6 +196,8 @@ class SinglesPlayScreenViewModel(
         }
 
         lastHandledQuestion = quizState.currentQuestionNumber
+        // The level's opening instruments were rolled in begin(); question 1 keeps them.
+        if (quizState.currentQuestionNumber > 1) presets.onQuestion()
 
         if (degreeContextPlayer?.isChangingNode(quizState.currentQuestionNumber, isNewRoot) ?: false) {
           Napier.v { "cancelling the currently playing note BECAUSE of the new node starting..." }
@@ -284,6 +296,9 @@ class SinglesPlayScreenViewModel(
     replayCount += 1
     playNote(quizState.currentNote, quizState.detuneCents)
   }
+
+  /** Rolls every channel onto another of its chosen instruments, on demand. */
+  fun shufflePresets() = presets.shuffleNow()
 
   /** Ends the session before its natural end, saving whatever was answered so far. */
   fun finishEarly() {
@@ -404,5 +419,9 @@ class SinglesPlayScreenViewModel(
       }
     }
     return player
+  }
+
+  override fun onCleared() {
+    presets.restore()
   }
 }

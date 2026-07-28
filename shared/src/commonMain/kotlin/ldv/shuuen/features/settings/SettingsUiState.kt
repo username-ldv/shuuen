@@ -4,9 +4,12 @@ import ldv.shuuen.core.audio.midi.ChannelPresets
 import ldv.shuuen.core.audio.midi.ChannelVolumes
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
+import ldv.shuuen.core.audio.midi.PresetVolumes
 import ldv.shuuen.core.settings.DefaultLevelStatsWindow
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.MusicLabelSettings
+import ldv.shuuen.core.settings.PresetShuffleMode
+import ldv.shuuen.core.settings.PresetShuffleSettings
 import ldv.shuuen.core.settings.ThemeSettings
 
 /** A MIDI bank paired with the presets it contains. */
@@ -23,7 +26,9 @@ data class SettingsUiState(
   val errorMessage: String? = null,
   val soundbanks: List<Soundbank> = emptyList(),
   val selectedPresets: ChannelPresets = ChannelPresets(),
+  val presetShuffle: PresetShuffleSettings = PresetShuffleSettings(),
   val selectedVolumes: ChannelVolumes = ChannelVolumes(),
+  val presetVolumes: PresetVolumes = PresetVolumes(),
   val melodyOriginalVolumeBoost: Int = 0,
   /** Volume (0..127) of a melody level's backing track. */
   val backingTrackVolume: Int = 100,
@@ -40,8 +45,18 @@ data class SettingsUiState(
   val musicLabels: MusicLabelSettings = MusicLabelSettings(),
   /** The category whose picker sheet is currently open, or null when closed. */
   val openPickerChannel: MidiChannel? = null,
+  /**
+   * The preset the open sheet last auditioned. It is what the channel is actually sounding, so
+   * the channel's volume slider scales by this one's trim until the sheet closes.
+   */
+  val auditioningPreset: Preset? = null,
+  /** The channel whose change-instrument sheet is open, or null when closed. */
+  val openShuffleChannel: MidiChannel? = null,
   val openLabelEditor: LabelEditor? = null,
 ) {
+  /** The preset [channel] is currently sounding: an audition in the open sheet, else its base. */
+  fun activePreset(channel: MidiChannel): Preset =
+    auditioningPreset?.takeIf { openPickerChannel == channel } ?: selectedPresets.forChannel(channel)
   /**
    * Persisted presets carry no name (only bank/id), so resolve against the
    * loaded soundbanks to show the real instrument name where possible.
@@ -50,6 +65,10 @@ data class SettingsUiState(
     soundbanks.firstOrNull { it.bank == preset.bank }
       ?.presets?.firstOrNull { it.id == preset.id }
       ?: preset
+
+  /** Every preset chosen for [channel], named where the soundbanks know them. */
+  fun resolvedChoices(channel: MidiChannel): List<Preset> =
+    selectedPresets.choicesFor(channel).map(::resolvePreset)
 }
 
 enum class LabelEditor {
@@ -81,8 +100,33 @@ sealed interface SettingsAction {
 
   data class OpenPicker(val channel: MidiChannel) : SettingsAction
   data object ClosePicker : SettingsAction
-  data class SelectPreset(val channel: MidiChannel, val preset: Preset) : SettingsAction
+
+  /** Adds [preset] to the channel's choices, or drops it; dropping the last one is refused. */
+  data class TogglePreset(val channel: MidiChannel, val preset: Preset) : SettingsAction
+
+  data class OpenShuffleModePicker(val channel: MidiChannel) : SettingsAction
+  data object CloseShuffleModePicker : SettingsAction
+
+  data class SetPresetShuffleMode(
+    val channel: MidiChannel,
+    val mode: PresetShuffleMode,
+  ) : SettingsAction
+
+  data class SetPerNoteShuffleOnImportedMelodies(val value: Boolean) : SettingsAction
+
   data class Preview(val channel: MidiChannel) : SettingsAction
+
+  /** Auditions one row of the picker: the channel switches to [preset] until the sheet closes. */
+  data class PreviewPreset(val channel: MidiChannel, val preset: Preset) : SettingsAction
+
+  /** Applied live to the engine while dragging a preset's trim, not persisted. */
+  data class SetPresetVolume(
+    val channel: MidiChannel,
+    val preset: Preset,
+    val percent: Int,
+  ) : SettingsAction
+
+  data class CommitPresetVolume(val preset: Preset, val percent: Int) : SettingsAction
 
   /** Applied live to the engine while dragging, not persisted. */
   data class SetVolume(val channel: MidiChannel, val value: Int) : SettingsAction
@@ -111,3 +155,13 @@ fun presetNumber(preset: Preset): String = preset.id.toString().padStart(3, '0')
 
 fun presetName(preset: Preset): String =
   preset.name?.takeIf { it.isNotBlank() } ?: "Preset ${preset.id}"
+
+/** Preset column for a channel: its base instrument, plus how many alternatives follow it. */
+fun presetChoicesLabel(choices: List<Preset>): String {
+  val base = presetName(choices.first())
+  return if (choices.size > 1) "$base +${choices.size - 1}" else base
+}
+
+/** Soundbank column for a channel; choices spread over several banks collapse to one label. */
+fun soundbankChoicesLabel(choices: List<Preset>): String =
+  if (choices.distinctBy { it.bank }.size > 1) "Mixed" else soundbankLabel(choices.first().bank)

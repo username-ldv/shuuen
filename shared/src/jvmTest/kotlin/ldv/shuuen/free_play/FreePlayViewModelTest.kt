@@ -21,6 +21,7 @@ import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.settings.AppSettings
 import ldv.shuuen.core.settings.InputMethod
+import ldv.shuuen.core.settings.PresetShuffleMode
 import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.core.settings.ThemeSettings
 import ldv.shuuen.core.music.Chord
@@ -117,7 +118,13 @@ private class FakeSettingsRepository : SettingsRepository {
 
   override suspend fun setSoundFontPath(path: String?) = Unit
 
-  override suspend fun setPreset(channel: MidiChannel, preset: Preset) = Unit
+  override suspend fun setPresetChoices(channel: MidiChannel, presets: List<Preset>) = Unit
+
+  override suspend fun setPresetShuffleMode(channel: MidiChannel, mode: PresetShuffleMode) = Unit
+
+  override suspend fun setPresetVolume(preset: Preset, percent: Int) = Unit
+
+  override suspend fun setPerNoteShuffleOnImportedMelodies(value: Boolean) = Unit
 
   override suspend fun setVolume(channel: MidiChannel, value: Int) = Unit
 

@@ -45,6 +45,7 @@ import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
 import ldv.shuuen.features.training.chords.domain.ChordsLevel
 import ldv.shuuen.features.training.chords.domain.ChordsLocalLevelRepository
 import ldv.shuuen.features.training.common.DegreeContextPlayer
+import ldv.shuuen.features.training.common.LevelPresetController
 import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.common.components.KeyFlashRequest
 import ldv.shuuen.features.training.level_end.domain.QuestionResult
@@ -80,6 +81,14 @@ class ChordsPlayScreenViewModel(
 ) : ViewModel() {
   private val _state = MutableStateFlow(ChordsPlayScreenState())
   val state = _state.asStateFlow()
+
+  private val presets = LevelPresetController(midiEngine, settingsRepository)
+
+  /** Whether any channel has alternative instruments, i.e. whether the shuffle button is useful. */
+  val canShufflePresets: StateFlow<Boolean> =
+      settingsRepository.settings
+          .map { it.presets.hasChoices }
+          .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
   /** The input component + interpretation mode chosen in settings. */
   val inputMethod: StateFlow<InputMethod> =
@@ -164,6 +173,7 @@ class ChordsPlayScreenViewModel(
         level = responseState.result
       }
       val allowSevenAccidentalKeys = settingsRepository.settings.map { it.allowSevenAccidentalKeys }.first()
+      presets.begin()
       sustainNotes = level.sustainNotes
       quizzer = ChordsLevelQuizzer(level, allowSevenAccidentalKeys)
 
@@ -185,6 +195,8 @@ class ChordsPlayScreenViewModel(
         }
 
         lastHandledQuestion = quizState.currentQuestionNumber
+        // The level's opening instruments were rolled in begin(); question 1 keeps them.
+        if (quizState.currentQuestionNumber > 1) presets.onQuestion()
 
         if (degreeContextPlayer?.isChangingNode(quizState.currentQuestionNumber, isNewRoot) ?: false) {
           Napier.v { "cancelling the currently playing chord BECAUSE of the new node starting..." }
@@ -275,6 +287,9 @@ class ChordsPlayScreenViewModel(
     replayCount += 1
     playChord(chord)
   }
+
+  /** Rolls every channel onto another of its chosen instruments, on demand. */
+  fun shufflePresets() = presets.shuffleNow()
 
   /** Ends the session before its natural end, saving whatever was answered so far. */
   fun finishEarly() {
@@ -392,5 +407,9 @@ class ChordsPlayScreenViewModel(
       }
     }
     return player
+  }
+
+  override fun onCleared() {
+    presets.restore()
   }
 }

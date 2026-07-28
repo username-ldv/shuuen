@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Piano
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
+import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Waves
@@ -66,6 +67,7 @@ import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.InputMode
 import ldv.shuuen.core.settings.MaxLevelStatsWindow
 import ldv.shuuen.core.settings.MinLevelStatsWindow
+import ldv.shuuen.core.settings.PresetShuffleMode
 import ldv.shuuen.core.settings.ThemeAppearance
 import ldv.shuuen.core.settings.ThemeSettings
 import ldv.shuuen.core.settings.ThemeStyle
@@ -179,10 +181,27 @@ fun SettingsScreen(
       title = channelLabel(channel),
       icon = channelIcon(channel),
       soundbanks = state.soundbanks,
-      selectedPreset = state.resolvePreset(state.selectedPresets.forChannel(channel)),
-      onSelectPreset = { viewModel.onAction(SettingsAction.SelectPreset(channel, it)) },
-      onPreview = { viewModel.onAction(SettingsAction.Preview(channel)) },
+      selectedPresets = state.resolvedChoices(channel),
+      presetVolumes = state.presetVolumes,
+      onTogglePreset = { viewModel.onAction(SettingsAction.TogglePreset(channel, it)) },
+      onPreviewPreset = { viewModel.onAction(SettingsAction.PreviewPreset(channel, it)) },
+      onPresetVolumeChange = { preset, percent ->
+        viewModel.onAction(SettingsAction.SetPresetVolume(channel, preset, percent))
+      },
+      onPresetVolumeCommit = { preset, percent ->
+        viewModel.onAction(SettingsAction.CommitPresetVolume(preset, percent))
+      },
       onDismiss = { viewModel.onAction(SettingsAction.ClosePicker) },
+    )
+  }
+
+  state.openShuffleChannel?.let { channel ->
+    PresetShuffleSheet(
+      channelLabel = channelLabel(channel),
+      selected = state.presetShuffle.forChannel(channel),
+      perNoteApplies = channel == MidiChannel.Notes,
+      onSelect = { viewModel.onAction(SettingsAction.SetPresetShuffleMode(channel, it)) },
+      onDismiss = { viewModel.onAction(SettingsAction.CloseShuffleModePicker) },
     )
   }
 
@@ -511,18 +530,46 @@ private fun SoundfontSection(
 
     MidiChannel.entries.forEachIndexed { index, channel ->
       if (index > 0) Hairline()
-      val preset = state.resolvePreset(state.selectedPresets.forChannel(channel))
+      val choices = state.resolvedChoices(channel)
       SoundCategoryRow(
         label = channelLabel(channel),
         icon = channelIcon(channel),
-        soundbankLabel = soundbankLabel(preset.bank),
-        presetLabel = presetName(preset),
+        soundbankLabel = soundbankChoicesLabel(choices),
+        presetLabel = presetChoicesLabel(choices),
         volume = state.selectedVolumes.forChannel(channel),
         onOpen = { onAction(SettingsAction.OpenPicker(channel)) },
         onPreview = { onAction(SettingsAction.Preview(channel)) },
         onVolumeChange = { onAction(SettingsAction.SetVolume(channel, it)) },
         onVolumeCommit = { onAction(SettingsAction.CommitVolume(channel, it)) },
       )
+      // The schedule only means something once there is more than one instrument to rotate.
+      AnimatedVisibility(choices.size > 1) {
+        PresetShuffleRow(
+          mode = state.presetShuffle.forChannel(channel),
+          perNoteApplies = channel == MidiChannel.Notes,
+          onOpen = { onAction(SettingsAction.OpenShuffleModePicker(channel)) },
+        )
+      }
+    }
+    // Per-note is approximate on imported melodies, so it is opt-out on its own.
+    AnimatedVisibility(
+      state.selectedPresets.choicesFor(MidiChannel.Notes).size > 1 &&
+        state.presetShuffle.notes == PresetShuffleMode.PerNote
+    ) {
+      Column {
+        Hairline()
+        SwitchRow(
+          icon = Icons.Rounded.Shuffle,
+          title = "Per note on imported melodies",
+          subtitle =
+            "Imported MIDI plays through the audio engine, so the instrument changes land up to " +
+              "a moment late. Off keeps those levels on one instrument per question.",
+          checked = state.presetShuffle.perNoteOnImportedMelodies,
+          onCheckedChange = {
+            onAction(SettingsAction.SetPerNoteShuffleOnImportedMelodies(it))
+          },
+        )
+      }
     }
     Hairline()
     MelodyOriginalVolumeBoostRow(
@@ -784,6 +831,51 @@ private fun SoundCategoryRow(
         valueLabel = { "${(it * 100) / 127}%" },
       )
     }
+  }
+}
+
+/**
+ * How often a channel re-rolls among its chosen presets, as a summary row that opens the choices
+ * in a sheet. Three labelled pills side by side don't survive a phone's width — see
+ * [PresetShuffleSheet].
+ */
+@Composable
+private fun PresetShuffleRow(
+  mode: PresetShuffleMode,
+  perNoteApplies: Boolean,
+  onOpen: () -> Unit,
+) {
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .clip(ShuuenUi.ControlShape)
+      .clickable(onClick = onOpen)
+      .padding(vertical = 6.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(14.dp),
+  ) {
+    Icon(
+      Icons.Rounded.Shuffle,
+      contentDescription = null,
+      tint = ShuuenUi.Muted,
+      modifier = Modifier.size(22.dp),
+    )
+    Text(
+      text = "Change instrument",
+      color = ShuuenUi.Text,
+      style = MaterialTheme.typography.titleMedium,
+      modifier = Modifier.weight(1f),
+      // One line wherever it fits; on a narrow phone it wraps rather than losing a word to an
+      // ellipsis, since the value pill beside it is what must stay readable.
+      maxLines = 2,
+      overflow = TextOverflow.Ellipsis,
+    )
+    PillControl(
+      text = shuffleModeSummary(mode, perNoteApplies),
+      trailingIcon = Icons.Rounded.ChevronRight,
+      fillLabel = false,
+      onClick = onOpen,
+    )
   }
 }
 

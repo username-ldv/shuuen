@@ -3,6 +3,7 @@ package ldv.shuuen.core.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -38,6 +39,8 @@ fun ShuuenTopAppBar(
   onTrailingClick: (() -> Unit)? = null,
   /** Passive status content (e.g. the MIDI-keyboard badge) shown before the trailing icon. */
   statusContent: @Composable () -> Unit = {},
+  /** Extra action buttons, sitting between the status content and the trailing icon. */
+  actions: @Composable RowScope.() -> Unit = {},
   type: ldv.shuuen.core.ui.components.ShuuenTopAppBarType = ldv.shuuen.core.ui.components.ShuuenTopAppBarType.Simple
 ) {
   BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
@@ -90,6 +93,7 @@ fun ShuuenTopAppBar(
       },
       actions = {
         statusContent()
+        actions()
         if (trailingIcon != null) {
           ldv.shuuen.core.ui.components.CircleIconButton(
             icon = trailingIcon,

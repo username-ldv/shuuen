@@ -8,6 +8,7 @@ import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.settings.AppSettings
 import ldv.shuuen.core.settings.InputMethod
+import ldv.shuuen.core.settings.PresetShuffleMode
 import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.core.settings.ThemeSettings
 import ldv.shuuen.core.settings.coerceLevelStatsWindow
@@ -19,15 +20,22 @@ class KStoreSettingsRepository(
   val store = storeOf(file = Path(path, "settings.json"), default = AppSettings())
   override val settings: Flow<AppSettings> = store.updates.map { it ?: AppSettings() }
 
-  override suspend fun setPreset(channel: MidiChannel, preset: Preset) {
+  override suspend fun setPresetChoices(channel: MidiChannel, presets: List<Preset>) {
+    if (presets.isEmpty()) return
+    store.update { it?.copy(presets = it.presets.withChoices(channel, presets)) }
+  }
+
+  override suspend fun setPresetShuffleMode(channel: MidiChannel, mode: PresetShuffleMode) {
+    store.update { it?.copy(presetShuffle = it.presetShuffle.withMode(channel, mode)) }
+  }
+
+  override suspend fun setPresetVolume(preset: Preset, percent: Int) {
+    store.update { it?.copy(presetVolumes = it.presetVolumes.with(preset, percent)) }
+  }
+
+  override suspend fun setPerNoteShuffleOnImportedMelodies(value: Boolean) {
     store.update {
-      it?.copy(
-        presets = when (channel) {
-          MidiChannel.Notes -> it.presets.copy(notes = preset)
-          MidiChannel.Drone -> it.presets.copy(drone = preset)
-          MidiChannel.Cadence -> it.presets.copy(cadence = preset)
-        },
-      )
+      it?.copy(presetShuffle = it.presetShuffle.copy(perNoteOnImportedMelodies = value))
     }
   }
 

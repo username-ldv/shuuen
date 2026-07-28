@@ -7,13 +7,22 @@ import ldv.shuuen.core.audio.midi.ChannelPresets
 import ldv.shuuen.core.audio.midi.ChannelVolumes
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
+import ldv.shuuen.core.audio.midi.PresetVolumes
 
 interface SettingsRepository {
   val settings: Flow<AppSettings>
 
   suspend fun setSoundFontPath(path: String?)
 
-  suspend fun setPreset(channel: MidiChannel, preset: Preset)
+  /** Replaces the presets chosen for [channel]; an empty list is ignored. */
+  suspend fun setPresetChoices(channel: MidiChannel, presets: List<Preset>)
+
+  suspend fun setPresetShuffleMode(channel: MidiChannel, mode: PresetShuffleMode)
+
+  /** Trims [preset] to [percent] (0..100) of whatever channel volume it plays at. */
+  suspend fun setPresetVolume(preset: Preset, percent: Int)
+
+  suspend fun setPerNoteShuffleOnImportedMelodies(value: Boolean)
 
   suspend fun setVolume(channel: MidiChannel, value: Int)
 
@@ -61,7 +70,11 @@ data class MusicLabelSettings(
 data class AppSettings(
   val soundFontPath: String? = null,
   val presets: ChannelPresets = ChannelPresets(),
+  /** How each channel re-rolls among its chosen presets while a level runs. */
+  val presetShuffle: PresetShuffleSettings = PresetShuffleSettings(),
   val volumes: ChannelVolumes = ChannelVolumes(),
+  /** Per-instrument loudness trims, scaling whatever channel volume the preset plays at. */
+  val presetVolumes: PresetVolumes = PresetVolumes(),
   @SerialName("melodyOriginalVelocityBoost")
   val melodyOriginalVolumeBoost: Int = 0,
   val inputMethod: InputMethod = InputMethod(),

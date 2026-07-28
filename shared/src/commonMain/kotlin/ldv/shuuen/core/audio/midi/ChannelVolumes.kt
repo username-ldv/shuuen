@@ -14,4 +14,11 @@ data class ChannelVolumes(
       MidiChannel.Drone -> drone
       MidiChannel.Cadence -> cadence
     }
+
+  fun with(channel: MidiChannel, value: Int): ChannelVolumes =
+    when (channel) {
+      MidiChannel.Notes -> copy(notes = value)
+      MidiChannel.Drone -> copy(drone = value)
+      MidiChannel.Cadence -> copy(cadence = value)
+    }
 }

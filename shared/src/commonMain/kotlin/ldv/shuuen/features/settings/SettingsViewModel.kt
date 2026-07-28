@@ -14,6 +14,7 @@ import ldv.shuuen.core.audio.engine.MidiEngineStatus
 import ldv.shuuen.core.audio.input.MidiKeyboardInput
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
+import ldv.shuuen.core.audio.midi.scaledChannelVolume
 import ldv.shuuen.core.music.Chord
 import ldv.shuuen.core.music.MusicLabelDefaults
 import ldv.shuuen.core.music.Note
@@ -38,7 +39,9 @@ class SettingsViewModel(
         mutableState.update {
           it.copy(
             selectedPresets = settings.presets,
+            presetShuffle = settings.presetShuffle,
             selectedVolumes = settings.volumes,
+            presetVolumes = settings.presetVolumes,
             melodyOriginalVolumeBoost = settings.melodyOriginalVolumeBoost,
             backingTrackVolume = settings.backingTrackVolume,
             backingTrackMutesMelody = settings.backingTrackMutesMelody,
@@ -142,12 +145,62 @@ class SettingsViewModel(
       SettingsAction.ClosePicker -> {
         previewJob?.cancel()
         midiEngine.stopAll()
-        mutableState.update { it.copy(openPickerChannel = null) }
+        // Auditioning a row left the channel on it; outside the sheet it sounds its base preset.
+        val channel = mutableState.value.openPickerChannel
+        mutableState.update { it.copy(openPickerChannel = null, auditioningPreset = null) }
+        channel?.let {
+          midiEngine.setPreset(it, mutableState.value.selectedPresets.forChannel(it))
+          applyChannelVolume(it)
+        }
       }
 
-      is SettingsAction.SelectPreset -> selectPreset(action.channel, action.preset)
+      is SettingsAction.TogglePreset -> togglePreset(action.channel, action.preset)
+
+      is SettingsAction.OpenShuffleModePicker ->
+        mutableState.update { it.copy(openShuffleChannel = action.channel) }
+
+      SettingsAction.CloseShuffleModePicker ->
+        mutableState.update { it.copy(openShuffleChannel = null) }
+
+      is SettingsAction.SetPresetShuffleMode -> {
+        // Picking is the whole point of the sheet, so it closes behind the choice.
+        mutableState.update { it.copy(openShuffleChannel = null) }
+        viewModelScope.launch {
+          settingsRepository.setPresetShuffleMode(action.channel, action.mode)
+        }
+      }
+
+      is SettingsAction.SetPerNoteShuffleOnImportedMelodies ->
+        viewModelScope.launch {
+          settingsRepository.setPerNoteShuffleOnImportedMelodies(action.value)
+        }
+
       is SettingsAction.Preview -> preview(action.channel)
-      is SettingsAction.SetVolume -> midiEngine.setVolume(action.channel, action.value)
+
+      is SettingsAction.PreviewPreset -> {
+        audition(action.channel, action.preset)
+        preview(action.channel)
+      }
+
+      is SettingsAction.SetPresetVolume -> {
+        // Dragging a trim auditions its preset, so a preview started on it follows the slider.
+        audition(action.channel, action.preset)
+        mutableState.update {
+          it.copy(presetVolumes = it.presetVolumes.with(action.preset, action.percent))
+        }
+        applyChannelVolume(action.channel)
+      }
+
+      is SettingsAction.CommitPresetVolume ->
+        viewModelScope.launch {
+          settingsRepository.setPresetVolume(action.preset, action.percent)
+        }
+
+      is SettingsAction.SetVolume -> {
+        mutableState.update { it.copy(selectedVolumes = it.selectedVolumes.with(action.channel, action.value)) }
+        applyChannelVolume(action.channel)
+      }
+
       is SettingsAction.CommitVolume -> commitVolume(action.channel, action.value)
       is SettingsAction.SetMelodyOriginalVolumeBoost ->
         mutableState.update { it.copy(melodyOriginalVolumeBoost = action.value.coerceIn(0, 127)) }
@@ -193,13 +246,47 @@ class SettingsViewModel(
     viewModelScope.launch { settingsRepository.setDegreeNames(next) }
   }
 
-  private fun selectPreset(channel: MidiChannel, preset: Preset) {
-    midiEngine.setPreset(channel, preset)
-    viewModelScope.launch { settingsRepository.setPreset(channel, preset) }
+  /**
+   * Adds or removes [preset] from the channel's choices. The last remaining choice cannot be
+   * removed — a channel always has an instrument. Choosing does not change what the channel is
+   * sounding; each row's own preview button does that.
+   */
+  private fun togglePreset(channel: MidiChannel, preset: Preset) {
+    val current = mutableState.value.selectedPresets.choicesFor(channel)
+    val chosen = current.any { it.toPacked() == preset.toPacked() }
+    val next =
+      if (chosen) {
+        current.filterNot { it.toPacked() == preset.toPacked() }.ifEmpty { return }
+      } else {
+        current + preset
+      }
+    viewModelScope.launch { settingsRepository.setPresetChoices(channel, next) }
+  }
+
+  /** Puts [preset] on the channel so the next preview (and any live trim) sounds it. */
+  private fun audition(channel: MidiChannel, preset: Preset) {
+    if (mutableState.value.auditioningPreset?.toPacked() != preset.toPacked()) {
+      mutableState.update { it.copy(auditioningPreset = preset) }
+      midiEngine.setPreset(channel, preset)
+    }
+    applyChannelVolume(channel)
+  }
+
+  /** Sends the channel volume the active preset's trim asks for. */
+  private fun applyChannelVolume(channel: MidiChannel) {
+    val state = mutableState.value
+    midiEngine.setVolume(
+      channel,
+      scaledChannelVolume(
+        state.selectedVolumes.forChannel(channel),
+        state.presetVolumes.forPreset(state.activePreset(channel)),
+      ),
+    )
   }
 
   private fun commitVolume(channel: MidiChannel, value: Int) {
-    midiEngine.setVolume(channel, value)
+    mutableState.update { it.copy(selectedVolumes = it.selectedVolumes.with(channel, value)) }
+    applyChannelVolume(channel)
     viewModelScope.launch { settingsRepository.setVolume(channel, value) }
   }
 

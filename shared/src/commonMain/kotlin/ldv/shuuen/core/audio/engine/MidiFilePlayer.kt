@@ -1,5 +1,6 @@
 package ldv.shuuen.core.audio.engine
 
+import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.music.Note
 
 /**
@@ -72,6 +73,12 @@ interface MidiFilePlayer {
 
   /** Applies a new backing-track volume (0..127) mid-playback. A no-op without a backing track. */
   fun setBackingTrackVolume(volume: Int) {}
+
+  /**
+   * Switches the instrument the loaded melody sounds with, mid-playback. Notes already ringing keep
+   * the old instrument; everything started afterwards uses [preset].
+   */
+  fun setPreset(preset: Preset) {}
 
   /** Frees the underlying stream. Safe to call repeatedly. */
   fun release()

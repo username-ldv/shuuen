@@ -8,8 +8,10 @@ import ldv.shuuen.core.audio.engine.LoadedMelody
 import ldv.shuuen.core.audio.engine.MelodyNote
 import ldv.shuuen.core.audio.engine.MidiFilePlaybackOptions
 import ldv.shuuen.core.audio.engine.MidiFilePlayer
+import ldv.shuuen.core.audio.midi.FullPresetVolume
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
+import ldv.shuuen.core.audio.midi.PresetVolumes
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.settings.SettingsRepository
 
@@ -24,6 +26,11 @@ class BassMidiFilePlayer(
   private var streamHandle: Int = 0
   private var lengthBytes: Long = 0L
   private var activePreset: Preset? = null
+
+  // The melody's gain before its instrument's own trim is folded in, plus the trims themselves,
+  // both snapshotted at load so a preset swap mid-playback can recompute the gain on its own.
+  private var untrimmedMelodyGain: Float = 1f
+  private var presetVolumes: PresetVolumes = PresetVolumes()
 
   // Backing track: a parallel BASS audio stream linked to the MIDI stream, so both start
   // simultaneously; only its position is managed by hand (see alignBackingTrack).
@@ -81,7 +88,7 @@ class BassMidiFilePlayer(
     }
     // With the mute setting on, a backing track replaces the melody's sound entirely: the MIDI
     // stream still runs (it drives the quiz position) but at zero volume.
-    val melodyGain =
+    untrimmedMelodyGain =
       if (backing != null && settings.backingTrackMutesMelody) {
         0f
       } else {
@@ -91,7 +98,8 @@ class BassMidiFilePlayer(
             if (options.useOriginalVelocities) settings.melodyOriginalVolumeBoost else 0,
         )
       }
-    require(Bass.setChannelAttribute(handle, Bass.BASS_ATTRIB_VOL, melodyGain)) {
+    presetVolumes = settings.presetVolumes
+    require(Bass.setChannelAttribute(handle, Bass.BASS_ATTRIB_VOL, trimmedGain(notesPreset))) {
       "Unable to set MIDI stream volume boost: ${Bass.errorCode()}."
     }
     require(BassMidiFxDefaults.applyToStream(handle)) {
@@ -207,6 +215,19 @@ class BassMidiFilePlayer(
     }
   }
 
+  override fun setPreset(preset: Preset) {
+    activePreset = preset
+    applyActivePreset()
+    // The new instrument brings its own loudness trim with it.
+    if (streamHandle != 0) {
+      Bass.setChannelAttribute(streamHandle, Bass.BASS_ATTRIB_VOL, trimmedGain(preset))
+    }
+  }
+
+  /** The stream gain for [preset], i.e. the melody's own gain scaled by that instrument's trim. */
+  private fun trimmedGain(preset: Preset): Float =
+    untrimmedMelodyGain * presetVolumes.forPreset(preset) / FullPresetVolume
+
   override fun setBackingTrackVolume(volume: Int) {
     if (backingHandle != 0) {
       Bass.setChannelAttribute(backingHandle, Bass.BASS_ATTRIB_VOL, volumeGain(volume))
@@ -230,6 +251,8 @@ class BassMidiFilePlayer(
     }
     lengthBytes = 0L
     activePreset = null
+    untrimmedMelodyGain = 1f
+    presetVolumes = PresetVolumes()
   }
 
   /** Folds a raw MIDI note number into the supported 88-key piano range by whole octaves. */

@@ -65,6 +65,7 @@ import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
 import ldv.shuuen.core.ui.components.music.inputs.rememberFifthsCircleState
 import ldv.shuuen.core.ui.components.music.inputs.rememberPianoKeyboardState
 import ldv.shuuen.features.training.common.components.CircleCenterIconButton
+import ldv.shuuen.features.training.common.components.ShufflePresetsAction
 import ldv.shuuen.features.training.common.components.circleItemNames
 import ldv.shuuen.features.training.common.components.circleTopItem
 import ldv.shuuen.features.training.common.components.inputLabelForPitch
@@ -79,6 +80,7 @@ fun MelodiesPlayScreen(
   val state by viewModel.state.collectAsStateWithLifecycle()
   val inputMethod by viewModel.inputMethod.collectAsStateWithLifecycle()
   val musicLabels by viewModel.musicLabels.collectAsStateWithLifecycle()
+  val canShufflePresets by viewModel.canShufflePresets.collectAsStateWithLifecycle()
 
   LaunchedEffect(state.completion) {
     // A session that saved nothing (e.g. finished early before any answer) has no results to
@@ -101,6 +103,12 @@ fun MelodiesPlayScreen(
         trailingIcon = if (quizRunning) Icons.Rounded.Flag else null,
         onTrailingClick = { viewModel.finishEarly() },
         statusContent = { MidiKeyboardBadge() },
+        actions = {
+          ShufflePresetsAction(
+            visible = canShufflePresets && quizRunning,
+            onClick = { viewModel.shufflePresets() },
+          )
+        },
         type = ShuuenTopAppBarType.Simple,
       )
     },

@@ -46,6 +46,7 @@ import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
 import ldv.shuuen.core.ui.components.music.inputs.rememberFifthsCircleState
 import ldv.shuuen.core.ui.components.music.inputs.rememberPianoKeyboardState
 import ldv.shuuen.features.training.common.components.CircleCenterIconButton
+import ldv.shuuen.features.training.common.components.ShufflePresetsAction
 import ldv.shuuen.features.training.common.components.circleItemNames
 import ldv.shuuen.features.training.common.components.circleTopItem
 import ldv.shuuen.features.training.common.components.pitchToItemIndex
@@ -59,6 +60,7 @@ fun SinglesPlayScreen(
   val screenState by viewModel.state.collectAsStateWithLifecycle()
   val inputMethod by viewModel.inputMethod.collectAsStateWithLifecycle()
   val musicLabels by viewModel.musicLabels.collectAsStateWithLifecycle()
+  val canShufflePresets by viewModel.canShufflePresets.collectAsStateWithLifecycle()
   val title =
       when (val level = screenState.levelData) {
         is ResponseState.Loading -> "Loading..."
@@ -91,6 +93,12 @@ fun SinglesPlayScreen(
                 if (circleInput && screenState.quizState != null) Icons.Rounded.Flag else null,
             onTrailingClick = { viewModel.finishEarly() },
             statusContent = { MidiKeyboardBadge() },
+            actions = {
+              ShufflePresetsAction(
+                  visible = canShufflePresets,
+                  onClick = { viewModel.shufflePresets() },
+              )
+            },
             type = ShuuenTopAppBarType.Simple,
         )
       },

@@ -54,6 +54,7 @@ import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
 import ldv.shuuen.features.training.common.DegreeContextPlayer
+import ldv.shuuen.features.training.common.LevelPresetController
 import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.common.components.KeyFlashRequest
 import ldv.shuuen.features.training.domain.LevelConfig
@@ -185,6 +186,14 @@ class MelodiesPlayScreenViewModel(
   private val _state = MutableStateFlow(MelodiesPlayState())
   val state = _state.asStateFlow()
 
+  private val presets = LevelPresetController(midiEngine, settingsRepository)
+
+  /** Whether any channel has alternative instruments, i.e. whether the shuffle button is useful. */
+  val canShufflePresets: StateFlow<Boolean> =
+    settingsRepository.settings
+      .map { it.presets.hasChoices }
+      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
   /** The input component + interpretation mode chosen in settings. */
   val inputMethod: StateFlow<InputMethod> =
     settingsRepository.settings
@@ -215,6 +224,9 @@ class MelodiesPlayScreenViewModel(
 
   /** Finite-sequence cursor; ends at notes.size after playback and moves back on rewind. */
   private var sequenceIndex = 0
+
+  /** Imported melodies only: the note the last transport poll was on, -1 before the first. */
+  private var lastPolledNoteIndex = -1
 
   private var playbackRunId = 0
   private var activePlaybackNote: ActivePlaybackNote? = null
@@ -372,6 +384,10 @@ class MelodiesPlayScreenViewModel(
         lengthSeconds = loaded.lengthSeconds,
       )
     }
+    // An imported melody sounds on the file player's own stream, not on the live engine's Notes
+    // channel — and it only follows the notes as closely as the position poll does.
+    presets.notesSink = { player.setPreset(it) }
+    presets.begin { it.perNoteOnImportedMelodies }
     // Play through at natural tempo by default.
     sessionStartMark = TimeSource.Monotonic.markNow()
     player.play()
@@ -441,6 +457,13 @@ class MelodiesPlayScreenViewModel(
         isPlaying = player.isPlaying(),
       )
     }
+    // BASS plays the file on its own, so the only note boundary we can see is the one the polled
+    // position crosses; per-note instrument changes ride on it.
+    val noteIndex = _state.value.playbackNoteIndex
+    if (noteIndex != lastPolledNoteIndex) {
+      lastPolledNoteIndex = noteIndex
+      if (noteIndex >= 0) presets.onMelodyNote()
+    }
   }
 
   // endregion
@@ -451,6 +474,9 @@ class MelodiesPlayScreenViewModel(
     randomConfig = config
     allowSevenAccidentalKeys =
       settingsRepository.settings.map { it.allowSevenAccidentalKeys }.first()
+    // A generated melody is played note by note, so per-note instrument changes are exact here.
+    // Rolled before the context starts, so its first chord already sounds the level's drone.
+    presets.begin { true }
 
     val root =
       when (val scale = config.scaleConfig) {
@@ -613,6 +639,7 @@ class MelodiesPlayScreenViewModel(
               val activeNote = ActivePlaybackNote(runId, melodyNote.note)
               activePlaybackNote = activeNote
               try {
+                presets.onMelodyNote()
                 midiEngine.playNote(melodyNote.note, detuneCents = melodyNote.detuneCents)
                 delay(ofQuarters(melodyNote.durationQuarters))
               } finally {
@@ -656,6 +683,9 @@ class MelodiesPlayScreenViewModel(
     playSequence(startIndex = rewindTo)
   }
 
+  /** Rolls every channel onto another of its chosen instruments, on demand. */
+  fun shufflePresets() = presets.shuffleNow()
+
   /** Replays the context's setup melody on demand; a no-op when the context has none. */
   fun playSetupMelody() {
     val previous = playMelodyJob
@@ -680,6 +710,7 @@ class MelodiesPlayScreenViewModel(
           completeSession(finishedEarly = false)
           return@launch
         }
+        presets.onQuestion()
 
         val config = randomConfig ?: return@launch
         val notesPerSequence = config.notesPerSequence ?: return@launch
@@ -768,6 +799,7 @@ class MelodiesPlayScreenViewModel(
               val activeNote = ActivePlaybackNote(runId, melodyNote.note)
               activePlaybackNote = activeNote
               try {
+                presets.onMelodyNote()
                 midiEngine.playNote(melodyNote.note, detuneCents = melodyNote.detuneCents)
                 delay(ofQuarters(melodyNote.durationQuarters))
               } finally {
@@ -1087,6 +1119,7 @@ class MelodiesPlayScreenViewModel(
     contextJob?.cancel()
     setupMelodyIndicationJob?.cancel()
     playMelodyJob?.cancel()
+    presets.restore()
     player.release()
   }
 }

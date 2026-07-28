@@ -9,6 +9,7 @@ import ldv.shuuen.core.audio.engine.MidiEngineStatus
 import ldv.shuuen.core.audio.engine.SoundFontProvider
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
+import ldv.shuuen.core.audio.midi.scaledChannelVolume
 import ldv.shuuen.core.music.Chord
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.settings.SettingsRepository
@@ -56,8 +57,15 @@ class BassMidiEngine(
       Bass.setStreamSoundFont(0, soundFontHandle)
 
       MidiChannel.entries.forEach { channel ->
-        setPreset(channel, settings.presets.forChannel(channel))
-        setVolume(channel, settings.volumes.forChannel(channel))
+        val preset = settings.presets.forChannel(channel)
+        setPreset(channel, preset)
+        setVolume(
+          channel,
+          scaledChannelVolume(
+            settings.volumes.forChannel(channel),
+            settings.presetVolumes.forPreset(preset),
+          ),
+        )
       }
 
       initialized = true

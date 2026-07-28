@@ -31,6 +31,14 @@ fun PillControl(
   selected: Boolean = false,
   leadingIcon: ImageVector? = null,
   trailingCheck: Boolean = false,
+  /** Shown at the end whatever the selection; a chevron marks a pill that opens a picker. */
+  trailingIcon: ImageVector? = null,
+  /**
+   * Whether the label stretches to the pill's width, pushing any trailing icon to the far edge.
+   * Off makes the pill only as wide as its content — necessary beside a flexible sibling, which
+   * is measured after the pill and would otherwise be left with nothing.
+   */
+  fillLabel: Boolean = true,
   onClick: (() -> Unit)? = null,
 ) {
   val shape = ldv.shuuen.core.ui.components.ShuuenUi.ControlShape
@@ -55,13 +63,21 @@ fun PillControl(
       text = text,
       color = contentColor,
       style = MaterialTheme.typography.titleSmall,
-      modifier = Modifier.weight(1f),
+      modifier = Modifier.weight(1f, fill = fillLabel),
       maxLines = 1,
       overflow = TextOverflow.Ellipsis,
     )
     if (trailingCheck && selected) {
       Icon(
         imageVector = Icons.Rounded.Check,
+        contentDescription = null,
+        tint = contentColor,
+        modifier = Modifier.size(18.dp),
+      )
+    }
+    if (trailingIcon != null) {
+      Icon(
+        imageVector = trailingIcon,
         contentDescription = null,
         tint = contentColor,
         modifier = Modifier.size(18.dp),

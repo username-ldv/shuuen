@@ -1,5 +1,6 @@
 package ldv.shuuen.features.settings
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,9 +17,11 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -27,10 +30,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -42,15 +49,28 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
+import ldv.shuuen.core.audio.midi.FullPresetVolume
 import ldv.shuuen.core.audio.midi.Preset
+import ldv.shuuen.core.audio.midi.PresetVolumes
 import ldv.shuuen.core.ui.components.ShuuenUi
 
 /**
  * Combined soundbank + preset picker. The soundbank chips scope a searchable,
- * scrollable preset list; tapping a preset applies it immediately. One sheet
- * handles both dimensions because a preset is only meaningful as a (bank, id) pair.
+ * scrollable preset list; tapping a preset adds it to (or drops it from) the channel's choices,
+ * which take effect immediately. One sheet handles both dimensions because a preset is only
+ * meaningful as a (bank, id) pair.
+ *
+ * Every row also carries its instrument's own loudness trim: the percentage it sounds at within
+ * whatever channel volume is set, editable on a slider the row unfolds, and auditionable on the
+ * spot. The trim is the preset's own setting — it is kept for presets that are not chosen, and is
+ * independent of how many are.
+ *
+ * [selectedPresets] is never empty and its first entry is the channel's base instrument; the last
+ * remaining choice cannot be dropped.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,9 +78,12 @@ fun PresetPickerSheet(
   title: String,
   icon: ImageVector,
   soundbanks: List<Soundbank>,
-  selectedPreset: Preset,
-  onSelectPreset: (Preset) -> Unit,
-  onPreview: () -> Unit,
+  selectedPresets: List<Preset>,
+  presetVolumes: PresetVolumes,
+  onTogglePreset: (Preset) -> Unit,
+  onPreviewPreset: (Preset) -> Unit,
+  onPresetVolumeChange: (Preset, Int) -> Unit,
+  onPresetVolumeCommit: (Preset, Int) -> Unit,
   onDismiss: () -> Unit,
 ) {
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -78,9 +101,12 @@ fun PresetPickerSheet(
       title = title,
       icon = icon,
       soundbanks = soundbanks,
-      selectedPreset = selectedPreset,
-      onSelectPreset = onSelectPreset,
-      onPreview = onPreview,
+      selectedPresets = selectedPresets,
+      presetVolumes = presetVolumes,
+      onTogglePreset = onTogglePreset,
+      onPreviewPreset = onPreviewPreset,
+      onPresetVolumeChange = onPresetVolumeChange,
+      onPresetVolumeCommit = onPresetVolumeCommit,
     )
   }
 }
@@ -90,17 +116,24 @@ private fun ColumnScope.PresetPickerContent(
   title: String,
   icon: ImageVector,
   soundbanks: List<Soundbank>,
-  selectedPreset: Preset,
-  onSelectPreset: (Preset) -> Unit,
-  onPreview: () -> Unit,
+  selectedPresets: List<Preset>,
+  presetVolumes: PresetVolumes,
+  onTogglePreset: (Preset) -> Unit,
+  onPreviewPreset: (Preset) -> Unit,
+  onPresetVolumeChange: (Preset, Int) -> Unit,
+  onPresetVolumeCommit: (Preset, Int) -> Unit,
 ) {
   var query by rememberSaveable { mutableStateOf("") }
+  // At most one row shows its trim slider; the rest stay compact. Keyed by packed preset so it
+  // survives the list scrolling the row out of view.
+  var expandedPreset: Int? by rememberSaveable { mutableStateOf(null) }
   var selectedBank: Int? by rememberSaveable {
     mutableStateOf(
-      selectedPreset.bank.takeIf { bank -> soundbanks.any { it.bank == bank } }
+      selectedPresets.firstOrNull()?.bank?.takeIf { bank -> soundbanks.any { it.bank == bank } }
         ?: soundbanks.firstOrNull()?.bank,
     )
   }
+  val selectedPacked = remember(selectedPresets) { selectedPresets.map { it.toPacked() }.toSet() }
 
   val visiblePresets = remember(query, selectedBank, soundbanks) {
     val scoped = when (val bank = selectedBank) {
@@ -127,24 +160,35 @@ private fun ColumnScope.PresetPickerContent(
       .padding(bottom = 12.dp),
     verticalArrangement = Arrangement.spacedBy(14.dp),
   ) {
-    Row(
-      modifier = Modifier.fillMaxWidth(),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-      Icon(icon, contentDescription = null, tint = ShuuenUi.Text, modifier = Modifier.size(22.dp))
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+      ) {
+        Icon(icon, contentDescription = null, tint = ShuuenUi.Text, modifier = Modifier.size(22.dp))
+        Text(
+          text = title.uppercase(),
+          color = ShuuenUi.Text,
+          style = MaterialTheme.typography.titleMedium.copy(
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = ShuuenUi.titlesSpacing,
+          ),
+          modifier = Modifier.weight(1f),
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+      }
       Text(
-        text = title.uppercase(),
-        color = ShuuenUi.Text,
-        style = MaterialTheme.typography.titleMedium.copy(
-          fontWeight = FontWeight.SemiBold,
-          letterSpacing = ShuuenUi.titlesSpacing,
-        ),
-        modifier = Modifier.weight(1f),
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
+        text =
+          if (selectedPresets.size > 1) {
+            "${selectedPresets.size} chosen — a level picks among them."
+          } else {
+            "Tap more presets to let a level pick among them."
+          },
+        color = ShuuenUi.Dim,
+        style = MaterialTheme.typography.bodySmall,
       )
-      PreviewButton(onClick = onPreview)
     }
 
     SearchField(query = query, onQueryChange = { query = it })
@@ -175,12 +219,18 @@ private fun ColumnScope.PresetPickerContent(
         verticalArrangement = Arrangement.spacedBy(6.dp),
       ) {
         items(visiblePresets, key = { it.toPacked() }) { preset ->
-          val selected = preset.bank == selectedPreset.bank && preset.id == selectedPreset.id
+          val packed = preset.toPacked()
           PresetRow(
             number = presetNumber(preset),
             name = presetName(preset),
-            selected = selected,
-            onClick = { onSelectPreset(preset) },
+            selected = packed in selectedPacked,
+            volumePercent = presetVolumes.forPreset(preset),
+            volumeExpanded = expandedPreset == packed,
+            onClick = { onTogglePreset(preset) },
+            onToggleVolume = { expandedPreset = if (expandedPreset == packed) null else packed },
+            onPreview = { onPreviewPreset(preset) },
+            onVolumeChange = { onPresetVolumeChange(preset, it) },
+            onVolumeCommit = { onPresetVolumeCommit(preset, it) },
           )
         }
       }
@@ -188,8 +238,9 @@ private fun ColumnScope.PresetPickerContent(
   }
 }
 
+/** Shared by the picker sheets in this package. */
 @Composable
-private fun PickerDragHandle() {
+internal fun PickerDragHandle() {
   Box(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), contentAlignment = Alignment.Center) {
     Box(
       modifier = Modifier
@@ -197,27 +248,6 @@ private fun PickerDragHandle() {
         .clip(RoundedCornerShape(50))
         .background(ShuuenUi.HairlineStrong),
     )
-  }
-}
-
-@Composable
-private fun PreviewButton(onClick: () -> Unit) {
-  Row(
-    modifier = Modifier
-      .clip(ShuuenUi.PillShape)
-      .background(ShuuenUi.Ink.copy(alpha = 0.06f))
-      .clickable(onClick = onClick)
-      .padding(horizontal = 12.dp, vertical = 7.dp),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(6.dp),
-  ) {
-    Icon(
-      Icons.Rounded.PlayArrow,
-      contentDescription = null,
-      tint = ShuuenUi.Text,
-      modifier = Modifier.size(18.dp),
-    )
-    Text("Preview", color = ShuuenUi.Muted, style = MaterialTheme.typography.labelLarge)
   }
 }
 
@@ -285,46 +315,153 @@ private fun BankChip(label: String, selected: Boolean, onClick: () -> Unit) {
   }
 }
 
+/**
+ * One preset: tapping the row chooses it, while the trailing controls belong to the instrument's
+ * loudness trim and are live whether or not the preset is chosen. The trim slider only appears
+ * once [volumeExpanded] — a list this long has no room to show one per row.
+ */
 @Composable
 private fun PresetRow(
   number: String,
   name: String,
   selected: Boolean,
+  volumePercent: Int,
+  volumeExpanded: Boolean,
   onClick: () -> Unit,
+  onToggleVolume: () -> Unit,
+  onPreview: () -> Unit,
+  onVolumeChange: (Int) -> Unit,
+  onVolumeCommit: (Int) -> Unit,
 ) {
-  Row(
+  val content = if (selected) ShuuenUi.OnInverse else ShuuenUi.Text
+  val quiet = if (selected) ShuuenUi.OnInverse.copy(alpha = 0.55f) else ShuuenUi.Dim
+
+  Column(
     modifier = Modifier
       .fillMaxWidth()
       .clip(ShuuenUi.ControlShape)
-      .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
-      .clickable(onClick = onClick)
-      .padding(horizontal = 12.dp, vertical = 11.dp),
+      .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f)),
+  ) {
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .clickable(onClick = onClick)
+        .padding(start = 12.dp, end = 6.dp, top = 5.dp, bottom = 5.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+      Text(
+        text = number,
+        color = quiet,
+        style = MaterialTheme.typography.labelMedium,
+        modifier = Modifier.widthIn(min = 30.dp),
+      )
+      Text(
+        text = name,
+        color = content,
+        style = MaterialTheme.typography.titleSmall.copy(
+          fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+        ),
+        modifier = Modifier.weight(1f),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+      )
+      Text(
+        text = "$volumePercent%",
+        color = if (volumePercent == FullPresetVolume) quiet else content,
+        style = MaterialTheme.typography.labelMedium,
+        textAlign = TextAlign.End,
+        modifier = Modifier.widthIn(min = 34.dp),
+      )
+      RowIconButton(
+        icon = if (volumeExpanded) Icons.Rounded.Close else Icons.AutoMirrored.Rounded.VolumeUp,
+        contentDescription = if (volumeExpanded) "Close volume" else "Volume of $name",
+        tint = content,
+        onClick = onToggleVolume,
+      )
+      RowIconButton(
+        icon = Icons.Rounded.PlayArrow,
+        contentDescription = "Preview $name",
+        tint = content,
+        onClick = onPreview,
+      )
+      Icon(
+        Icons.Rounded.Check,
+        contentDescription = null,
+        tint = if (selected) ShuuenUi.OnInverse else Color.Transparent,
+        modifier = Modifier.size(18.dp),
+      )
+    }
+
+    AnimatedVisibility(volumeExpanded) {
+      PresetVolumeSlider(
+        percent = volumePercent,
+        tint = content,
+        onChange = onVolumeChange,
+        onCommit = onVolumeCommit,
+      )
+    }
+  }
+}
+
+@Composable
+private fun RowIconButton(
+  icon: ImageVector,
+  contentDescription: String,
+  tint: Color,
+  onClick: () -> Unit,
+) {
+  Box(
+    modifier = Modifier.size(32.dp).clip(CircleShape).clickable(onClick = onClick),
+    contentAlignment = Alignment.Center,
+  ) {
+    Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(18.dp))
+  }
+}
+
+/**
+ * The trim slider a row unfolds. Local state drives the thumb so a drag isn't fought by the
+ * incoming value, which the ViewModel updates on every step to keep the row's label in step.
+ */
+@Composable
+private fun PresetVolumeSlider(
+  percent: Int,
+  tint: Color,
+  onChange: (Int) -> Unit,
+  onCommit: (Int) -> Unit,
+) {
+  var value by remember { mutableFloatStateOf(percent.toFloat()) }
+  var dragging by remember { mutableStateOf(false) }
+  LaunchedEffect(percent) { if (!dragging) value = percent.toFloat() }
+
+  Row(
+    modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 14.dp, bottom = 8.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(10.dp),
   ) {
     Text(
-      text = number,
-      color = if (selected) ShuuenUi.OnInverse.copy(alpha = 0.55f) else ShuuenUi.Dim,
-      style = MaterialTheme.typography.labelMedium,
-      modifier = Modifier.widthIn(min = 30.dp),
+      text = "TRIM",
+      color = tint.copy(alpha = 0.55f),
+      style = MaterialTheme.typography.labelSmall.copy(letterSpacing = ShuuenUi.labelSpacing),
     )
-    Text(
-      text = name,
-      color = if (selected) ShuuenUi.OnInverse else ShuuenUi.Text,
-      style = MaterialTheme.typography.titleSmall.copy(
-        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+    Slider(
+      value = value,
+      onValueChange = {
+        dragging = true
+        value = it.coerceIn(0f, FullPresetVolume.toFloat())
+        onChange(value.roundToInt())
+      },
+      onValueChangeFinished = {
+        dragging = false
+        onCommit(value.roundToInt())
+      },
+      valueRange = 0f..FullPresetVolume.toFloat(),
+      colors = SliderDefaults.colors(
+        thumbColor = tint,
+        activeTrackColor = tint.copy(alpha = 0.75f),
+        inactiveTrackColor = tint.copy(alpha = 0.18f),
       ),
       modifier = Modifier.weight(1f),
-      maxLines = 1,
-      overflow = TextOverflow.Ellipsis,
     )
-    if (selected) {
-      Icon(
-        Icons.Rounded.Check,
-        contentDescription = null,
-        tint = ShuuenUi.OnInverse,
-        modifier = Modifier.size(18.dp),
-      )
-    }
   }
 }
