@@ -67,6 +67,7 @@ var migrations = []migration{
 	{version: 4, apply: addUserTokenVersion},
 	{version: 5, apply: constrainPostgresCatalogPaths},
 	{version: 6, apply: addCourseSchema},
+	{version: 7, apply: addVariantLookupIndex},
 }
 
 func Migrate(ctx context.Context, db *gorm.DB) error {
@@ -143,6 +144,19 @@ func addCatalogQueryIndexes(ctx context.Context, db *gorm.DB) error {
 		if err := gorm.G[any](db).Exec(ctx, statement); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func addVariantLookupIndex(ctx context.Context, db *gorm.DB) error {
+	if err := gorm.G[any](db).Exec(ctx, `
+		CREATE INDEX IF NOT EXISTS idx_file_variants_melody_format_order
+		ON file_variants (melody_id, format, deleted_at, is_primary DESC, created_at ASC, id ASC)
+	`); err != nil {
+		return err
+	}
+	if db.Dialector.Name() == "sqlite" {
+		return gorm.G[any](db).Exec(ctx, "ANALYZE file_variants")
 	}
 	return nil
 }

@@ -67,6 +67,16 @@ func TestMigrateUpgradesLegacyVisibilityColumnsAndIsIdempotent(t *testing.T) {
 	if !fresh.Migrator().HasIndex("file_variants", "idx_file_variants_one_primary") {
 		t.Fatal("primary variant invariant index was not created")
 	}
+	if !fresh.Migrator().HasIndex("file_variants", "idx_file_variants_melody_format_order") {
+		t.Fatal("melody-first variant lookup index was not created")
+	}
+	var variantStatistics int64
+	if err := gorm.G[int64](fresh).Raw("SELECT COUNT(*) FROM sqlite_stat1 WHERE tbl = ?", "file_variants").Scan(t.Context(), &variantStatistics); err != nil {
+		t.Fatal(err)
+	}
+	if variantStatistics == 0 {
+		t.Fatal("variant lookup statistics were not generated")
+	}
 	group := model.LibraryGroup{Path: "group", Name: "Group", Slug: "group", IsPublic: true}
 	if err := gorm.G[model.LibraryGroup](fresh).Create(t.Context(), &group); err != nil {
 		t.Fatal(err)

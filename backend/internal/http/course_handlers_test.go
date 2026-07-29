@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	nethttp "net/http"
+	"sync/atomic"
 	"testing"
 
 	"github.com/gofiber/fiber/v3"
@@ -70,6 +71,66 @@ func TestFolderBlueprintAppearsAsCourseAndFlattensNestedSections(t *testing.T) {
 	decodeResponse(t, response, &page)
 	if len(page.Data) != 2 || page.Data[0].ID != blueprintLevelID(nestedMelody.ID) || page.Data[1].ID != blueprintLevelID(directMelody.ID) {
 		t.Fatalf("id query did not preserve requested order: %#v", page.Data)
+	}
+}
+
+func TestBlueprintCourseSummaryUsesBoundedAggregateQueries(t *testing.T) {
+	app, db := newTestServer(t)
+	root := model.LibraryGroup{Path: "", Name: "Library", Slug: "library", IsPublic: true}
+	if err := gorm.G[model.LibraryGroup](db).Create(t.Context(), &root); err != nil {
+		t.Fatal(err)
+	}
+	courseGroup := model.LibraryGroup{ParentID: &root.ID, Path: "large-blueprint", Name: "Large", Slug: "large", IsPublic: true}
+	if err := gorm.G[model.LibraryGroup](db).Create(t.Context(), &courseGroup); err != nil {
+		t.Fatal(err)
+	}
+	createMIDIMelody(t, db, courseGroup, "default", "Default", 0)
+
+	var firstChild model.LibraryGroup
+	for index := 0; index < 30; index++ {
+		child := model.LibraryGroup{
+			ParentID: &courseGroup.ID, Path: fmt.Sprintf("large-blueprint/tab-%02d", index),
+			Name: fmt.Sprintf("Tab %02d", index), Slug: fmt.Sprintf("tab-%02d", index), IsPublic: true,
+		}
+		if err := gorm.G[model.LibraryGroup](db).Create(t.Context(), &child); err != nil {
+			t.Fatal(err)
+		}
+		createMIDIMelody(t, db, child, "level", "Level", 0)
+		if index == 0 {
+			firstChild = child
+		}
+	}
+	nested := model.LibraryGroup{
+		ParentID: &firstChild.ID, Path: firstChild.Path + "/nested", Name: "Nested", Slug: "nested", IsPublic: true,
+	}
+	if err := gorm.G[model.LibraryGroup](db).Create(t.Context(), &nested); err != nil {
+		t.Fatal(err)
+	}
+	createMIDIMelody(t, db, nested, "nested", "Nested", 0)
+
+	var queryCount atomic.Int64
+	callbackName := "test:count_blueprint_summary_queries"
+	if err := db.Callback().Query().Before("gorm:query").Register(callbackName, func(*gorm.DB) {
+		queryCount.Add(1)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Callback().Query().Remove(callbackName) }()
+
+	response := testRequest(t, app, nethttp.MethodGet, fmt.Sprintf("/api/v1/courses/%d", courseGroup.ID), "", "")
+	var payload struct {
+		Data courseResponse `json:"data"`
+	}
+	decodeResponse(t, response, &payload)
+	if queryCount.Load() > 7 {
+		t.Fatalf("blueprint detail executed %d SELECT queries, want a count independent of its 30 tabs", queryCount.Load())
+	}
+	if len(payload.Data.Modes) != 1 || payload.Data.Modes[0].GroupCount != 31 || payload.Data.Modes[0].LevelCount != 32 {
+		t.Fatalf("blueprint aggregate summary = %#v", payload.Data)
+	}
+	groups := payload.Data.Modes[0].Groups
+	if len(groups) != 31 || groups[1].LibraryGroupID != firstChild.ID || groups[1].LevelCount != 2 || groups[1].SectionCount != 1 {
+		t.Fatalf("blueprint aggregate groups = %#v", groups)
 	}
 }
 

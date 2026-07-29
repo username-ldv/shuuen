@@ -173,6 +173,11 @@ func (s *Scanner) Scan(ctx context.Context) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
+	if s.db.Dialector.Name() == "sqlite" {
+		if err := gorm.G[any](s.db).Exec(ctx, "PRAGMA optimize"); err != nil {
+			return Result{}, fmt.Errorf("optimize catalog query planner: %w", err)
+		}
+	}
 
 	return result, nil
 }

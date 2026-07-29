@@ -231,64 +231,117 @@ func (h *Handler) courseModes(c fiber.Ctx, value loadedCourse, includeGroups boo
 }
 
 func (h *Handler) blueprintGroups(c fiber.Ctx, courseGroup model.LibraryGroup) ([]progressionGroupResponse, int64, error) {
-	childrenQuery := gorm.G[model.LibraryGroup](h.db).Where("parent_id = ?", courseGroup.ID)
+	descendantsQuery := gorm.G[model.LibraryGroup](h.db).
+		Where("path LIKE ? ESCAPE '\\'", descendantPattern(courseGroup.Path))
 	if !includePrivate(c) {
-		childrenQuery = childrenQuery.Where("is_public = ?", true)
+		descendantsQuery = descendantsQuery.Where("is_public = ?", true)
 	}
-	children, err := childrenQuery.Order("sort_order asc, name asc, id asc").Find(c.Context())
+	descendants, err := descendantsQuery.Find(c.Context())
 	if err != nil {
 		return nil, 0, err
 	}
+	children := make([]model.LibraryGroup, 0)
+	groupsByID := make(map[uint]model.LibraryGroup, len(descendants)+1)
+	groupsByID[courseGroup.ID] = courseGroup
+	for _, group := range descendants {
+		groupsByID[group.ID] = group
+		if group.ParentID != nil && *group.ParentID == courseGroup.ID {
+			children = append(children, group)
+		}
+	}
+	sort.SliceStable(children, func(i, j int) bool {
+		if children[i].SortOrder != children[j].SortOrder {
+			return children[i].SortOrder < children[j].SortOrder
+		}
+		if children[i].Name != children[j].Name {
+			return children[i].Name < children[j].Name
+		}
+		return children[i].ID < children[j].ID
+	})
+
+	levelCounts, err := h.blueprintLevelCountsByGroup(c, courseGroup)
+	if err != nil {
+		return nil, 0, err
+	}
+	childByPath := make(map[string]uint, len(children))
+	for _, child := range children {
+		childByPath[child.Path] = child.ID
+	}
+	levelsByChild := make(map[uint]int64, len(children))
+	sectionsByChild := make(map[uint]int64, len(children))
+	for _, group := range descendants {
+		childID, ok := blueprintDirectChildID(courseGroup.Path, group.Path, childByPath)
+		if ok && group.ID != childID {
+			sectionsByChild[childID]++
+		}
+	}
+	directCount := levelCounts[courseGroup.ID]
+	for groupID, count := range levelCounts {
+		if groupID == courseGroup.ID {
+			continue
+		}
+		group, ok := groupsByID[groupID]
+		if !ok {
+			continue
+		}
+		if childID, ok := blueprintDirectChildID(courseGroup.Path, group.Path, childByPath); ok {
+			levelsByChild[childID] += count
+		}
+	}
+
 	responses := make([]progressionGroupResponse, 0, len(children)+1)
-	var total int64
-	directCount, err := h.countBlueprintLevels(c, courseGroup, false)
-	if err != nil {
-		return nil, 0, err
-	}
+	total := directCount
 	if directCount > 0 {
 		responses = append(responses, progressionGroupResponse{
 			ID: blueprintGroupID(courseGroup.ID), LibraryGroupID: courseGroup.ID,
 			Name: "Default", SortOrder: -1, LevelCount: directCount, Blueprint: true,
 		})
-		total += directCount
 	}
 	for _, child := range children {
-		count, err := h.countBlueprintLevels(c, child, true)
-		if err != nil {
-			return nil, 0, err
-		}
-		sectionCount, err := h.countDescendantGroups(c, child)
-		if err != nil {
-			return nil, 0, err
-		}
+		count := levelsByChild[child.ID]
 		responses = append(responses, progressionGroupResponse{
 			ID: blueprintGroupID(child.ID), LibraryGroupID: child.ID, Name: child.Name,
 			Description: child.Description, SortOrder: child.SortOrder, LevelCount: count,
-			SectionCount: sectionCount, Blueprint: true,
+			SectionCount: sectionsByChild[child.ID], Blueprint: true,
 		})
 		total += count
 	}
 	return responses, total, nil
 }
 
-func (h *Handler) countBlueprintLevels(c fiber.Ctx, group model.LibraryGroup, recursive bool) (int64, error) {
+type blueprintGroupLevelCount struct {
+	GroupID    uint
+	LevelCount int64
+}
+
+func (h *Handler) blueprintLevelCountsByGroup(c fiber.Ctx, courseGroup model.LibraryGroup) (map[uint]int64, error) {
 	query := h.db.WithContext(c.Context()).Table("melodies AS m").
 		Joins("JOIN library_groups AS g ON g.id = m.group_id AND g.deleted_at IS NULL").
-		Where("m.deleted_at IS NULL").
+		Where("m.deleted_at IS NULL AND (g.id = ? OR g.path LIKE ? ESCAPE '\\')", courseGroup.ID, descendantPattern(courseGroup.Path)).
 		Where("EXISTS (SELECT 1 FROM file_variants AS fv WHERE fv.melody_id = m.id AND fv.format = ? AND fv.deleted_at IS NULL)", "midi")
-	if recursive {
-		query = query.Where("g.path = ? OR g.path LIKE ? ESCAPE '\\'", group.Path, descendantPattern(group.Path))
-	} else {
-		query = query.Where("g.id = ?", group.ID)
-	}
 	if !includePrivate(c) {
 		query = query.Where("m.is_public = ? AND g.is_public = ?", true, true)
 	}
-	var count int64
-	if err := query.Count(&count).Error; err != nil {
-		return 0, err
+	var rows []blueprintGroupLevelCount
+	if err := query.Select("m.group_id AS group_id, COUNT(*) AS level_count").
+		Group("m.group_id").Scan(&rows).Error; err != nil {
+		return nil, err
 	}
-	return count, nil
+	result := make(map[uint]int64, len(rows))
+	for _, row := range rows {
+		result[row.GroupID] = row.LevelCount
+	}
+	return result, nil
+}
+
+func blueprintDirectChildID(coursePath string, groupPath string, children map[string]uint) (uint, bool) {
+	relative := strings.TrimPrefix(groupPath, coursePath+"/")
+	if relative == groupPath || relative == "" {
+		return 0, false
+	}
+	first, _, _ := strings.Cut(relative, "/")
+	childID, ok := children[path.Join(coursePath, first)]
+	return childID, ok
 }
 
 func (h *Handler) countDescendantGroups(c fiber.Ctx, group model.LibraryGroup) (int64, error) {
