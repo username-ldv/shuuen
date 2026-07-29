@@ -65,6 +65,7 @@ import ldv.shuuen.features.training.level_end.domain.longestCleanRun
 import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
 import ldv.shuuen.features.training.course.domain.TrainingLevelResolver
 import ldv.shuuen.features.training.melodies.domain.MidiContentResolver
+import ldv.shuuen.features.training.melodies.domain.MidiTransposition
 
 enum class MelodiesPlayMode {
   Midi,
@@ -176,6 +177,7 @@ private data class ActivePlaybackNote(val runId: Int, val note: Note)
 
 class MelodiesPlayScreenViewModel(
   private val levelId: String,
+  private val midiTransposition: MidiTransposition,
   levelResolver: TrainingLevelResolver,
   private val midiEngine: MidiEngine,
   private val player: MidiFilePlayer,
@@ -309,7 +311,8 @@ class MelodiesPlayScreenViewModel(
           }
 
       when (val config = level.config) {
-        is LevelConfig.Melodies.Midi -> startMidiMode(level, config)
+        is LevelConfig.Melodies.Midi ->
+          startMidiMode(level, config, midiTransposition.resolve())
         is LevelConfig.Melodies.Random -> startRandomMode(level, config)
       }
     }
@@ -317,7 +320,11 @@ class MelodiesPlayScreenViewModel(
 
   // region Midi mode
 
-  private suspend fun startMidiMode(level: MelodiesLevel, config: LevelConfig.Melodies.Midi) {
+  private suspend fun startMidiMode(
+    level: MelodiesLevel,
+    config: LevelConfig.Melodies.Midi,
+    transpositionSemitones: Int,
+  ) {
     val bytes = runCatching { midiContentResolver.resolve(config.midiSource) }.getOrElse { error ->
       _state.update {
         it.copy(
@@ -363,6 +370,7 @@ class MelodiesPlayScreenViewModel(
           MidiFilePlaybackOptions(
             useOriginalVelocities = config.useOriginalVelocities,
             backingTrack = backingTrack,
+            transpositionSemitones = transpositionSemitones,
           ),
         )
       }

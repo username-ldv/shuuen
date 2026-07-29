@@ -53,6 +53,8 @@ import ldv.shuuen.features.training.course.domain.TrainingLevelResolver
 import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
 import ldv.shuuen.features.training.melodies.domain.MidiContentResolver
 import ldv.shuuen.features.training.melodies.domain.MidiFileSource
+import ldv.shuuen.features.training.melodies.domain.MidiTransposition
+import ldv.shuuen.features.training.melodies.domain.MidiTranspositionMode
 import ldv.shuuen.features.training.single.domain.SinglesLevel
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -75,6 +77,7 @@ class MelodiesPlayScreenViewModelTest {
     val viewModel =
       MelodiesPlayScreenViewModel(
         levelId = TestLevelId,
+        midiTransposition = MidiTransposition(),
         levelResolver = FakeTrainingLevelResolver(finiteRandomLevel(notesPerSequence = 6)),
         midiEngine = engine,
         player = FakeMidiFilePlayer(),
@@ -100,6 +103,7 @@ class MelodiesPlayScreenViewModelTest {
       val viewModel =
         MelodiesPlayScreenViewModel(
           levelId = TestLevelId,
+          midiTransposition = MidiTransposition(),
           levelResolver = FakeTrainingLevelResolver(finiteRandomLevel(notesPerSequence = 6)),
           midiEngine = engine,
           player = FakeMidiFilePlayer(),
@@ -124,6 +128,7 @@ class MelodiesPlayScreenViewModelTest {
     val engine = FakeMidiEngine()
     MelodiesPlayScreenViewModel(
         levelId = TestLevelId,
+        midiTransposition = MidiTransposition(),
         levelResolver =
           FakeTrainingLevelResolver(
             finiteRandomLevel(notesPerSequence = 12, tuneInconsistencyCents = 30)
@@ -151,6 +156,7 @@ class MelodiesPlayScreenViewModelTest {
     val engine = FakeMidiEngine()
     MelodiesPlayScreenViewModel(
         levelId = TestLevelId,
+        midiTransposition = MidiTransposition(),
         levelResolver = FakeTrainingLevelResolver(finiteRandomLevel(notesPerSequence = 6)),
         midiEngine = engine,
         player = FakeMidiFilePlayer(),
@@ -162,6 +168,26 @@ class MelodiesPlayScreenViewModelTest {
     advanceUntilIdle()
 
     assertEquals(List(6) { 0 }, engine.playedDetunes)
+  }
+
+  @Test
+  fun definedMidiTranspositionIsPassedToTheFilePlayer() = runTest(dispatcher) {
+    val player = FakeMidiFilePlayer()
+    MelodiesPlayScreenViewModel(
+      levelId = TestLevelId,
+      midiTransposition =
+        MidiTransposition(mode = MidiTranspositionMode.Defined, semitones = 3),
+      levelResolver = FakeTrainingLevelResolver(midiLevel()),
+      midiEngine = FakeMidiEngine(),
+      player = player,
+      midiContentResolver = FakeMidiContentResolver(),
+      settingsRepository = FakeSettingsRepository(),
+      trainingSessionRepository = FakeTrainingSessionRepository(),
+      midiKeyboardInput = FakeMidiKeyboardInput(),
+    )
+    runCurrent()
+
+    assertEquals(3, player.loadedOptions?.transpositionSemitones)
   }
 }
 
@@ -192,6 +218,25 @@ private fun finiteRandomLevel(
     source = LevelSource.User,
   )
 
+private fun midiLevel(): MelodiesLevel =
+  MelodiesLevel(
+    id = TestLevelId,
+    name = "MIDI",
+    config =
+      LevelConfig.Melodies.Midi(
+        midiSource =
+          MidiFileSource.Backend(
+            melodyId = 1,
+            variantId = 2,
+            fileName = "test.mid",
+            downloadUrl = "https://example.test/test.mid",
+          ),
+        fileName = "test.mid",
+      ),
+    context = null,
+    source = LevelSource.Imported,
+  )
+
 private class FakeTrainingLevelResolver(private val level: MelodiesLevel) : TrainingLevelResolver {
   override suspend fun resolveSingles(encodedReference: String): SinglesLevel = error("not implemented")
 
@@ -201,7 +246,7 @@ private class FakeTrainingLevelResolver(private val level: MelodiesLevel) : Trai
 }
 
 private class FakeMidiContentResolver : MidiContentResolver {
-  override suspend fun resolve(source: MidiFileSource): ByteArray = error("not used")
+  override suspend fun resolve(source: MidiFileSource): ByteArray = byteArrayOf(1)
 }
 
 private class FakeTrainingSessionRepository : TrainingSessionRepository {
@@ -309,10 +354,15 @@ private class FakeMidiEngine : MidiEngine {
 }
 
 private class FakeMidiFilePlayer : MidiFilePlayer {
+  var loadedOptions: MidiFilePlaybackOptions? = null
+
   override suspend fun load(
     bytes: ByteArray,
     options: MidiFilePlaybackOptions,
-  ): LoadedMelody = LoadedMelody(notes = emptyList(), lengthTicks = 0L, lengthSeconds = 0.0)
+  ): LoadedMelody {
+    loadedOptions = options
+    return LoadedMelody(notes = emptyList(), lengthTicks = 0L, lengthSeconds = 0.0)
+  }
 
   override fun play() = Unit
 

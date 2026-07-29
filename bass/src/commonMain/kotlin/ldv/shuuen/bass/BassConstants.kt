@@ -28,6 +28,7 @@ internal expect object BassConstants {
   val MIDI_EVENT_CHORUS_LEVEL: Int
   val MIDI_EVENT_CHORUS_MACRO: Int
   val MIDI_EVENT_SYSTEM: Int
+  val MIDI_EVENT_TRANSPOSE: Int
   val MIDI_EVENT_SYSTEMEX: Int
   val MIDI_EVENT_NOTESOFF: Int
 

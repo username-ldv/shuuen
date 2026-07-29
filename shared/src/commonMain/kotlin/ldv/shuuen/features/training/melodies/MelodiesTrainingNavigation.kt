@@ -30,7 +30,9 @@ val melodiesTrainingNavigationModule = module {
     val navigator = LocalAppNavigator.current
     MelodiesLevelSelectScreen(
       onNavigateBack = { navigator.goBack() },
-      onStartLevel = { levelId -> navigator.add(AppRoute.MelodiesPlay(levelId)) },
+      onStartLevel = { levelId, transposition ->
+        navigator.add(AppRoute.MelodiesPlay(levelId, transposition))
+      },
       onCreateNewLevel = { navigator.add(AppRoute.MelodiesSetup()) },
       onEditLevel = { levelId -> navigator.add(AppRoute.MelodiesSetup(levelId)) },
       viewModel = koinViewModel(),
@@ -65,9 +67,11 @@ val melodiesTrainingNavigationModule = module {
     MelodiesPlayScreen(
       onNavigateBack = { navigator.goBack() },
       onLevelEnd = { sessionId ->
-        navigator.replaceLastWith(AppRoute.MelodiesLevelComplete(route.levelId, sessionId))
+        navigator.replaceLastWith(
+          AppRoute.MelodiesLevelComplete(route.levelId, sessionId, route.transposition)
+        )
       },
-      viewModel = koinViewModel { parametersOf(route.levelId) },
+      viewModel = koinViewModel { parametersOf(route.levelId, route.transposition) },
     )
   }
 
@@ -75,9 +79,11 @@ val melodiesTrainingNavigationModule = module {
     val navigator = LocalAppNavigator.current
     LevelCompleteScreen(
       onNavigateBack = { navigator.goBack() },
-      onRetryLevel = { navigator.replaceLastWith(AppRoute.MelodiesPlay(route.levelId)) },
+      onRetryLevel = {
+        navigator.replaceLastWith(AppRoute.MelodiesPlay(route.levelId, route.transposition))
+      },
       onNextLevel = { nextLevelId ->
-        navigator.replaceLastWith(AppRoute.MelodiesPlay(nextLevelId))
+        navigator.replaceLastWith(AppRoute.MelodiesPlay(nextLevelId, route.transposition))
       },
       // The level select this play session started from is right below on the back stack.
       onLevelSelect = { navigator.goBack() },

@@ -33,6 +33,8 @@ class BackingTrackData(val bytes: ByteArray, val offsetMs: Long)
 data class MidiFilePlaybackOptions(
   val useOriginalVelocities: Boolean = false,
   val backingTrack: BackingTrackData? = null,
+  /** Whole-semitone shift applied to the rendered MIDI and the returned quiz notes. */
+  val transpositionSemitones: Int = 0,
 )
 
 /**

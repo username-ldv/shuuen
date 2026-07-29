@@ -73,6 +73,7 @@ import ldv.shuuen.features.training.common.toBoxedItems
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.ScaleConfig
 import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
+import ldv.shuuen.features.training.melodies.domain.MidiTransposition
 import ldv.shuuen.features.training.course.presentation.CourseDiscoveryMessage
 import ldv.shuuen.features.training.course.presentation.CourseLevelItemKeyPrefix
 import ldv.shuuen.features.training.course.presentation.CourseLevelsMessage
@@ -86,7 +87,7 @@ import ldv.shuuen.features.training.course.presentation.progressionGroupSwipeNav
 @Composable
 fun MelodiesLevelSelectScreen(
   onNavigateBack: () -> Unit,
-  onStartLevel: (levelId: String) -> Unit,
+  onStartLevel: (levelId: String, transposition: MidiTransposition) -> Unit,
   onCreateNewLevel: () -> Unit,
   onEditLevel: (levelId: String) -> Unit,
   viewModel: MelodiesLevelSelectScreenViewModel,
@@ -112,6 +113,7 @@ fun MelodiesLevelSelectScreen(
     if (showingLocal) orderedLocalLevels.map { it.id }
     else courseState.levels.map { it.reference }
   var levelPendingDelete by remember { mutableStateOf<MelodiesLevel?>(null) }
+  var levelPendingCustomization by remember { mutableStateOf<MidiLevelLaunchTarget?>(null) }
   StaticScreenFrame(
     topBar = {
       ShuuenTopAppBar(
@@ -196,7 +198,16 @@ fun MelodiesLevelSelectScreen(
                 LevelCard(
                   level,
                   stats = stats,
-                  onLevelChosen = { onStartLevel(it.id) },
+                  onLevelChosen = { onStartLevel(it.id, MidiTransposition()) },
+                  onCustomizeLevel =
+                    if (level.config is LevelConfig.Melodies.Midi) {
+                      {
+                        levelPendingCustomization =
+                          MidiLevelLaunchTarget(reference = level.id, name = level.name)
+                      }
+                    } else {
+                      null
+                    },
                   onEditLevel = { onEditLevel(it.id) },
                   onDeleteLevel = { levelPendingDelete = it },
                 )
@@ -226,7 +237,19 @@ fun MelodiesLevelSelectScreen(
             LevelCard(
               level = item.playableLevel,
               stats = stats,
-              onLevelChosen = { onStartLevel(item.reference) },
+              onLevelChosen = { onStartLevel(item.reference, MidiTransposition()) },
+              onCustomizeLevel =
+                if (item.playableLevel.config is LevelConfig.Melodies.Midi) {
+                  {
+                    levelPendingCustomization =
+                      MidiLevelLaunchTarget(
+                        reference = item.reference,
+                        name = item.playableLevel.name,
+                      )
+                  }
+                } else {
+                  null
+                },
               onEditLevel = null,
               onDeleteLevel = null,
             )
@@ -266,7 +289,20 @@ fun MelodiesLevelSelectScreen(
       onDismiss = { levelPendingDelete = null },
     )
   }
+  levelPendingCustomization?.let { level ->
+    MidiLevelOptionsSheet(
+      levelName = level.name,
+      levelReference = level.reference,
+      onStart = { transposition ->
+        levelPendingCustomization = null
+        onStartLevel(level.reference, transposition)
+      },
+      onDismiss = { levelPendingCustomization = null },
+    )
+  }
 }
+
+private data class MidiLevelLaunchTarget(val reference: String, val name: String)
 
 @Composable
 private fun EmptyState() {
@@ -294,6 +330,7 @@ private fun LevelCard(
   level: MelodiesLevel,
   stats: LevelAccuracyStats,
   onLevelChosen: (MelodiesLevel) -> Unit,
+  onCustomizeLevel: (() -> Unit)?,
   onEditLevel: ((MelodiesLevel) -> Unit)?,
   onDeleteLevel: ((MelodiesLevel) -> Unit)?,
 ) {
@@ -336,6 +373,16 @@ private fun LevelCard(
       horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
       LevelAccuracyStatsRow(stats = stats, modifier = Modifier.weight(1f))
+      if (onCustomizeLevel != null) {
+        IconButton(onClick = onCustomizeLevel, modifier = Modifier.size(34.dp)) {
+          Icon(
+            imageVector = Icons.Rounded.Tune,
+            contentDescription = "Customize level",
+            tint = ShuuenUi.Text,
+            modifier = Modifier.size(20.dp),
+          )
+        }
+      }
       if (onEditLevel != null) {
         IconButton(onClick = { onEditLevel(level) }, modifier = Modifier.size(34.dp)) {
           Icon(

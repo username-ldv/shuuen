@@ -51,6 +51,8 @@ object Bass {
     get() = BassConstants.MIDI_EVENT_CHORUS_MACRO
   val MIDI_EVENT_SYSTEM: Int
     get() = BassConstants.MIDI_EVENT_SYSTEM
+  val MIDI_EVENT_TRANSPOSE: Int
+    get() = BassConstants.MIDI_EVENT_TRANSPOSE
   val MIDI_EVENT_SYSTEMEX: Int
     get() = BassConstants.MIDI_EVENT_SYSTEMEX
   val MIDI_EVENT_NOTESOFF: Int

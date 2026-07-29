@@ -86,6 +86,21 @@ class BassMidiFilePlayer(
     ) {
       "Unable to set MIDI stream filter: ${Bass.errorCode()}."
     }
+    require(options.transpositionSemitones in MinimumBassTransposition..MaximumBassTransposition) {
+      "MIDI transposition must be between $MinimumBassTransposition and $MaximumBassTransposition."
+    }
+    if (options.transpositionSemitones != 0) {
+      require(
+        Bass.streamEvent(
+          streamHandle = handle,
+          channel = 0,
+          event = Bass.MIDI_EVENT_TRANSPOSE,
+          parameter = BassNeutralTransposition + options.transpositionSemitones,
+        )
+      ) {
+        "Unable to transpose MIDI stream: ${Bass.errorCode()}."
+      }
+    }
     // With the mute setting on, a backing track replaces the melody's sound entirely: the MIDI
     // stream still runs (it drives the quiz position) but at zero volume.
     untrimmedMelodyGain =
@@ -114,7 +129,14 @@ class BassMidiFilePlayer(
       Bass.streamGetEvents(handle, track = -1, filter = Bass.MIDI_EVENT_NOTES)
         .filter(::isNoteOn)
         .sortedWith(compareBy({ it.tick }, { it.pos }, { it.channel }))
-        .map { MelodyNote(note = noteFromMidi(it.param and 0xFF), tick = it.tick) }
+        .map { event ->
+          val rawMidiNumber = event.param and MidiByteMask
+          // BASSMIDI's global transpose event deliberately leaves each port's drum channel alone.
+          val semitones =
+            if (event.channel % MidiFileChannelCount == DrumChannelIndex) 0
+            else options.transpositionSemitones
+          MelodyNote(note = noteFromMidi(rawMidiNumber + semitones), tick = event.tick)
+        }
 
     val lengthTicks = Bass.channelGetLength(handle, Bass.BASS_POS_MIDI_TICK)
     lengthBytes = Bass.channelGetLength(handle, Bass.BASS_POS_BYTE)
@@ -347,6 +369,7 @@ class BassMidiFilePlayer(
 
   private companion object {
     const val MidiFileChannelCount = 16
+    const val DrumChannelIndex = 9
     const val DefaultBankLsb = 0
     const val MidiFilePlaybackBufferMs = 250
     const val LiveStreamBufferMs = 30
@@ -354,6 +377,9 @@ class BassMidiFilePlayer(
     const val MidiByteMask = 0xFF
     const val MidiValueMax = 127
     const val MaxOriginalVelocityGain = 4f
+    const val MinimumBassTransposition = -100
+    const val MaximumBassTransposition = 100
+    const val BassNeutralTransposition = 100
 
     /**
      * Positional disagreement between the MIDI and its backing track beyond which the periodic

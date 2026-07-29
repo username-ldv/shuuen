@@ -37,6 +37,7 @@ class BassConstantsTest {
     assertMatches(midi, "MIDI_EVENT_CHORUS_LEVEL", Bass.MIDI_EVENT_CHORUS_LEVEL)
     assertMatches(midi, "MIDI_EVENT_CHORUS_MACRO", Bass.MIDI_EVENT_CHORUS_MACRO)
     assertMatches(midi, "MIDI_EVENT_SYSTEM", Bass.MIDI_EVENT_SYSTEM)
+    assertMatches(midi, "MIDI_EVENT_TRANSPOSE", Bass.MIDI_EVENT_TRANSPOSE)
     assertMatches(midi, "MIDI_EVENT_SYSTEMEX", Bass.MIDI_EVENT_SYSTEMEX)
     assertMatches(midi, "MIDI_EVENT_NOTESOFF", Bass.MIDI_EVENT_NOTESOFF)
     assertMatches(midi, "MIDI_EVENT_NOTES", Bass.MIDI_EVENT_NOTES)
