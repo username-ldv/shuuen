@@ -56,8 +56,11 @@ import ldv.shuuen.features.training.common.components.DeleteLevelDialog
 import ldv.shuuen.features.training.common.components.LevelAccuracyLabel
 import ldv.shuuen.features.training.common.components.LevelAccuracyStatsRow
 import ldv.shuuen.features.training.common.components.LevelParametersFlow
+import ldv.shuuen.features.training.common.components.LevelSortAction
+import ldv.shuuen.features.training.common.components.LevelSortOrder
 import ldv.shuuen.features.training.common.components.MelodyStyleSummary
 import ldv.shuuen.features.training.common.components.sourceLabel
+import ldv.shuuen.features.training.common.components.sortedByLevelCreation
 import ldv.shuuen.features.training.common.toBoxedItems
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.ScaleConfig
@@ -72,6 +75,7 @@ fun MelodiesLevelSelectScreen(
   viewModel: MelodiesLevelSelectScreenViewModel,
 ) {
   val levels by viewModel.levels.collectAsStateWithLifecycle(ResponseState.Loading)
+  var sortOrder by rememberSaveable { mutableStateOf(LevelSortOrder.Descending) }
   var levelPendingDelete by remember { mutableStateOf<MelodiesLevel?>(null) }
   StaticScreenFrame(
     topBar = {
@@ -79,6 +83,9 @@ fun MelodiesLevelSelectScreen(
         title = "LEVEL SELECT",
         subtitle = "Transcribe melodies from MIDI or random sequences.",
         onBack = onNavigateBack,
+        actions = {
+          LevelSortAction(sortOrder, onOrderChange = { sortOrder = it })
+        },
         type = ShuuenTopAppBarType.Labeled,
       )
     },
@@ -107,7 +114,10 @@ fun MelodiesLevelSelectScreen(
           if (l.result.isEmpty()) {
             item { EmptyState() }
           } else {
-            items(items = l.result, key = { it.id }) { level ->
+            items(
+              items = l.result.sortedByLevelCreation(sortOrder) { it.id },
+              key = { it.id },
+            ) { level ->
               val statsFlow = remember(viewModel, level.id) { viewModel.levelStats(level.id) }
               val stats by statsFlow.collectAsStateWithLifecycle(LevelAccuracyStats())
               LevelCard(
