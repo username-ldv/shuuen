@@ -214,6 +214,55 @@ func TestScannerUsesUnifiedPublicVisibilityAndInheritsPrivateParent(t *testing.T
 	}
 }
 
+func TestScannerAssignsNaturalMelodyOrderUnlessMetadataOverridesIt(t *testing.T) {
+	root := t.TempDir()
+	groupDir := filepath.Join(root, "group")
+	if err := os.MkdirAll(groupDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(groupDir, "1.mid"), "midi")
+	writeFile(t, filepath.Join(groupDir, "2.mid"), "midi")
+	writeFile(t, filepath.Join(groupDir, "2.musicxml"), "<score-partwise />")
+	writeFile(t, filepath.Join(groupDir, "10.mid"), "midi")
+	writeFile(t, filepath.Join(groupDir, "custom.mid"), "midi")
+	writeFile(t, filepath.Join(groupDir, "custom.shuuen.json"), `{"sort_order":42}`)
+
+	db, err := gorm.Open(gormlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.User{}, &model.LibraryGroup{}, &model.Tag{}, &model.Melody{}, &model.FileVariant{}); err != nil {
+		t.Fatal(err)
+	}
+	scanner, err := NewScanner(db, config.CatalogConfig{
+		Root: root, FolderMetadataFile: ".shuuen.json", MelodyMetadataSuffix: ".shuuen.json", MaxUploadBytes: 1024,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := scanner.Scan(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+
+	melodies, err := gorm.G[model.Melody](db).
+		Where("source_path LIKE ?", "group/%").
+		Order("sort_order asc, title asc, id asc").
+		Find(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(melodies) != 4 {
+		t.Fatalf("indexed %d melodies, want 4", len(melodies))
+	}
+	wantStems := []string{"1", "2", "10", "custom"}
+	wantOrders := []int{0, 1, 2, 42}
+	for index, melody := range melodies {
+		if melody.FileStem != wantStems[index] || melody.SortOrder != wantOrders[index] {
+			t.Fatalf("melody %d = (%q, %d), want (%q, %d)", index, melody.FileStem, melody.SortOrder, wantStems[index], wantOrders[index])
+		}
+	}
+}
+
 func TestUnchangedScanDoesNotRewriteCatalogTimestamps(t *testing.T) {
 	root := t.TempDir()
 	groupDir := filepath.Join(root, "group")

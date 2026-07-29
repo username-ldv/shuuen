@@ -120,7 +120,13 @@ Melody metadata lives beside the file as `<stem>.shuuen.json`:
 }
 ```
 
-If metadata is missing, names are derived from folders and file names. Resources are public by default. A private group makes all of its descendant groups and melodies private. The legacy `is_active` and `is_published` metadata keys are still read for compatibility, but new metadata should use only `is_public`.
+If metadata is missing, names are derived from folders and file names. Melodies
+without an explicit `sort_order` are naturally ordered within their folder, so
+numeric filename runs sort as `1`, `2`, `10` instead of `1`, `10`, `2`. An
+explicit melody `sort_order` overrides that generated position. Resources are
+public by default. A private group makes all of its descendant groups and
+melodies private. The legacy `is_active` and `is_published` metadata keys are
+still read for compatibility, but new metadata should use only `is_public`.
 
 Malformed metadata fails the scan instead of silently falling back to public visibility.
 

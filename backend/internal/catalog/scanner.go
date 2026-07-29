@@ -71,7 +71,7 @@ type MelodyMetadata struct {
 	Composer      string   `json:"composer"`
 	Difficulty    string   `json:"difficulty"`
 	Tags          []string `json:"tags"`
-	SortOrder     int      `json:"sort_order"`
+	SortOrder     *int     `json:"sort_order"`
 	IsPublic      *bool    `json:"is_public"`
 	IsPublished   *bool    `json:"is_published,omitempty"`
 	PrimaryFormat string   `json:"primary_format"`
@@ -109,6 +109,7 @@ func (s *Scanner) Scan(ctx context.Context) (Result, error) {
 		}
 		groupsByPath := map[string]model.LibraryGroup{}
 		indexedMelodies := map[string]model.Melody{}
+		naturalOrders := map[string]map[string]int{}
 
 		err = filepath.WalkDir(s.root, func(absPath string, entry fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
@@ -127,6 +128,11 @@ func (s *Scanner) Scan(ctx context.Context) (Result, error) {
 					return err
 				}
 				groupsByPath[group.Path] = group
+				orders, err := naturalMelodyOrders(absPath)
+				if err != nil {
+					return err
+				}
+				naturalOrders[group.Path] = orders
 				result.GroupsIndexed++
 				return nil
 			}
@@ -135,7 +141,7 @@ func (s *Scanner) Scan(ctx context.Context) (Result, error) {
 				return nil
 			}
 
-			melody, created, err := s.indexMelodyForFile(ctx, tx, absPath, groupsByPath, indexedMelodies, state, scanID)
+			melody, created, err := s.indexMelodyForFile(ctx, tx, absPath, groupsByPath, indexedMelodies, naturalOrders, state, scanID)
 			if err != nil {
 				return err
 			}
@@ -277,7 +283,7 @@ func (s *Scanner) indexGroup(ctx context.Context, tx *gorm.DB, absPath string, g
 	return group, nil
 }
 
-func (s *Scanner) indexMelodyForFile(ctx context.Context, tx *gorm.DB, absPath string, groupsByPath map[string]model.LibraryGroup, indexed map[string]model.Melody, state *scanState, scanID string) (model.Melody, bool, error) {
+func (s *Scanner) indexMelodyForFile(ctx context.Context, tx *gorm.DB, absPath string, groupsByPath map[string]model.LibraryGroup, indexed map[string]model.Melody, naturalOrders map[string]map[string]int, state *scanState, scanID string) (model.Melody, bool, error) {
 	dir := filepath.Dir(absPath)
 	groupPath, err := relativeSlashPath(s.root, dir)
 	if err != nil {
@@ -328,7 +334,10 @@ func (s *Scanner) indexMelodyForFile(ctx context.Context, tx *gorm.DB, absPath s
 	melody.Description = strings.TrimSpace(meta.Description)
 	melody.Composer = strings.TrimSpace(meta.Composer)
 	melody.Difficulty = strings.TrimSpace(meta.Difficulty)
-	melody.SortOrder = meta.SortOrder
+	melody.SortOrder = naturalOrders[groupPath][fileStem]
+	if meta.SortOrder != nil {
+		melody.SortOrder = *meta.SortOrder
+	}
 	melody.IsPublic = isPublic
 	melody.ScanID = scanID
 	melody.DeletedAt = gorm.DeletedAt{}
@@ -383,6 +392,32 @@ func (s *Scanner) indexMelodyForFile(ctx context.Context, tx *gorm.DB, absPath s
 	indexed[sourcePath] = melody
 
 	return melody, created, nil
+}
+
+func naturalMelodyOrders(directory string) (map[string]int, error) {
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		return nil, err
+	}
+	uniqueStems := make(map[string]struct{})
+	for _, entry := range entries {
+		if entry.IsDir() || storage.InferFormat(entry.Name()) == "" {
+			continue
+		}
+		stem := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
+		uniqueStems[stem] = struct{}{}
+	}
+	stems := make([]string, 0, len(uniqueStems))
+	for stem := range uniqueStems {
+		stems = append(stems, stem)
+	}
+	sort.Slice(stems, func(i, j int) bool { return util.NaturalLess(stems[i], stems[j]) })
+
+	orders := make(map[string]int, len(stems))
+	for index, stem := range stems {
+		orders[stem] = index
+	}
+	return orders, nil
 }
 
 func replaceGroupTags(ctx context.Context, tx *gorm.DB, groupID uint, tags []model.Tag) error {
