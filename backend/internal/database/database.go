@@ -66,6 +66,7 @@ var migrations = []migration{
 	{version: 3, apply: enforcePrimaryVariantInvariant},
 	{version: 4, apply: addUserTokenVersion},
 	{version: 5, apply: constrainPostgresCatalogPaths},
+	{version: 6, apply: addCourseSchema},
 }
 
 func Migrate(ctx context.Context, db *gorm.DB) error {
@@ -208,6 +209,41 @@ func constrainPostgresCatalogPaths(ctx context.Context, db *gorm.DB) error {
 			return fmt.Errorf("%s.%s contains %d values longer than 640 characters", item.table, item.column, count)
 		}
 		statement := fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s TYPE varchar(640)", item.table, item.column)
+		if err := gorm.G[any](db).Exec(ctx, statement); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func addCourseSchema(ctx context.Context, db *gorm.DB) error {
+	// AutoMigrate follows belongs-to relationships and attempts to migrate the
+	// referenced library tables as well. On an existing SQLite catalog, even a
+	// harmless model/default difference can make that migration rebuild and drop
+	// library_groups while melodies still reference it. Migration 6 introduces
+	// only new tables, so create those tables directly and leave the established
+	// library schema untouched.
+	tables := []any{
+		&model.Course{},
+		&model.CourseMode{},
+		&model.CourseProgressionGroup{},
+		&model.CourseLevel{},
+	}
+	for _, table := range tables {
+		if db.Migrator().HasTable(table) {
+			continue
+		}
+		if err := db.Migrator().CreateTable(table); err != nil {
+			return err
+		}
+	}
+	statements := []string{
+		"CREATE INDEX IF NOT EXISTS idx_courses_visibility_order ON courses (deleted_at, is_public, sort_order, name, id)",
+		"CREATE INDEX IF NOT EXISTS idx_course_modes_course_order ON course_modes (deleted_at, course_id, sort_order, mode, id)",
+		"CREATE INDEX IF NOT EXISTS idx_course_groups_mode_order ON course_progression_groups (deleted_at, course_mode_id, sort_order, name, id)",
+		"CREATE INDEX IF NOT EXISTS idx_course_levels_group_public_order ON course_levels (deleted_at, progression_group_id, is_public, sort_order, name, id)",
+	}
+	for _, statement := range statements {
 		if err := gorm.G[any](db).Exec(ctx, statement); err != nil {
 			return err
 		}

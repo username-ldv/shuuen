@@ -84,3 +84,57 @@ func TestMigrateUpgradesLegacyVisibilityColumnsAndIsIdempotent(t *testing.T) {
 		t.Fatal("database allowed two active primary variants for one melody")
 	}
 }
+
+func TestAddCourseSchemaDoesNotRebuildExistingLibraryTables(t *testing.T) {
+	db, err := gorm.Open(gormlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB.SetMaxOpenConns(1)
+
+	statements := []string{
+		"PRAGMA foreign_keys = ON",
+		"CREATE TABLE library_groups (id integer PRIMARY KEY AUTOINCREMENT, path text NOT NULL, is_public numeric NOT NULL DEFAULT true)",
+		"CREATE TABLE melodies (id integer PRIMARY KEY AUTOINCREMENT, group_id integer NOT NULL, CONSTRAINT fk_melodies_group FOREIGN KEY (group_id) REFERENCES library_groups(id))",
+		"CREATE TABLE file_variants (id integer PRIMARY KEY AUTOINCREMENT, melody_id integer NOT NULL, CONSTRAINT fk_file_variants_melody FOREIGN KEY (melody_id) REFERENCES melodies(id))",
+		"INSERT INTO library_groups (id, path, is_public) VALUES (1, '', true)",
+		"INSERT INTO melodies (id, group_id) VALUES (1, 1)",
+		"INSERT INTO file_variants (id, melody_id) VALUES (1, 1)",
+	}
+	for _, statement := range statements {
+		if err := gorm.G[any](db).Exec(t.Context(), statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var before string
+	if err := gorm.G[string](db).Raw("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'library_groups'").Scan(t.Context(), &before); err != nil {
+		t.Fatal(err)
+	}
+	if err := addCourseSchema(t.Context(), db); err != nil {
+		t.Fatalf("course migration touched a referenced library table: %v", err)
+	}
+	var after string
+	if err := gorm.G[string](db).Raw("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'library_groups'").Scan(t.Context(), &after); err != nil {
+		t.Fatal(err)
+	}
+	if after != before {
+		t.Fatalf("library_groups schema changed during course migration\nbefore: %s\nafter:  %s", before, after)
+	}
+	for _, table := range []string{"courses", "course_modes", "course_progression_groups", "course_levels"} {
+		if !db.Migrator().HasTable(table) {
+			t.Fatalf("course migration did not create %s", table)
+		}
+	}
+	var variants int64
+	if err := gorm.G[int64](db).Raw("SELECT COUNT(*) FROM file_variants").Scan(t.Context(), &variants); err != nil {
+		t.Fatal(err)
+	}
+	if variants != 1 {
+		t.Fatalf("library data changed during course migration: file variant count = %d", variants)
+	}
+}

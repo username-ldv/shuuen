@@ -178,6 +178,97 @@ Public catalog endpoints return only public resources:
 - `GET /api/v1/library/variants/:id`
 - `GET /api/v1/library/variants/:id/download`
 
+## Courses and Level Progressions
+
+Every direct child of the synthetic `Library` root is also a course. A folder
+without explicit course rows is exposed as a **blueprint** course:
+
+- It has one `melodies` mode.
+- MIDI files directly in the course folder appear in a synthetic `Default` tab.
+- Every direct child folder is an independent progression tab.
+- Deeper folders are flattened into the tab's level page. Every returned level
+  carries a `sections` breadcrumb trail so the app can insert labelled dividers.
+- Blueprint groups and levels use stable ids such as `library-12`. The first
+  structural admin edit transparently materializes the blueprint into editable
+  database rows while preserving those ids and without moving audio files.
+
+Course navigation never returns every level definition. The lightweight reads
+are:
+
+- `GET /api/v1/courses`
+- `GET /api/v1/courses/:course_id`
+- `GET /api/v1/courses/:course_id/:mode`
+
+Level payloads are fetched lazily with:
+
+- `GET /api/v1/courses/:course_id/:mode/levels?group_id=...&limit=20&offset=0`
+- `GET .../levels?ids=id-1,id-2` for up to 200 ids
+- `POST .../levels/query` with `{"ids":[...]}` when a URL would be too long
+- `GET .../levels/:level_id`
+
+Both id-query forms preserve the caller's requested order and silently omit
+unknown or non-visible ids.
+
+Administrator mutations are granular:
+
+- `POST /api/v1/courses` and `PUT /api/v1/courses/:course_id` create or edit
+  course metadata only.
+- `POST /api/v1/courses/:course_id/modes` and `PUT /api/v1/courses/:course_id/:mode` manage one
+  mode at a time.
+- `POST/PUT /api/v1/courses/:course_id/:mode/groups...` manage one progression tab.
+- `POST/PUT/DELETE /api/v1/courses/:course_id/:mode/levels...` manage one level.
+- `PUT .../:mode/position`, `PUT .../groups/:group_id/position`, and
+  `PUT .../levels/:level_id/position` use only a zero-based position. The level
+  position request may also include `group_id` to move the level to another tab.
+
+Course level definitions use stable, backend-owned JSON discriminators rather
+than Kotlin class names. Singles and chords use `level_config.type` of
+`absolute` or `relative`; melodies use `config.type` of `random` or `midi`.
+The nested structures preserve the app's scales, active pitch/degree states,
+88-key note ranges, degree contexts and setup melodies, chord styles, melody
+rhythm figures, weights, and answer settings. See `openapi.yaml` for the endpoint
+contract and core musical schemas.
+
+A stored MIDI reference is explicit:
+
+```json
+{
+  "definition": {
+    "config": {
+      "type": "midi",
+      "file": {
+        "type": "backend",
+        "melody_id": 42,
+        "variant_id": 87,
+        "file_name": "lesson.mid"
+      },
+      "use_original_velocities": false
+    },
+    "context": null
+  }
+}
+```
+
+Public MIDI levels must reference a public backend MIDI variant. A private level
+may instead use `{"type":"local","path":"...","file_name":"..."}`. Local
+paths are therefore never returned by anonymous course reads. Deleting or moving
+a course-level record does not delete or move the referenced MIDI file.
+
+### C tonic test course
+
+Seed the configured database and catalog root with the public `C tonic` test
+course:
+
+```bash
+go run ./cmd/seed-c-tonic
+```
+
+The command is idempotent. It creates one `melodies` mode containing six
+progression tabs and 66 generated-melody levels (60–160 BPM in 10 BPM steps).
+The tabs cumulatively add F♯, C♯, G♯, D♯, and A♯ to C major. Running the command
+again resets the seed-owned rows to their canonical definitions without
+removing unrelated modes or progression groups added by an administrator.
+
 Administrator-only catalog endpoints:
 
 - `POST /api/v1/library/rescan`

@@ -154,6 +154,247 @@ components:
         access_token: { type: string }
         token_type: { type: string, const: Bearer }
         expires_at: { type: string, format: date-time }
+    CourseSection:
+      type: object
+      required: [library_group_id, name, path, depth]
+      properties:
+        library_group_id: { type: integer }
+        name: { type: string }
+        path: { type: string }
+        depth: { type: integer, minimum: 1 }
+    ProgressionGroup:
+      type: object
+      required: [id, library_group_id, name, description, sort_order, level_count, section_count, blueprint]
+      properties:
+        id:
+          type: string
+          description: Stable UUID for managed groups or library-{id} for folder-blueprint groups.
+        library_group_id: { type: integer }
+        name: { type: string }
+        description: { type: string }
+        sort_order: { type: integer }
+        level_count: { type: integer, format: int64 }
+        section_count: { type: integer, format: int64 }
+        blueprint: { type: boolean }
+    CourseMode:
+      type: object
+      required: [mode, name, description, sort_order, group_count, level_count]
+      properties:
+        mode: { type: string, enum: [singles, melodies, chords] }
+        name: { type: string }
+        description: { type: string }
+        sort_order: { type: integer }
+        group_count: { type: integer }
+        level_count: { type: integer, format: int64 }
+        groups:
+          type: array
+          items: { $ref: '#/components/schemas/ProgressionGroup' }
+    Course:
+      type: object
+      required:
+        [id, library_group_id, slug, name, description, author, is_public, sort_order,
+         structure_source, mode_count, progression_group_count, level_count]
+      properties:
+        id:
+          type: integer
+          description: Same stable id as the course's top-level library group.
+        library_group_id: { type: integer }
+        slug: { type: string }
+        name: { type: string }
+        description: { type: string }
+        author: { type: string }
+        is_public: { type: boolean }
+        sort_order: { type: integer }
+        structure_source: { type: string, enum: [blueprint, managed] }
+        mode_count: { type: integer }
+        progression_group_count: { type: integer }
+        level_count: { type: integer, format: int64 }
+        modes:
+          type: array
+          items: { $ref: '#/components/schemas/CourseMode' }
+    CoursePage:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Course' }
+        meta: { $ref: '#/components/schemas/ListMeta' }
+    Pitch:
+      type: string
+      enum: [C, CSharp, D, DSharp, E, F, FSharp, G, GSharp, A, ASharp, B]
+    Degree:
+      type: string
+      enum: [D1, D5, D2, D6, D3, D7, DS4, DF2, DF6, DF3, DF7, D4]
+    Note:
+      type: object
+      required: [midi_index]
+      properties:
+        midi_index: { type: integer, minimum: 21, maximum: 108 }
+    NoteRange:
+      type: object
+      required: [from, to]
+      properties:
+        from: { $ref: '#/components/schemas/Note' }
+        to: { $ref: '#/components/schemas/Note' }
+    AbsoluteScaleConfig:
+      type: object
+      required: [root, scale_type, pitch_states]
+      properties:
+        type: { type: string, const: absolute }
+        root: { $ref: '#/components/schemas/Pitch' }
+        scale_type: { type: string, enum: [Major, NaturalMinor, Chromatic, Custom] }
+        pitch_states:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [pitch, active]
+            properties:
+              pitch: { $ref: '#/components/schemas/Pitch' }
+              active: { type: boolean }
+    RelativeScaleConfig:
+      type: object
+      required: [scale_type, degree_states]
+      properties:
+        type: { type: string, const: relative }
+        scale_type: { type: string, enum: [Major, NaturalMinor, Chromatic, Custom] }
+        degree_states:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [degree, active]
+            properties:
+              degree: { $ref: '#/components/schemas/Degree' }
+              active: { type: boolean }
+    DegreeContext:
+      type: object
+      description: >-
+        Adapted DegreeContext from the multiplatform app. Nodes carry first_degree,
+        extra_degrees, sustain, duration, optional setup_melody, and relative_direction.
+      required: [id, source, nodes]
+      properties:
+        id: { type: string, maxLength: 64 }
+        name: { type: [string, 'null'] }
+        source: { type: string, enum: [built_in, user, local, imported] }
+        nodes:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [first_degree, extra_degrees, sustain, duration, setup_melody, relative_direction]
+            properties:
+              first_degree:
+                type: object
+                required: [degree, octave]
+                properties:
+                  degree: { $ref: '#/components/schemas/Degree' }
+                  octave: { type: integer, minimum: 0, maximum: 8 }
+              extra_degrees:
+                type: array
+                items: { $ref: '#/components/schemas/Degree' }
+              sustain:
+                type: object
+                required: [type]
+                properties:
+                  type: { type: string, enum: [endless, finite] }
+                  duration_ms: { type: integer, format: int64, minimum: 1 }
+              duration:
+                type: object
+                required: [type]
+                properties:
+                  type: { type: string, enum: [finite, immediate, endless, same_as_scale_rotation] }
+                  duration_in_questions: { type: integer, minimum: 1 }
+              setup_melody:
+                type: [object, 'null']
+                description: Relative melody plus Once or EveryTime repeat behavior.
+              relative_direction: { type: string, enum: [Up, Down] }
+    BackendMIDIFile:
+      type: object
+      required: [type, melody_id, variant_id, file_name]
+      properties:
+        type: { type: string, const: backend }
+        melody_id: { type: integer }
+        variant_id: { type: integer }
+        file_name: { type: string }
+    LocalMIDIFile:
+      type: object
+      description: Accepted only when the containing level is private.
+      required: [type, path, file_name]
+      properties:
+        type: { type: string, const: local }
+        path: { type: string }
+        file_name: { type: string }
+    CourseLevelDefinition:
+      type: object
+      description: >-
+        Mode-specific level payload. Singles and chords use level_config plus context,
+        questions_number, and range. Chords additionally require chord_size,
+        sustain_notes, and answer_order. Melodies use config plus context. Config type
+        is absolute/relative for singles and chords, and random/midi for melodies.
+        Scale, context, rhythm-figure, melody-style, and chord-style values mirror the
+        app structures and are validated by the API.
+      additionalProperties: true
+      properties:
+        context:
+          oneOf:
+            - { $ref: '#/components/schemas/DegreeContext' }
+            - { type: 'null' }
+        questions_number: { type: [integer, 'null'], minimum: 1 }
+        range: { $ref: '#/components/schemas/NoteRange' }
+        level_config:
+          type: object
+          additionalProperties: true
+          properties:
+            type: { type: string, enum: [absolute, relative] }
+            scale_config: { $ref: '#/components/schemas/RelativeScaleConfig' }
+            scales:
+              type: array
+              items: { $ref: '#/components/schemas/AbsoluteScaleConfig' }
+        config:
+          type: object
+          additionalProperties: true
+          properties:
+            type: { type: string, enum: [random, midi] }
+            scale_config:
+              oneOf:
+                - { $ref: '#/components/schemas/AbsoluteScaleConfig' }
+                - { $ref: '#/components/schemas/RelativeScaleConfig' }
+            file:
+              oneOf:
+                - { $ref: '#/components/schemas/BackendMIDIFile' }
+                - { $ref: '#/components/schemas/LocalMIDIFile' }
+    CourseMIDIResource:
+      type: object
+      required: [melody_id, variant_id, download_url]
+      properties:
+        melody_id: { type: integer }
+        variant_id: { type: integer }
+        download_url: { type: string }
+    CourseLevel:
+      type: object
+      required: [id, progression_group_id, name, source, definition, sort_order, is_public, sections]
+      properties:
+        id: { type: string, maxLength: 64 }
+        progression_group_id: { type: string }
+        name: { type: string, maxLength: 220 }
+        source: { type: string, enum: [built_in, user, imported] }
+        definition: { $ref: '#/components/schemas/CourseLevelDefinition' }
+        sort_order: { type: integer }
+        is_public: { type: boolean }
+        midi: { $ref: '#/components/schemas/CourseMIDIResource' }
+        sections:
+          type: array
+          items: { $ref: '#/components/schemas/CourseSection' }
+    CourseLevelPage:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CourseLevel' }
+        meta: { $ref: '#/components/schemas/ListMeta' }
   responses:
     BadRequest:
       description: Invalid request
@@ -246,6 +487,486 @@ paths:
           description: Password changed and replacement token issued
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/courses:
+    get:
+      summary: List public courses without level payloads
+      operationId: listCourses
+      security: [{}, { bearerAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Offset' }
+        - { $ref: '#/components/parameters/IncludePrivate' }
+        - name: q
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Course summary page
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoursePage' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Create an empty managed course and its top-level library folder
+      operationId: createCourse
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 180 }
+                slug: { type: string, maxLength: 220 }
+                description: { type: string }
+                author: { type: string, maxLength: 180 }
+                is_public: { type: boolean, default: false }
+                sort_order: { type: integer, default: 0 }
+      responses:
+        '201': { description: Created course }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Course slug or folder already exists }
+  /api/v1/courses/{courseId}:
+    get:
+      summary: Get course metadata, modes, progression groups, and counts without levels
+      operationId: getCourse
+      security: [{}, { bearerAuth: [] }]
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema: { type: integer }
+        - { $ref: '#/components/parameters/IncludePrivate' }
+      responses:
+        '200': { description: Course metadata and navigation hierarchy }
+        '404': { description: Course not found or private }
+    put:
+      summary: Replace only course metadata; nested structure is untouched
+      operationId: updateCourse
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, is_public]
+              properties:
+                name: { type: string, maxLength: 180 }
+                description: { type: string }
+                author: { type: string, maxLength: 180 }
+                is_public: { type: boolean }
+                sort_order: { type: integer }
+      responses:
+        '200': { description: Updated metadata }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Course not found }
+  /api/v1/courses/{courseId}/{mode}:
+    get:
+      summary: Get one mode and its progression-group metadata and counts
+      operationId: getCourseMode
+      security: [{}, { bearerAuth: [] }]
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: mode
+          in: path
+          required: true
+          schema: { type: string, enum: [singles, melodies, chords] }
+        - { $ref: '#/components/parameters/IncludePrivate' }
+      responses:
+        '200': { description: Course mode }
+        '404': { description: Course or mode not found }
+    put:
+      summary: Replace one mode's metadata without touching its groups or levels
+      operationId: updateCourseMode
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: mode
+          in: path
+          required: true
+          schema: { type: string, enum: [singles, melodies, chords] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 180 }
+                description: { type: string }
+      responses:
+        '200': { description: Updated mode }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Course or mode not found }
+  /api/v1/courses/{courseId}/modes:
+    post:
+      summary: Add one mode to a course
+      description: A folder blueprint is transparently made editable before the mode is added.
+      operationId: createCourseMode
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mode]
+              properties:
+                mode: { type: string, enum: [singles, melodies, chords] }
+                name: { type: string, maxLength: 180 }
+                description: { type: string }
+                position: { type: integer, minimum: 0 }
+      responses:
+        '201': { description: Created mode }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Mode or folder already exists }
+  /api/v1/courses/{courseId}/{mode}/position:
+    put:
+      summary: Move a mode to a zero-based position using a lightweight payload
+      operationId: positionCourseMode
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: mode
+          in: path
+          required: true
+          schema: { type: string, enum: [singles, melodies, chords] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [position]
+              properties: { position: { type: integer, minimum: 0 } }
+      responses:
+        '204': { description: Reordered }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/v1/courses/{courseId}/{mode}/groups:
+    post:
+      summary: Add one independent progression group/tab
+      operationId: createProgressionGroup
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: mode
+          in: path
+          required: true
+          schema: { type: string, enum: [singles, melodies, chords] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 180 }
+                slug: { type: string, maxLength: 220 }
+                description: { type: string }
+                position: { type: integer, minimum: 0 }
+      responses:
+        '201': { description: Created progression group }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Group folder already exists }
+  /api/v1/courses/{courseId}/{mode}/groups/{groupId}:
+    put:
+      summary: Replace one progression group's metadata
+      operationId: updateProgressionGroup
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: mode
+          in: path
+          required: true
+          schema: { type: string, enum: [singles, melodies, chords] }
+        - name: groupId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 180 }
+                description: { type: string }
+      responses:
+        '200': { description: Updated progression group }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: 'Course, mode, or group not found' }
+  /api/v1/courses/{courseId}/{mode}/groups/{groupId}/position:
+    put:
+      summary: Move a progression group to a zero-based tab position
+      operationId: positionProgressionGroup
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: mode
+          in: path
+          required: true
+          schema: { type: string, enum: [singles, melodies, chords] }
+        - name: groupId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [position]
+              properties: { position: { type: integer, minimum: 0 } }
+      responses:
+        '204': { description: Reordered }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/v1/courses/{courseId}/{mode}/levels:
+    get:
+      summary: Page through level payloads for a mode or progression group
+      operationId: listCourseLevels
+      security: [{}, { bearerAuth: [] }]
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: mode
+          in: path
+          required: true
+          schema: { type: string, enum: [singles, melodies, chords] }
+        - name: group_id
+          in: query
+          description: Stable progression group id returned by the metadata endpoint.
+          schema: { type: string }
+        - name: ids
+          in: query
+          description: Comma-separated level ids, at most 200; response preserves requested order.
+          schema: { type: string }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Offset' }
+        - { $ref: '#/components/parameters/IncludePrivate' }
+      responses:
+        '200':
+          description: Level page
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CourseLevelPage' }
+        '404': { description: 'Course, mode, or group not found' }
+    post:
+      summary: Add one level; the rest of the course is untouched
+      operationId: createCourseLevel
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: mode
+          in: path
+          required: true
+          schema: { type: string, enum: [singles, melodies, chords] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [group_id, name, source, definition]
+              properties:
+                id: { type: string, maxLength: 64 }
+                group_id: { type: string }
+                name: { type: string, maxLength: 220 }
+                source: { type: string, enum: [built_in, user, imported] }
+                definition: { $ref: '#/components/schemas/CourseLevelDefinition' }
+                is_public: { type: boolean, default: true }
+                position: { type: integer, minimum: 0 }
+      responses:
+        '201': { description: Created level }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Level id already exists }
+  /api/v1/courses/{courseId}/{mode}/levels/query:
+    post:
+      summary: Fetch up to 200 levels by id without URL-length pressure
+      operationId: queryCourseLevels
+      security: [{}, { bearerAuth: [] }]
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: mode
+          in: path
+          required: true
+          schema: { type: string, enum: [singles, melodies, chords] }
+        - { $ref: '#/components/parameters/IncludePrivate' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids]
+              properties:
+                ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 200
+                  uniqueItems: true
+                  items: { type: string }
+      responses:
+        '200': { description: Existing visible levels in requested id order }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /api/v1/courses/{courseId}/{mode}/levels/{levelId}:
+    get:
+      summary: Get one visible course level
+      operationId: getCourseLevel
+      security: [{}, { bearerAuth: [] }]
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: mode
+          in: path
+          required: true
+          schema: { type: string, enum: [singles, melodies, chords] }
+        - name: levelId
+          in: path
+          required: true
+          schema: { type: string }
+        - { $ref: '#/components/parameters/IncludePrivate' }
+      responses:
+        '200': { description: Course level }
+        '404': { description: Level not found or private }
+    put:
+      summary: Replace one level's metadata and definition without changing its position
+      operationId: updateCourseLevel
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: mode
+          in: path
+          required: true
+          schema: { type: string, enum: [singles, melodies, chords] }
+        - name: levelId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, source, definition, is_public]
+              properties:
+                name: { type: string, maxLength: 220 }
+                source: { type: string, enum: [built_in, user, imported] }
+                definition: { $ref: '#/components/schemas/CourseLevelDefinition' }
+                is_public: { type: boolean }
+      responses:
+        '200': { description: Updated level }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Level not found }
+    delete:
+      summary: Remove one course-level record without deleting referenced MIDI files
+      operationId: deleteCourseLevel
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: mode
+          in: path
+          required: true
+          schema: { type: string, enum: [singles, melodies, chords] }
+        - name: levelId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204': { description: Deleted level record; files preserved }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Level not found }
+  /api/v1/courses/{courseId}/{mode}/levels/{levelId}/position:
+    put:
+      summary: Reorder a level or move it to another progression group
+      operationId: positionCourseLevel
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: mode
+          in: path
+          required: true
+          schema: { type: string, enum: [singles, melodies, chords] }
+        - name: levelId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [position]
+              properties:
+                group_id:
+                  type: string
+                  description: Omit to reorder within the current progression group.
+                position: { type: integer, minimum: 0 }
+      responses:
+        '204': { description: Reordered or moved }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: 'Course, mode, level, or target group not found' }
   /api/v1/library/groups:
     get:
       summary: List groups

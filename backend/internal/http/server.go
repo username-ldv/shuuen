@@ -35,6 +35,7 @@ type Handler struct {
 	catalog             *catalog.Scanner
 	validate            *validator.Validate
 	registrationEnabled bool
+	folderMetadataFile  string
 }
 
 func NewServer(deps ServerDeps) *fiber.App {
@@ -58,7 +59,7 @@ func NewServer(deps ServerDeps) *fiber.App {
 		app.Use(cors.New(cors.Config{
 			AllowOrigins: deps.Config.HTTP.CORSOrigins,
 			AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization"},
-			AllowMethods: []string{"GET", "POST", "PATCH", "DELETE", "OPTIONS"},
+			AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 			MaxAge:       int((12 * time.Hour).Seconds()),
 		}))
 	}
@@ -73,6 +74,10 @@ func NewServer(deps ServerDeps) *fiber.App {
 		catalog:             deps.Catalog,
 		validate:            validator.New(),
 		registrationEnabled: deps.Config.Auth.RegistrationEnabled,
+		folderMetadataFile:  deps.Config.Catalog.FolderMetadataFile,
+	}
+	if h.folderMetadataFile == "" {
+		h.folderMetadataFile = ".shuuen.json"
 	}
 
 	app.Get("/healthz", h.Health)
@@ -121,6 +126,28 @@ func NewServer(deps ServerDeps) *fiber.App {
 	protected.Post("/tags", h.CreateTag)
 	protected.Patch("/tags/:id", h.UpdateTag)
 	protected.Delete("/tags/:id", h.DeleteTag)
+
+	courses := api.Group("/courses", OptionalAuth(deps.Auth, deps.DB), VisibilityScope)
+	courses.Get("", h.ListCourses)
+	courses.Get("/:course_id", h.GetCourse)
+	courses.Get("/:course_id/:mode", h.GetCourseMode)
+	courses.Get("/:course_id/:mode/levels", h.ListCourseLevels)
+	courses.Post("/:course_id/:mode/levels/query", h.QueryCourseLevels)
+	courses.Get("/:course_id/:mode/levels/:level_id", h.GetCourseLevel)
+
+	courseAdmin := courses.Group("", AuthenticatedRequired, AdminRequired)
+	courseAdmin.Post("", h.CreateCourse)
+	courseAdmin.Put("/:course_id", h.UpdateCourse)
+	courseAdmin.Post("/:course_id/modes", h.CreateCourseMode)
+	courseAdmin.Put("/:course_id/:mode", h.UpdateCourseMode)
+	courseAdmin.Put("/:course_id/:mode/position", h.PositionCourseMode)
+	courseAdmin.Post("/:course_id/:mode/groups", h.CreateProgressionGroup)
+	courseAdmin.Put("/:course_id/:mode/groups/:group_id", h.UpdateProgressionGroup)
+	courseAdmin.Put("/:course_id/:mode/groups/:group_id/position", h.PositionProgressionGroup)
+	courseAdmin.Post("/:course_id/:mode/levels", h.CreateCourseLevel)
+	courseAdmin.Put("/:course_id/:mode/levels/:level_id", h.UpdateCourseLevel)
+	courseAdmin.Put("/:course_id/:mode/levels/:level_id/position", h.PositionCourseLevel)
+	courseAdmin.Delete("/:course_id/:mode/levels/:level_id", h.DeleteCourseLevel)
 
 	app.Get("/api/*", OptionalAuth(deps.Auth, deps.DB), VisibilityScope, h.GetGroupByDynamicPath)
 
