@@ -372,6 +372,17 @@ components:
         melody_id: { type: integer }
         variant_id: { type: integer }
         download_url: { type: string }
+    CourseLevelNavigation:
+      type: object
+      description: >-
+        Detail-only adjacency within the current progression group. Position is
+        zero-based and uses the same ordering and visibility rules as the level list.
+      required: [previous_level_id, next_level_id, position, total]
+      properties:
+        previous_level_id: { type: [string, 'null'] }
+        next_level_id: { type: [string, 'null'] }
+        position: { type: integer, format: int64, minimum: 0 }
+        total: { type: integer, format: int64, minimum: 1 }
     CourseLevel:
       type: object
       required: [id, progression_group_id, name, source, definition, sort_order, is_public, sections]
@@ -384,6 +395,9 @@ components:
         sort_order: { type: integer }
         is_public: { type: boolean }
         midi: { $ref: '#/components/schemas/CourseMIDIResource' }
+        navigation:
+          $ref: '#/components/schemas/CourseLevelNavigation'
+          description: Present only on the single-level GET response.
         sections:
           type: array
           items: { $ref: '#/components/schemas/CourseSection' }
@@ -857,7 +871,7 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
   /api/v1/courses/{courseId}/{mode}/levels/{levelId}:
     get:
-      summary: Get one visible course level
+      summary: Get one visible course level with progression-group navigation
       operationId: getCourseLevel
       security: [{}, { bearerAuth: [] }]
       parameters:
@@ -875,7 +889,15 @@ paths:
           schema: { type: string }
         - { $ref: '#/components/parameters/IncludePrivate' }
       responses:
-        '200': { description: Course level }
+        '200':
+          description: Course level with previous/next navigation
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/CourseLevel' }
         '404': { description: Level not found or private }
     put:
       summary: Replace one level's metadata and definition without changing its position

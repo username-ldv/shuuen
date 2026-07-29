@@ -210,7 +210,9 @@ Level payloads are fetched lazily with:
 - `GET /api/v1/courses/:course_id/:mode/levels?group_id=...&limit=20&offset=0`
 - `GET .../levels?ids=id-1,id-2` for up to 200 ids
 - `POST .../levels/query` with `{"ids":[...]}` when a URL would be too long
-- `GET .../levels/:level_id`
+- `GET .../levels/:level_id`, which additionally returns zero-based
+  `navigation` metadata with the previous and next visible level ids, position,
+  and total within that level's progression group
 
 Both id-query forms preserve the caller's requested order and silently omit
 unknown or non-visible ids.

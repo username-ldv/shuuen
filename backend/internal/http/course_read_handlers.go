@@ -14,6 +14,11 @@ import (
 	"shuuen-backend/internal/model"
 )
 
+const (
+	blueprintLevelOrder = "g.path asc, m.sort_order asc, m.title asc, m.id asc"
+	managedLevelOrder   = "pg.sort_order asc, course_levels.sort_order asc, course_levels.name asc, course_levels.id asc"
+)
+
 func (h *Handler) ListCourses(c fiber.Ctx) error {
 	limit, offset := parsePagination(c)
 	root, err := gorm.G[model.LibraryGroup](h.db).Where("path = ?", "").First(c.Context())
@@ -202,6 +207,9 @@ func (h *Handler) GetCourseLevel(c fiber.Ctx) error {
 		return notFoundOrError(c, err, "course not found")
 	}
 	modeName := coursedomain.NormalizeMode(c.Params("mode"))
+	if !coursedomain.IsValidMode(modeName) {
+		return sendError(c, fiber.StatusBadRequest, "unsupported course mode")
+	}
 	levelID := strings.TrimSpace(c.Params("level_id"))
 	rows, _, err := h.listCourseLevels(c, loaded, modeName, "", []string{levelID}, 1, 0)
 	if err != nil {
@@ -210,6 +218,11 @@ func (h *Handler) GetCourseLevel(c fiber.Ctx) error {
 	if len(rows) == 0 {
 		return sendError(c, fiber.StatusNotFound, "course level not found")
 	}
+	navigation, err := h.courseLevelNavigation(c, loaded, modeName, rows[0])
+	if err != nil {
+		return courseLevelListError(c, err)
+	}
+	rows[0].Navigation = &navigation
 	return sendData(c, fiber.StatusOK, rows[0])
 }
 
@@ -240,6 +253,30 @@ func (h *Handler) listCourseLevels(c fiber.Ctx, loaded loadedCourse, modeName st
 		return nil, 0, err
 	}
 	return h.listManagedLevels(c, loaded.Group, mode, groupID, ids, limit, offset)
+}
+
+func (h *Handler) courseLevelNavigation(c fiber.Ctx, loaded loadedCourse, modeName string, level courseLevelResponse) (courseLevelNavigationResponse, error) {
+	if loaded.isBlueprint() {
+		melodyID, err := parseBlueprintResourceID(level.ID)
+		if err != nil {
+			return courseLevelNavigationResponse{}, err
+		}
+		progressionGroup, err := h.findBlueprintProgressionGroup(c, loaded.Group, level.ProgressionGroupID)
+		if err != nil {
+			return courseLevelNavigationResponse{}, err
+		}
+		return h.blueprintLevelNavigation(c, loaded.Group, progressionGroup, melodyID)
+	}
+
+	mode, err := h.findManagedMode(c, loaded.Group.ID, modeName)
+	if err != nil {
+		return courseLevelNavigationResponse{}, err
+	}
+	progressionGroup, err := h.findManagedGroup(c, mode.ID, level.ProgressionGroupID)
+	if err != nil {
+		return courseLevelNavigationResponse{}, err
+	}
+	return h.managedLevelNavigation(c, mode, progressionGroup, level.ID)
 }
 
 type blueprintLevelRow struct {
@@ -277,24 +314,31 @@ func (h *Handler) blueprintLevelBaseQuery(c fiber.Ctx, courseGroup model.Library
 	return query
 }
 
+func (h *Handler) findBlueprintProgressionGroup(c fiber.Ctx, courseGroup model.LibraryGroup, requestedGroupID string) (*model.LibraryGroup, error) {
+	if requestedGroupID == "" {
+		return nil, nil
+	}
+	libraryID, err := parseBlueprintResourceID(requestedGroupID)
+	if err != nil {
+		return nil, &courseRequestError{message: "invalid blueprint group id"}
+	}
+	group, err := gorm.G[model.LibraryGroup](h.db).Where("id = ?", libraryID).First(c.Context())
+	if err != nil {
+		return nil, err
+	}
+	if group.ID != courseGroup.ID && (group.ParentID == nil || *group.ParentID != courseGroup.ID) {
+		return nil, gorm.ErrRecordNotFound
+	}
+	if !includePrivate(c) && !group.IsPublic {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return &group, nil
+}
+
 func (h *Handler) listBlueprintLevels(c fiber.Ctx, courseGroup model.LibraryGroup, requestedGroupID string, ids []string, limit int, offset int) ([]courseLevelResponse, int64, error) {
-	var progressionGroup *model.LibraryGroup
-	if requestedGroupID != "" {
-		libraryID, err := parseBlueprintResourceID(requestedGroupID)
-		if err != nil {
-			return nil, 0, &courseRequestError{message: "invalid blueprint group id"}
-		}
-		group, err := gorm.G[model.LibraryGroup](h.db).Where("id = ?", libraryID).First(c.Context())
-		if err != nil {
-			return nil, 0, err
-		}
-		if group.ID != courseGroup.ID && (group.ParentID == nil || *group.ParentID != courseGroup.ID) {
-			return nil, 0, gorm.ErrRecordNotFound
-		}
-		if !includePrivate(c) && !group.IsPublic {
-			return nil, 0, gorm.ErrRecordNotFound
-		}
-		progressionGroup = &group
+	progressionGroup, err := h.findBlueprintProgressionGroup(c, courseGroup, requestedGroupID)
+	if err != nil {
+		return nil, 0, err
 	}
 	query := h.blueprintLevelBaseQuery(c, courseGroup, progressionGroup)
 	if len(ids) > 0 {
@@ -317,7 +361,7 @@ func (h *Handler) listBlueprintLevels(c fiber.Ctx, courseGroup model.LibraryGrou
 		g.is_public AS section_public,
 		g.id AS section_group_id, g.path AS section_path, g.name AS section_name,
 		fv.id AS variant_id, fv.original_name`).
-		Order("g.path asc, m.sort_order asc, m.title asc, m.id asc").
+		Order(blueprintLevelOrder).
 		Limit(limit).Offset(offset).Scan(&rows).Error; err != nil {
 		return nil, 0, err
 	}
@@ -357,13 +401,38 @@ func (h *Handler) listBlueprintLevels(c fiber.Ctx, courseGroup model.LibraryGrou
 	return responses, total, nil
 }
 
-func (h *Handler) listManagedLevels(c fiber.Ctx, courseGroup model.LibraryGroup, mode model.CourseMode, requestedGroupID string, ids []string, limit int, offset int) ([]courseLevelResponse, int64, error) {
-	query := h.db.WithContext(c.Context()).Model(&model.CourseLevel{}).
-		Joins("JOIN course_progression_groups AS pg ON pg.id = course_levels.progression_group_id AND pg.deleted_at IS NULL").
-		Where("pg.course_mode_id = ?", mode.ID)
-	if !includePrivate(c) {
-		query = query.Where("course_levels.is_public = ?", true)
+type blueprintNavigationRow struct {
+	PreviousMelodyID *uint
+	NextMelodyID     *uint
+	Position         int64
+	Total            int64
+}
+
+func (h *Handler) blueprintLevelNavigation(c fiber.Ctx, courseGroup model.LibraryGroup, progressionGroup *model.LibraryGroup, melodyID uint) (courseLevelNavigationResponse, error) {
+	ordered := h.blueprintLevelBaseQuery(c, courseGroup, progressionGroup).
+		Select(`m.id AS melody_id,
+			LAG(m.id) OVER (ORDER BY ` + blueprintLevelOrder + `) AS previous_melody_id,
+			LEAD(m.id) OVER (ORDER BY ` + blueprintLevelOrder + `) AS next_melody_id,
+			ROW_NUMBER() OVER (ORDER BY ` + blueprintLevelOrder + `) - 1 AS position,
+			COUNT(*) OVER () AS total`)
+	var row blueprintNavigationRow
+	if err := h.db.WithContext(c.Context()).Table("(?) AS ordered_levels", ordered).
+		Where("melody_id = ?", melodyID).Limit(1).Scan(&row).Error; err != nil {
+		return courseLevelNavigationResponse{}, err
 	}
+	if row.Total == 0 {
+		return courseLevelNavigationResponse{}, gorm.ErrRecordNotFound
+	}
+	return courseLevelNavigationResponse{
+		PreviousLevelID: blueprintLevelIDPointer(row.PreviousMelodyID),
+		NextLevelID:     blueprintLevelIDPointer(row.NextMelodyID),
+		Position:        row.Position,
+		Total:           row.Total,
+	}, nil
+}
+
+func (h *Handler) listManagedLevels(c fiber.Ctx, courseGroup model.LibraryGroup, mode model.CourseMode, requestedGroupID string, ids []string, limit int, offset int) ([]courseLevelResponse, int64, error) {
+	query := h.managedLevelBaseQuery(c, mode)
 	if requestedGroupID != "" {
 		group, err := h.findManagedGroup(c, mode.ID, requestedGroupID)
 		if err != nil {
@@ -380,7 +449,7 @@ func (h *Handler) listManagedLevels(c fiber.Ctx, courseGroup model.LibraryGroup,
 	}
 	var levels []model.CourseLevel
 	if err := query.Select("course_levels.*").
-		Order("pg.sort_order asc, course_levels.sort_order asc, course_levels.name asc, course_levels.id asc").
+		Order(managedLevelOrder).
 		Limit(limit).Offset(offset).Find(&levels).Error; err != nil {
 		return nil, 0, err
 	}
@@ -429,6 +498,65 @@ func (h *Handler) listManagedLevels(c fiber.Ctx, courseGroup model.LibraryGroup,
 	return responses, total, nil
 }
 
+func (h *Handler) managedLevelBaseQuery(c fiber.Ctx, mode model.CourseMode) *gorm.DB {
+	query := h.db.WithContext(c.Context()).Model(&model.CourseLevel{}).
+		Joins("JOIN course_progression_groups AS pg ON pg.id = course_levels.progression_group_id AND pg.deleted_at IS NULL").
+		Where("pg.course_mode_id = ?", mode.ID)
+	if !includePrivate(c) {
+		query = query.Where("course_levels.is_public = ?", true).
+			Where(`(
+				(course_levels.library_melody_id IS NULL AND course_levels.library_variant_id IS NULL)
+				OR EXISTS (
+					SELECT 1
+					FROM melodies AS referenced_melody
+					JOIN library_groups AS referenced_group
+						ON referenced_group.id = referenced_melody.group_id AND referenced_group.deleted_at IS NULL
+					JOIN file_variants AS referenced_variant
+						ON referenced_variant.id = course_levels.library_variant_id
+						AND referenced_variant.melody_id = referenced_melody.id
+						AND referenced_variant.deleted_at IS NULL
+					WHERE referenced_melody.id = course_levels.library_melody_id
+						AND referenced_melody.deleted_at IS NULL
+						AND referenced_melody.is_public = ?
+						AND referenced_group.is_public = ?
+						AND referenced_variant.format = 'midi'
+				)
+			)`, true, true)
+	}
+	return query
+}
+
+type managedNavigationRow struct {
+	PreviousLevelID *string
+	NextLevelID     *string
+	Position        int64
+	Total           int64
+}
+
+func (h *Handler) managedLevelNavigation(c fiber.Ctx, mode model.CourseMode, progressionGroup model.CourseProgressionGroup, levelID string) (courseLevelNavigationResponse, error) {
+	ordered := h.managedLevelBaseQuery(c, mode).
+		Where("course_levels.progression_group_id = ?", progressionGroup.ID).
+		Select(`course_levels.id AS level_id,
+			LAG(course_levels.id) OVER (ORDER BY ` + managedLevelOrder + `) AS previous_level_id,
+			LEAD(course_levels.id) OVER (ORDER BY ` + managedLevelOrder + `) AS next_level_id,
+			ROW_NUMBER() OVER (ORDER BY ` + managedLevelOrder + `) - 1 AS position,
+			COUNT(*) OVER () AS total`)
+	var row managedNavigationRow
+	if err := h.db.WithContext(c.Context()).Table("(?) AS ordered_levels", ordered).
+		Where("level_id = ?", levelID).Limit(1).Scan(&row).Error; err != nil {
+		return courseLevelNavigationResponse{}, err
+	}
+	if row.Total == 0 {
+		return courseLevelNavigationResponse{}, gorm.ErrRecordNotFound
+	}
+	return courseLevelNavigationResponse{
+		PreviousLevelID: row.PreviousLevelID,
+		NextLevelID:     row.NextLevelID,
+		Position:        row.Position,
+		Total:           row.Total,
+	}, nil
+}
+
 func midiResource(melodyID uint, variantID uint) *courseMIDIResource {
 	return &courseMIDIResource{
 		MelodyID: melodyID, VariantID: variantID,
@@ -467,4 +595,12 @@ func parseBlueprintResourceID(value string) (uint, error) {
 		return 0, errors.New("invalid blueprint resource id")
 	}
 	return uint(id), nil
+}
+
+func blueprintLevelIDPointer(id *uint) *string {
+	if id == nil {
+		return nil
+	}
+	value := blueprintLevelID(*id)
+	return &value
 }

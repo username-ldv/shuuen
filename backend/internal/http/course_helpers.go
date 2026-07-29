@@ -116,16 +116,24 @@ type courseMIDIResource struct {
 	DownloadURL string `json:"download_url"`
 }
 
+type courseLevelNavigationResponse struct {
+	PreviousLevelID *string `json:"previous_level_id"`
+	NextLevelID     *string `json:"next_level_id"`
+	Position        int64   `json:"position"`
+	Total           int64   `json:"total"`
+}
+
 type courseLevelResponse struct {
-	ID                 string                  `json:"id"`
-	ProgressionGroupID string                  `json:"progression_group_id"`
-	Name               string                  `json:"name"`
-	Source             string                  `json:"source"`
-	Definition         json.RawMessage         `json:"definition"`
-	SortOrder          int                     `json:"sort_order"`
-	IsPublic           bool                    `json:"is_public"`
-	MIDI               *courseMIDIResource     `json:"midi,omitempty"`
-	Sections           []courseSectionResponse `json:"sections"`
+	ID                 string                         `json:"id"`
+	ProgressionGroupID string                         `json:"progression_group_id"`
+	Name               string                         `json:"name"`
+	Source             string                         `json:"source"`
+	Definition         json.RawMessage                `json:"definition"`
+	SortOrder          int                            `json:"sort_order"`
+	IsPublic           bool                           `json:"is_public"`
+	MIDI               *courseMIDIResource            `json:"midi,omitempty"`
+	Sections           []courseSectionResponse        `json:"sections"`
+	Navigation         *courseLevelNavigationResponse `json:"navigation,omitempty"`
 }
 
 func (h *Handler) loadCourse(c fiber.Ctx, id uint) (loadedCourse, error) {
@@ -306,11 +314,8 @@ func (h *Handler) managedGroups(c fiber.Ctx, mode model.CourseMode) ([]progressi
 	}
 	responses := make([]progressionGroupResponse, 0, len(groups))
 	for _, group := range groups {
-		query := h.db.WithContext(c.Context()).Model(&model.CourseLevel{}).
+		query := h.managedLevelBaseQuery(c, mode).
 			Where("progression_group_id = ?", group.ID)
-		if !includePrivate(c) {
-			query = query.Where("is_public = ?", true)
-		}
 		var count int64
 		if err := query.Count(&count).Error; err != nil {
 			return nil, err

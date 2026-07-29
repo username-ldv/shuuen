@@ -73,6 +73,141 @@ func TestFolderBlueprintAppearsAsCourseAndFlattensNestedSections(t *testing.T) {
 	}
 }
 
+func TestBlueprintLevelDetailNavigationMatchesVisibleProgressionGroupOrder(t *testing.T) {
+	app, db := newTestServer(t)
+	_, courseGroup, tab, nested := createBlueprintTree(t, db)
+	first, _ := createMIDIMelody(t, db, tab, "1", "Level 1", 0)
+	private, _ := createMIDIMelody(t, db, tab, "2", "Private level", 1)
+	unavailable := model.Melody{
+		GroupID: tab.ID, SourcePath: "course/tab/unavailable", FileStem: "unavailable",
+		Title: "Unavailable level", Slug: "unavailable", SortOrder: 2, IsPublic: true,
+	}
+	if err := gorm.G[model.Melody](db).Create(t.Context(), &unavailable); err != nil {
+		t.Fatal(err)
+	}
+	if err := gorm.G[model.FileVariant](db).Create(t.Context(), &model.FileVariant{
+		MelodyID: unavailable.ID, Format: "musicxml", OriginalName: "unavailable.musicxml",
+		StoredName: "unavailable.musicxml", StoragePath: "course/tab/unavailable.musicxml",
+		ChecksumSHA: "unavailable-checksum", IsPrimary: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	second, _ := createMIDIMelody(t, db, tab, "3", "Level 3", 3)
+	last, _ := createMIDIMelody(t, db, nested, "4", "Nested level", 0)
+	if _, err := gorm.G[model.Melody](db).Where("id = ?", private.ID).Update(t.Context(), "is_public", false); err != nil {
+		t.Fatal(err)
+	}
+	otherTab := model.LibraryGroup{ParentID: &courseGroup.ID, Path: "course/other", Name: "Other", Slug: "other", IsPublic: true}
+	if err := gorm.G[model.LibraryGroup](db).Create(t.Context(), &otherTab); err != nil {
+		t.Fatal(err)
+	}
+	createMIDIMelody(t, db, otherTab, "5", "Other tab level", 0)
+
+	response := testRequest(t, app, nethttp.MethodGet,
+		fmt.Sprintf("/api/v1/courses/%d/melodies/levels?group_id=%s", courseGroup.ID, blueprintGroupID(tab.ID)), "", "")
+	var page struct {
+		Data []courseLevelResponse `json:"data"`
+		Meta listMeta              `json:"meta"`
+	}
+	decodeResponse(t, response, &page)
+	wantIDs := []string{blueprintLevelID(first.ID), blueprintLevelID(second.ID), blueprintLevelID(last.ID)}
+	if page.Meta.Total != 3 || len(page.Data) != len(wantIDs) {
+		t.Fatalf("blueprint level page = %#v", page)
+	}
+	for index, level := range page.Data {
+		if level.ID != wantIDs[index] || level.Navigation != nil {
+			t.Fatalf("blueprint list level %d = %#v, want id %q without navigation", index, level, wantIDs[index])
+		}
+	}
+
+	assertLevelNavigation(t, app, courseGroup.ID, "melodies", wantIDs[0], "", wantIDs[1], 0, 3)
+	assertLevelNavigation(t, app, courseGroup.ID, "melodies", wantIDs[1], wantIDs[0], wantIDs[2], 1, 3)
+	assertLevelNavigation(t, app, courseGroup.ID, "melodies", wantIDs[2], wantIDs[1], "", 2, 3)
+}
+
+func TestManagedLevelDetailNavigationMatchesVisibleProgressionGroupOrder(t *testing.T) {
+	app, db := newTestServer(t)
+	root := model.LibraryGroup{Path: "", Name: "Library", Slug: "library", IsPublic: true}
+	if err := gorm.G[model.LibraryGroup](db).Create(t.Context(), &root); err != nil {
+		t.Fatal(err)
+	}
+	courseGroup := model.LibraryGroup{ParentID: &root.ID, Path: "managed", Name: "Managed", Slug: "managed", IsPublic: true}
+	if err := gorm.G[model.LibraryGroup](db).Create(t.Context(), &courseGroup); err != nil {
+		t.Fatal(err)
+	}
+	modeGroup := model.LibraryGroup{ParentID: &courseGroup.ID, Path: "managed/melodies", Name: "Melodies", Slug: "melodies", IsPublic: true}
+	if err := gorm.G[model.LibraryGroup](db).Create(t.Context(), &modeGroup); err != nil {
+		t.Fatal(err)
+	}
+	firstTabGroup := model.LibraryGroup{ParentID: &modeGroup.ID, Path: "managed/melodies/first", Name: "First", Slug: "first", IsPublic: true}
+	secondTabGroup := model.LibraryGroup{ParentID: &modeGroup.ID, Path: "managed/melodies/second", Name: "Second", Slug: "second", IsPublic: true}
+	if err := gorm.G[model.LibraryGroup](db).Create(t.Context(), &firstTabGroup); err != nil {
+		t.Fatal(err)
+	}
+	if err := gorm.G[model.LibraryGroup](db).Create(t.Context(), &secondTabGroup); err != nil {
+		t.Fatal(err)
+	}
+	if err := gorm.G[model.Course](db).Create(t.Context(), &model.Course{
+		ID: courseGroup.ID, Name: "Managed", IsPublic: true, StructureSource: model.CourseStructureManaged,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	mode := model.CourseMode{
+		CourseID: courseGroup.ID, Mode: coursedomain.ModeMelodies, LibraryGroupID: modeGroup.ID, Name: "Melodies",
+	}
+	if err := gorm.G[model.CourseMode](db).Create(t.Context(), &mode); err != nil {
+		t.Fatal(err)
+	}
+	firstTab := model.CourseProgressionGroup{
+		CourseModeID: mode.ID, PublicID: "group-first", LibraryGroupID: firstTabGroup.ID, Name: "First",
+	}
+	secondTab := model.CourseProgressionGroup{
+		CourseModeID: mode.ID, PublicID: "group-second", LibraryGroupID: secondTabGroup.ID, Name: "Second", SortOrder: 1,
+	}
+	if err := gorm.G[model.CourseProgressionGroup](db).Create(t.Context(), &firstTab); err != nil {
+		t.Fatal(err)
+	}
+	if err := gorm.G[model.CourseProgressionGroup](db).Create(t.Context(), &secondTab); err != nil {
+		t.Fatal(err)
+	}
+	unavailableMelody, unavailableVariant := createMIDIMelody(t, db, firstTabGroup, "unavailable", "Unavailable", 0)
+	if _, err := gorm.G[model.FileVariant](db).Where("id = ?", unavailableVariant.ID).Delete(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	levels := []model.CourseLevel{
+		{ID: "level-1", ProgressionGroupID: firstTab.ID, Name: "Level 1", Source: "imported", Definition: model.JSONDocument(`{}`), SortOrder: 0, IsPublic: true},
+		{ID: "level-unavailable", ProgressionGroupID: firstTab.ID, Name: "Unavailable", Source: "imported", Definition: model.JSONDocument(`{}`), SortOrder: 1, IsPublic: true, LibraryMelodyID: &unavailableMelody.ID, LibraryVariantID: &unavailableVariant.ID},
+		{ID: "level-private", ProgressionGroupID: firstTab.ID, Name: "Private", Source: "imported", Definition: model.JSONDocument(`{}`), SortOrder: 2, IsPublic: false},
+		{ID: "level-2", ProgressionGroupID: firstTab.ID, Name: "Level 2", Source: "imported", Definition: model.JSONDocument(`{}`), SortOrder: 3, IsPublic: true},
+		{ID: "level-3", ProgressionGroupID: firstTab.ID, Name: "Level 3", Source: "imported", Definition: model.JSONDocument(`{}`), SortOrder: 4, IsPublic: true},
+		{ID: "other-level", ProgressionGroupID: secondTab.ID, Name: "Other", Source: "imported", Definition: model.JSONDocument(`{}`), SortOrder: 0, IsPublic: true},
+	}
+	if err := gorm.G[model.CourseLevel](db).CreateInBatches(t.Context(), &levels, len(levels)); err != nil {
+		t.Fatal(err)
+	}
+
+	response := testRequest(t, app, nethttp.MethodGet,
+		fmt.Sprintf("/api/v1/courses/%d/melodies/levels?group_id=%s", courseGroup.ID, firstTab.PublicID), "", "")
+	var page struct {
+		Data []courseLevelResponse `json:"data"`
+		Meta listMeta              `json:"meta"`
+	}
+	decodeResponse(t, response, &page)
+	wantIDs := []string{"level-1", "level-2", "level-3"}
+	if page.Meta.Total != 3 || len(page.Data) != len(wantIDs) {
+		t.Fatalf("managed level page = %#v", page)
+	}
+	for index, level := range page.Data {
+		if level.ID != wantIDs[index] || level.Navigation != nil {
+			t.Fatalf("managed list level %d = %#v, want id %q without navigation", index, level, wantIDs[index])
+		}
+	}
+
+	assertLevelNavigation(t, app, courseGroup.ID, "melodies", wantIDs[0], "", wantIDs[1], 0, 3)
+	assertLevelNavigation(t, app, courseGroup.ID, "melodies", wantIDs[1], wantIDs[0], wantIDs[2], 1, 3)
+	assertLevelNavigation(t, app, courseGroup.ID, "melodies", wantIDs[2], wantIDs[1], "", 2, 3)
+}
+
 func TestBlueprintLevelCanBeEditedAndMovedWithoutAggregatePayload(t *testing.T) {
 	app, db := newTestServer(t)
 	_, courseGroup, tab, nested := createBlueprintTree(t, db)
@@ -234,6 +369,35 @@ func createMIDIMelody(t *testing.T, db *gorm.DB, group model.LibraryGroup, stem 
 		t.Fatal(err)
 	}
 	return melody, variant
+}
+
+func assertLevelNavigation(t *testing.T, app *fiber.App, courseID uint, mode string, levelID string, previousID string, nextID string, position int64, total int64) {
+	t.Helper()
+	response := testRequest(t, app, nethttp.MethodGet,
+		fmt.Sprintf("/api/v1/courses/%d/%s/levels/%s", courseID, mode, levelID), "", "")
+	if response.StatusCode != fiber.StatusOK {
+		body, _ := io.ReadAll(response.Body)
+		_ = response.Body.Close()
+		t.Fatalf("level detail %q status = %d: %s", levelID, response.StatusCode, body)
+	}
+	var payload struct {
+		Data courseLevelResponse `json:"data"`
+	}
+	decodeResponse(t, response, &payload)
+	navigation := payload.Data.Navigation
+	if navigation == nil {
+		t.Fatalf("level detail %q has no navigation", levelID)
+	}
+	if navigation.Position != position || navigation.Total != total || navigationValue(navigation.PreviousLevelID) != previousID || navigationValue(navigation.NextLevelID) != nextID {
+		t.Fatalf("level detail %q navigation = %#v, want previous=%q next=%q position=%d total=%d", levelID, navigation, previousID, nextID, position, total)
+	}
+}
+
+func navigationValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 func createAdminToken(t *testing.T, app *fiber.App, db *gorm.DB) string {
