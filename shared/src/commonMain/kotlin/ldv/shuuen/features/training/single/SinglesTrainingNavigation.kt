@@ -77,6 +77,9 @@ val singlesTrainingNavigationModule = module {
     LevelCompleteScreen(
       onNavigateBack = { navigator.goBack() },
       onRetryLevel = { navigator.replaceLastWith(AppRoute.SinglesPlay(route.levelId)) },
+      onNextLevel = { nextLevelId ->
+        navigator.replaceLastWith(AppRoute.SinglesPlay(nextLevelId))
+      },
       // The level select this play session started from is right below on the back stack.
       onLevelSelect = { navigator.goBack() },
       viewModel = koinViewModel { parametersOf(route.sessionId) },

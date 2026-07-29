@@ -39,6 +39,7 @@ import ldv.shuuen.features.training.chords.domain.ChordSizeRange
 import ldv.shuuen.features.training.chords.domain.ChordsLevel
 import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.course.domain.CourseLevelItem
+import ldv.shuuen.features.training.course.domain.CourseLevelNavigation
 import ldv.shuuen.features.training.course.domain.CourseMappingException
 import ldv.shuuen.features.training.course.domain.CourseSection
 import ldv.shuuen.features.training.course.domain.LevelReference
@@ -85,6 +86,22 @@ internal class CourseDefinitionMapper(private val json: Json) {
           },
         sourceCourseId = courseId,
         mode = mode,
+        navigation =
+          dto.navigation?.let { navigation ->
+            context.require(navigation.position >= 0, "navigation.position", "must not be negative")
+            context.require(navigation.total > 0, "navigation.total", "must be positive")
+            context.require(
+              navigation.position < navigation.total,
+              "navigation.position",
+              "must be less than navigation.total",
+            )
+            CourseLevelNavigation(
+              previousLevelId = navigation.previousLevelId,
+              nextLevelId = navigation.nextLevelId,
+              position = navigation.position,
+              total = navigation.total,
+            )
+          },
       )
     }
   }

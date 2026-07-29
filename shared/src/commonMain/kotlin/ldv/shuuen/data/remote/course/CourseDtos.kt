@@ -68,6 +68,14 @@ internal data class CourseMidiResourceDto(
 )
 
 @Serializable
+internal data class CourseLevelNavigationDto(
+  val previousLevelId: String? = null,
+  val nextLevelId: String? = null,
+  val position: Long,
+  val total: Long,
+)
+
+@Serializable
 internal data class CourseLevelDto(
   val id: String,
   val progressionGroupId: String,
@@ -78,6 +86,7 @@ internal data class CourseLevelDto(
   val isPublic: Boolean,
   val midi: CourseMidiResourceDto? = null,
   val sections: List<CourseSectionDto>,
+  val navigation: CourseLevelNavigationDto? = null,
 )
 
 @Serializable

@@ -62,6 +62,13 @@ data class CourseMidiResource(
   val downloadUrl: String,
 )
 
+data class CourseLevelNavigation(
+  val previousLevelId: String?,
+  val nextLevelId: String?,
+  val position: Long,
+  val total: Long,
+)
+
 sealed interface PlayableTrainingLevel {
   val id: String
 
@@ -86,6 +93,8 @@ data class CourseLevelItem(
   val sections: List<CourseSection>,
   val sourceCourseId: Long,
   val mode: TrainingFlow,
+  /** Present on single-level detail responses and omitted from paginated list responses. */
+  val navigation: CourseLevelNavigation? = null,
 ) {
   val isReadOnly: Boolean = true
 }

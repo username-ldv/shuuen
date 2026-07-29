@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.TrackChanges
@@ -85,6 +86,7 @@ import kotlin.math.round
 fun LevelCompleteScreen(
   onNavigateBack: () -> Unit,
   onRetryLevel: () -> Unit,
+  onNextLevel: (levelReference: String) -> Unit,
   onLevelSelect: () -> Unit,
   viewModel: LevelCompleteViewModel,
 ) {
@@ -120,7 +122,9 @@ fun LevelCompleteScreen(
         LevelCompleteContent(
           session = session.result,
           level = state.level,
+          nextLevelReference = state.nextLevelReference,
           onRetryLevel = onRetryLevel,
+          onNextLevel = onNextLevel,
           onLevelSelect = onLevelSelect,
         )
     }
@@ -131,7 +135,9 @@ fun LevelCompleteScreen(
 private fun LevelCompleteContent(
   session: TrainingSession,
   level: CompletedLevel?,
+  nextLevelReference: String?,
   onRetryLevel: () -> Unit,
+  onNextLevel: (levelReference: String) -> Unit,
   onLevelSelect: () -> Unit,
 ) {
   BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -150,6 +156,8 @@ private fun LevelCompleteContent(
           ScoreHero(session)
           CompletionActions(
             onRetryLevel = onRetryLevel,
+            nextLevelReference = nextLevelReference,
+            onNextLevel = onNextLevel,
             onLevelSelect = onLevelSelect,
           )
         }
@@ -173,6 +181,8 @@ private fun LevelCompleteContent(
         ScoreHero(session)
         CompletionActions(
           onRetryLevel = onRetryLevel,
+          nextLevelReference = nextLevelReference,
+          onNextLevel = onNextLevel,
           onLevelSelect = onLevelSelect,
         )
         PerformanceOverview(session)
@@ -707,6 +717,8 @@ private fun ParameterChip(
 @Composable
 private fun CompletionActions(
   onRetryLevel: () -> Unit,
+  nextLevelReference: String?,
+  onNextLevel: (levelReference: String) -> Unit,
   onLevelSelect: () -> Unit,
 ) {
   Column(
@@ -720,6 +732,14 @@ private fun CompletionActions(
       onClick = onRetryLevel,
       filled = true,
     )
+    if (nextLevelReference != null) {
+      CompactCompletionButton(
+        text = "NEXT LEVEL",
+        icon = Icons.Rounded.SkipNext,
+        onClick = { onNextLevel(nextLevelReference) },
+        filled = false,
+      )
+    }
     CompactCompletionButton(
       text = "LEVEL SELECT",
       icon = Icons.Rounded.ChevronRight,

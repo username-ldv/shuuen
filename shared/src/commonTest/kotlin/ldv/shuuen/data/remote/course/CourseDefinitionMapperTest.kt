@@ -35,6 +35,10 @@ class CourseDefinitionMapperTest {
     assertEquals(7, scale.pitchStates.count { it.active })
     assertEquals("Steady quarters", config.melodyStyle.name)
     assertEquals(listOf(NoteValue.Quarter), config.melodyStyle.figures.single().figure.values)
+    assertEquals(null, item.navigation?.previousLevelId)
+    assertEquals("seed-c-tonic-075", item.navigation?.nextLevelId)
+    assertEquals(0L, item.navigation?.position)
+    assertEquals(11L, item.navigation?.total)
 
     val context = requireNotNull(level.context)
     val node = context.nodes.single()
@@ -128,6 +132,12 @@ private val cTonicLevelJson =
     },
     "sort_order": 0,
     "is_public": true,
-    "sections": []
+    "sections": [],
+    "navigation": {
+      "previous_level_id": null,
+      "next_level_id": "seed-c-tonic-075",
+      "position": 0,
+      "total": 11
+    }
   }
   """.trimIndent()

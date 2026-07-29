@@ -76,6 +76,9 @@ val melodiesTrainingNavigationModule = module {
     LevelCompleteScreen(
       onNavigateBack = { navigator.goBack() },
       onRetryLevel = { navigator.replaceLastWith(AppRoute.MelodiesPlay(route.levelId)) },
+      onNextLevel = { nextLevelId ->
+        navigator.replaceLastWith(AppRoute.MelodiesPlay(nextLevelId))
+      },
       // The level select this play session started from is right below on the back stack.
       onLevelSelect = { navigator.goBack() },
       viewModel = koinViewModel { parametersOf(route.sessionId) },
