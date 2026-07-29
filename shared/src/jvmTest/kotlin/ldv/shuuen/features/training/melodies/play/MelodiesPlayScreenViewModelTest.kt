@@ -48,8 +48,12 @@ import ldv.shuuen.features.training.domain.ScaleConfig
 import ldv.shuuen.features.training.domain.ScaleConfig.ScaleItemState.ScalePitchState
 import ldv.shuuen.features.training.level_end.domain.TrainingSession
 import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
+import ldv.shuuen.features.training.chords.domain.ChordsLevel
+import ldv.shuuen.features.training.course.domain.TrainingLevelResolver
 import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
-import ldv.shuuen.features.training.melodies.domain.MelodiesLocalLevelRepository
+import ldv.shuuen.features.training.melodies.domain.MidiContentResolver
+import ldv.shuuen.features.training.melodies.domain.MidiFileSource
+import ldv.shuuen.features.training.single.domain.SinglesLevel
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MelodiesPlayScreenViewModelTest {
@@ -71,9 +75,10 @@ class MelodiesPlayScreenViewModelTest {
     val viewModel =
       MelodiesPlayScreenViewModel(
         levelId = TestLevelId,
-        levelRepository = FakeMelodiesRepository(finiteRandomLevel(notesPerSequence = 6)),
+        levelResolver = FakeTrainingLevelResolver(finiteRandomLevel(notesPerSequence = 6)),
         midiEngine = engine,
         player = FakeMidiFilePlayer(),
+        midiContentResolver = FakeMidiContentResolver(),
         settingsRepository = FakeSettingsRepository(),
         trainingSessionRepository = FakeTrainingSessionRepository(),
         midiKeyboardInput = FakeMidiKeyboardInput(),
@@ -95,9 +100,10 @@ class MelodiesPlayScreenViewModelTest {
       val viewModel =
         MelodiesPlayScreenViewModel(
           levelId = TestLevelId,
-          levelRepository = FakeMelodiesRepository(finiteRandomLevel(notesPerSequence = 6)),
+          levelResolver = FakeTrainingLevelResolver(finiteRandomLevel(notesPerSequence = 6)),
           midiEngine = engine,
           player = FakeMidiFilePlayer(),
+          midiContentResolver = FakeMidiContentResolver(),
           settingsRepository = FakeSettingsRepository(),
           trainingSessionRepository = FakeTrainingSessionRepository(),
           midiKeyboardInput = FakeMidiKeyboardInput(),
@@ -118,12 +124,13 @@ class MelodiesPlayScreenViewModelTest {
     val engine = FakeMidiEngine()
     MelodiesPlayScreenViewModel(
         levelId = TestLevelId,
-        levelRepository =
-          FakeMelodiesRepository(
+        levelResolver =
+          FakeTrainingLevelResolver(
             finiteRandomLevel(notesPerSequence = 12, tuneInconsistencyCents = 30)
           ),
         midiEngine = engine,
         player = FakeMidiFilePlayer(),
+        midiContentResolver = FakeMidiContentResolver(),
         settingsRepository = FakeSettingsRepository(),
         trainingSessionRepository = FakeTrainingSessionRepository(),
         midiKeyboardInput = FakeMidiKeyboardInput(),
@@ -144,9 +151,10 @@ class MelodiesPlayScreenViewModelTest {
     val engine = FakeMidiEngine()
     MelodiesPlayScreenViewModel(
         levelId = TestLevelId,
-        levelRepository = FakeMelodiesRepository(finiteRandomLevel(notesPerSequence = 6)),
+        levelResolver = FakeTrainingLevelResolver(finiteRandomLevel(notesPerSequence = 6)),
         midiEngine = engine,
         player = FakeMidiFilePlayer(),
+        midiContentResolver = FakeMidiContentResolver(),
         settingsRepository = FakeSettingsRepository(),
         trainingSessionRepository = FakeTrainingSessionRepository(),
         midiKeyboardInput = FakeMidiKeyboardInput(),
@@ -184,17 +192,16 @@ private fun finiteRandomLevel(
     source = LevelSource.User,
   )
 
-private class FakeMelodiesRepository(private val level: MelodiesLevel) :
-  MelodiesLocalLevelRepository {
-  override fun getLevels(): Flow<ResponseState<List<MelodiesLevel>>> =
-    flowOf(ResponseState.Success(listOf(level)))
+private class FakeTrainingLevelResolver(private val level: MelodiesLevel) : TrainingLevelResolver {
+  override suspend fun resolveSingles(encodedReference: String): SinglesLevel = error("not implemented")
 
-  override fun getLevelById(id: String): Flow<ResponseState<MelodiesLevel>> =
-    flowOf(ResponseState.Success(level))
+  override suspend fun resolveMelodies(encodedReference: String): MelodiesLevel = level
 
-  override suspend fun upsertLevel(level: MelodiesLevel) = Unit
+  override suspend fun resolveChords(encodedReference: String): ChordsLevel = error("not implemented")
+}
 
-  override suspend fun deleteLevel(id: String) = Unit
+private class FakeMidiContentResolver : MidiContentResolver {
+  override suspend fun resolve(source: MidiFileSource): ByteArray = error("not used")
 }
 
 private class FakeTrainingSessionRepository : TrainingSessionRepository {
@@ -212,6 +219,8 @@ private class FakeTrainingSessionRepository : TrainingSessionRepository {
     levelId: String,
     limit: Int,
   ): Flow<LevelAccuracyStats> = flowOf(LevelAccuracyStats(windowSize = limit))
+
+  override fun observeAttemptedLevelIds(flow: TrainingFlow): Flow<Set<String>> = flowOf(emptySet())
 }
 
 private class FakeSettingsRepository : SettingsRepository {

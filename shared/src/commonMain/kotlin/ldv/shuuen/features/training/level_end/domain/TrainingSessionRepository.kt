@@ -15,4 +15,6 @@ interface TrainingSessionRepository {
     levelId: String,
     limit: Int,
   ): Flow<LevelAccuracyStats>
+
+  fun observeAttemptedLevelIds(flow: TrainingFlow): Flow<Set<String>>
 }

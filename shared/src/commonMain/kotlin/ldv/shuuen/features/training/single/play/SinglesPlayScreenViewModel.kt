@@ -47,8 +47,8 @@ import ldv.shuuen.core.settings.InputMode
 import ldv.shuuen.core.settings.MusicLabelSettings
 import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.features.training.common.components.KeyFlashRequest
-import ldv.shuuen.features.training.single.domain.SinglesLocalLevelRepository
 import ldv.shuuen.features.training.single.domain.SinglesLevel
+import ldv.shuuen.features.training.course.domain.TrainingLevelResolver
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
 
 enum class AnswerColors(val color: Color) {
@@ -78,7 +78,7 @@ val playNoteDuration = 1500.milliseconds
 
 class SinglesPlayScreenViewModel(
     levelId: String,
-    levelRepository: SinglesLocalLevelRepository,
+    levelResolver: TrainingLevelResolver,
     val midiEngine: MidiEngine,
     settingsRepository: SettingsRepository,
     private val trainingSessionRepository: TrainingSessionRepository,
@@ -168,14 +168,13 @@ class SinglesPlayScreenViewModel(
         is MidiEngineStatus.Failed -> error("Failed MidiEngine audio initializition")
       }
 
-      lateinit var level: SinglesLevel
-      levelRepository.getLevelById(levelId).collect { responseState ->
-        _state.update {
-          it.copy(levelData = responseState)
-        }
-        if (responseState !is ResponseState.Success) return@collect
-        level = responseState.result
-      }
+      val level =
+        runCatching { levelResolver.resolveSingles(levelId) }
+          .getOrElse { error ->
+            _state.update { it.copy(levelData = ResponseState.Error(error)) }
+            return@launch
+          }
+      _state.update { it.copy(levelData = ResponseState.Success(level)) }
       val allowSevenAccidentalKeys = settingsRepository.settings.map { it.allowSevenAccidentalKeys }.first()
       presets.begin()
       quizzer = SinglesLevelQuizzer(level, allowSevenAccidentalKeys)

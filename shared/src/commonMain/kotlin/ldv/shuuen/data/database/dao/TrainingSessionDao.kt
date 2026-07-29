@@ -36,6 +36,9 @@ interface TrainingSessionDao {
     limit: Int,
   ): Flow<List<TrainingSessionScoreProjection>>
 
+  @Query("select distinct levelId from training_sessions where flow = :flow")
+  fun observeAttemptedLevelIds(flow: TrainingFlow): Flow<List<String>>
+
   @Upsert
   suspend fun upsertSession(session: TrainingSessionDbEntity)
 }

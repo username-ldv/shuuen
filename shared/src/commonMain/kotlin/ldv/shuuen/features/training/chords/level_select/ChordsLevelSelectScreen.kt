@@ -2,13 +2,18 @@ package ldv.shuuen.features.training.chords.level_select
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.rounded.Casino
@@ -48,11 +53,14 @@ import ldv.shuuen.features.training.chords.domain.ChordsLevel
 import ldv.shuuen.features.training.common.LevelAccuracyStats
 import ldv.shuuen.features.training.common.components.ChordStyleSummary
 import ldv.shuuen.features.training.common.components.ContextDetails
+import ldv.shuuen.features.training.common.components.CourseLevelListHeaderItemCount
 import ldv.shuuen.features.training.common.components.DetailLabel
 import ldv.shuuen.features.training.common.components.DetailRow
 import ldv.shuuen.features.training.common.components.DeleteLevelDialog
 import ldv.shuuen.features.training.common.components.LevelAccuracyLabel
 import ldv.shuuen.features.training.common.components.LevelAccuracyStatsRow
+import ldv.shuuen.features.training.common.components.LevelListScrollControls
+import ldv.shuuen.features.training.common.components.LocalLevelListHeaderItemCount
 import ldv.shuuen.features.training.common.components.LevelParametersFlow
 import ldv.shuuen.features.training.common.components.LevelSortAction
 import ldv.shuuen.features.training.common.components.LevelSortOrder
@@ -60,6 +68,15 @@ import ldv.shuuen.features.training.common.components.sourceLabel
 import ldv.shuuen.features.training.common.components.sortedByLevelCreation
 import ldv.shuuen.features.training.common.toBoxedItems
 import ldv.shuuen.features.training.domain.LevelConfig
+import ldv.shuuen.features.training.course.presentation.CourseDiscoveryMessage
+import ldv.shuuen.features.training.course.presentation.CourseLevelItemKeyPrefix
+import ldv.shuuen.features.training.course.presentation.CourseLevelsMessage
+import ldv.shuuen.features.training.course.presentation.CoursePagingEffect
+import ldv.shuuen.features.training.course.presentation.CourseSectionDivider
+import ldv.shuuen.features.training.course.presentation.CourseSourceSelection
+import ldv.shuuen.features.training.course.presentation.CourseSourceTopBarSelector
+import ldv.shuuen.features.training.course.presentation.ProgressionGroupTabs
+import ldv.shuuen.features.training.course.presentation.progressionGroupSwipeNavigation
 
 @Composable
 fun ChordsLevelSelectScreen(
@@ -70,65 +87,161 @@ fun ChordsLevelSelectScreen(
     viewModel: ChordsLevelSelectScreenViewModel,
 ) {
   val levels by viewModel.levels.collectAsStateWithLifecycle(ResponseState.Loading)
+  val courseState by viewModel.courseState.collectAsStateWithLifecycle()
+  val attemptedLevelIds by viewModel.attemptedLevelIds.collectAsStateWithLifecycle()
+  val listState = rememberLazyListState()
+  val showingLocal = courseState.selection == CourseSourceSelection.MyLevels
+  CoursePagingEffect(
+      listState = listState,
+      levels = courseState.levels,
+      canLoadMore = courseState.canLoadMore,
+      onLoadMore = viewModel::loadNextPage,
+  )
   var sortOrder by rememberSaveable { mutableStateOf(LevelSortOrder.Descending) }
+  val orderedLocalLevels =
+      when (val state = levels) {
+        is ResponseState.Success -> state.result.sortedByLevelCreation(sortOrder) { it.id }
+        else -> emptyList()
+      }
+  val orderedLevelIds =
+      if (showingLocal) orderedLocalLevels.map { it.id }
+      else courseState.levels.map { it.reference }
   var levelPendingDelete by remember { mutableStateOf<ChordsLevel?>(null) }
   StaticScreenFrame(
       topBar = {
         ShuuenTopAppBar(
-            title = "LEVEL SELECT",
-            subtitle = "Choose a chord training level.",
             onBack = onNavigateBack,
             actions = {
-              LevelSortAction(sortOrder, onOrderChange = { sortOrder = it })
+              if (showingLocal) {
+                LevelSortAction(sortOrder, onOrderChange = { sortOrder = it })
+              } else {
+                Box(Modifier.size(48.dp))
+              }
             },
-            type = ShuuenTopAppBarType.Labeled,
+            type = ShuuenTopAppBarType.Simple,
+            titleContent = {
+              CourseSourceTopBarSelector(
+                  courses = courseState.courses,
+                  selection = courseState.selection,
+                  onMyLevelsSelected = viewModel::selectMyLevels,
+                  onCourseSelected = viewModel::selectCourse,
+              )
+            },
         )
       },
       scrollable = false,
   ) {
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-      item {
-        PrimaryCta(
-            text = "CREATE NEW",
-            icon = Icons.Rounded.Create,
-            onClick = onCreateNewLevel,
+    Column(modifier = Modifier.fillMaxSize()) {
+      if (!showingLocal && courseState.mode != null) {
+        ProgressionGroupTabs(
+            groups = courseState.groups,
+            selectedGroupId = courseState.selectedGroupId,
+            onGroupSelected = viewModel::selectGroup,
             modifier = Modifier.padding(top = 8.dp),
         )
       }
-      when (val l = levels) {
-        is ResponseState.Loading ->
-            item {
-              Text(
-                  text = "Loading...",
-                  color = ShuuenUi.Muted,
-                  style = MaterialTheme.typography.bodyLarge,
-              )
+      Box(
+          modifier =
+              Modifier
+                  .weight(1f)
+                  .then(
+                      if (showingLocal) Modifier
+                      else
+                          Modifier.progressionGroupSwipeNavigation(
+                              groups = courseState.groups,
+                              selectedGroupId = courseState.selectedGroupId,
+                              onGroupSelected = viewModel::selectGroup,
+                          )
+                  )
+      ) {
+      LazyColumn(
+          state = listState,
+          modifier = Modifier.fillMaxSize(),
+          contentPadding = PaddingValues(bottom = 64.dp),
+          verticalArrangement = Arrangement.spacedBy(12.dp),
+      ) {
+      item {
+        CourseDiscoveryMessage(
+            isLoading = courseState.isDiscoveringCourses,
+            error = courseState.courseDiscoveryError,
+            onRetry = viewModel::refreshCourses,
+        )
+      }
+      if (showingLocal) {
+        item {
+          PrimaryCta(
+              text = "CREATE NEW",
+              modifier = Modifier.padding(top = 8.dp),
+              icon = Icons.Rounded.Create,
+              onClick = onCreateNewLevel,
+          )
+        }
+        when (val l = levels) {
+          is ResponseState.Loading ->
+              item { Text("Loading...", color = ShuuenUi.Muted, style = MaterialTheme.typography.bodyLarge) }
+          is ResponseState.Success ->
+              items(orderedLocalLevels, key = { it.id }) { level ->
+                val statsFlow = remember(viewModel, level.id) { viewModel.levelStats(level.id) }
+                val stats by statsFlow.collectAsStateWithLifecycle(LevelAccuracyStats())
+                LevelCard(
+                    level,
+                    stats = stats,
+                    onLevelChosen = { onStartLevel(it.id) },
+                    onEditLevel = { onEditLevel(it.id) },
+                    onDeleteLevel = { levelPendingDelete = it },
+                )
+              }
+          is ResponseState.Error ->
+              item {
+                Text(
+                    "Error loading levels: ${l.throwable.message}",
+                    color = ShuuenUi.Incorrect,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+              }
+        }
+      } else {
+        itemsIndexed(
+            items = courseState.levels,
+            key = { _, item -> "$CourseLevelItemKeyPrefix${item.reference}" },
+        ) { index, item ->
+          Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            val previousSections = courseState.levels.getOrNull(index - 1)?.sections
+            if (item.sections.isNotEmpty() && item.sections != previousSections) {
+              CourseSectionDivider(item.sections)
             }
-
-        is ResponseState.Success ->
-            items(
-                items = l.result.sortedByLevelCreation(sortOrder) { it.id },
-                key = { it.id },
-            ) { level ->
-              val statsFlow = remember(viewModel, level.id) { viewModel.levelStats(level.id) }
-              val stats by statsFlow.collectAsStateWithLifecycle(LevelAccuracyStats())
-              LevelCard(
-                  level,
-                  stats = stats,
-                  onLevelChosen = { onStartLevel(it.id) },
-                  onEditLevel = { onEditLevel(it.id) },
-                  onDeleteLevel = { levelPendingDelete = it },
-              )
-            }
-
-        is ResponseState.Error ->
-            item {
-              Text(
-                  text = "Error loading levels: ${l.throwable.message}",
-                  color = ShuuenUi.Incorrect,
-                  style = MaterialTheme.typography.bodyLarge,
-              )
-            }
+            val statsFlow = remember(viewModel, item.reference) { viewModel.levelStats(item.reference) }
+            val stats by statsFlow.collectAsStateWithLifecycle(LevelAccuracyStats())
+            LevelCard(
+                level = item.playableLevel,
+                stats = stats,
+                onLevelChosen = { onStartLevel(item.reference) },
+                onEditLevel = null,
+                onDeleteLevel = null,
+            )
+          }
+        }
+        item {
+          CourseLevelsMessage(
+              isLoading = courseState.isLoadingLevels,
+              isLoadingMore = courseState.isLoadingMore,
+              isEmpty = courseState.mode != null && !courseState.isLoadingLevels &&
+                  courseState.levels.isEmpty() && courseState.levelsError == null,
+              error = courseState.levelsError,
+              onRetry = viewModel::retryCourseLevels,
+          )
+        }
+      }
+      }
+      LevelListScrollControls(
+          listState = listState,
+          orderedLevelIds = orderedLevelIds,
+          attemptedLevelIds = attemptedLevelIds,
+          firstLevelItemIndex =
+              if (showingLocal) LocalLevelListHeaderItemCount
+              else CourseLevelListHeaderItemCount,
+          modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 8.dp),
+      )
       }
     }
   }
@@ -149,8 +262,8 @@ private fun LevelCard(
     level: ChordsLevel,
     stats: LevelAccuracyStats,
     onLevelChosen: (ChordsLevel) -> Unit,
-    onEditLevel: (ChordsLevel) -> Unit,
-    onDeleteLevel: (ChordsLevel) -> Unit,
+    onEditLevel: ((ChordsLevel) -> Unit)?,
+    onDeleteLevel: ((ChordsLevel) -> Unit)?,
 ) {
   var expanded by rememberSaveable(level.id) { mutableStateOf(false) }
 
@@ -191,21 +304,25 @@ private fun LevelCard(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
       LevelAccuracyStatsRow(stats = stats, modifier = Modifier.weight(1f))
-      IconButton(onClick = { onEditLevel(level) }, modifier = Modifier.size(34.dp)) {
-        Icon(
-            imageVector = Icons.Rounded.Edit,
-            contentDescription = "Edit level",
-            tint = ShuuenUi.Dim,
-            modifier = Modifier.size(20.dp),
-        )
+      if (onEditLevel != null) {
+        IconButton(onClick = { onEditLevel(level) }, modifier = Modifier.size(34.dp)) {
+          Icon(
+              imageVector = Icons.Rounded.Edit,
+              contentDescription = "Edit level",
+              tint = ShuuenUi.Dim,
+              modifier = Modifier.size(20.dp),
+          )
+        }
       }
-      IconButton(onClick = { onDeleteLevel(level) }, modifier = Modifier.size(34.dp)) {
-        Icon(
-            imageVector = Icons.Rounded.Delete,
-            contentDescription = "Remove level",
-            tint = ShuuenUi.Text,
-            modifier = Modifier.size(20.dp),
-        )
+      if (onDeleteLevel != null) {
+        IconButton(onClick = { onDeleteLevel(level) }, modifier = Modifier.size(34.dp)) {
+          Icon(
+              imageVector = Icons.Rounded.Delete,
+              contentDescription = "Remove level",
+              tint = ShuuenUi.Text,
+              modifier = Modifier.size(20.dp),
+          )
+        }
       }
     }
     LevelParameterRow(level = level)

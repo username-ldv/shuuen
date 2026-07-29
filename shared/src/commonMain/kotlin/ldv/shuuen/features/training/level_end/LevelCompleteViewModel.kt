@@ -9,14 +9,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.features.training.chords.domain.ChordsLevel
-import ldv.shuuen.features.training.chords.domain.ChordsLocalLevelRepository
 import ldv.shuuen.features.training.common.TrainingFlow
+import ldv.shuuen.features.training.course.domain.TrainingLevelResolver
 import ldv.shuuen.features.training.level_end.domain.TrainingSession
 import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
 import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
-import ldv.shuuen.features.training.melodies.domain.MelodiesLocalLevelRepository
 import ldv.shuuen.features.training.single.domain.SinglesLevel
-import ldv.shuuen.features.training.single.domain.SinglesLocalLevelRepository
 
 /** The played level's current definition, for the parameters section of the results screen. */
 sealed interface CompletedLevel {
@@ -36,9 +34,7 @@ data class LevelCompleteState(
 class LevelCompleteViewModel(
   sessionId: String,
   sessionRepository: TrainingSessionRepository,
-  private val singlesLevelRepository: SinglesLocalLevelRepository,
-  private val melodiesLevelRepository: MelodiesLocalLevelRepository,
-  private val chordsLevelRepository: ChordsLocalLevelRepository,
+  private val levelResolver: TrainingLevelResolver,
 ) : ViewModel() {
   private val _state = MutableStateFlow(LevelCompleteState())
   val state = _state.asStateFlow()
@@ -53,45 +49,16 @@ class LevelCompleteViewModel(
   }
 
   private suspend fun loadLevel(session: TrainingSession) {
-    when (session.flow) {
-      TrainingFlow.Singles ->
-        singlesLevelRepository.getLevelById(session.levelId).collect { response ->
-          when (response) {
-            is ResponseState.Success ->
-              _state.update { it.copy(level = CompletedLevel.Singles(response.result)) }
-
-            is ResponseState.Error ->
-              Napier.w(response.throwable) { "Couldn't load the completed level" }
-
-            is ResponseState.Loading -> Unit
-          }
-        }
-
-      TrainingFlow.Melodies ->
-        melodiesLevelRepository.getLevelById(session.levelId).collect { response ->
-          when (response) {
-            is ResponseState.Success ->
-              _state.update { it.copy(level = CompletedLevel.Melodies(response.result)) }
-
-            is ResponseState.Error ->
-              Napier.w(response.throwable) { "Couldn't load the completed level" }
-
-            is ResponseState.Loading -> Unit
-          }
-        }
-
-      TrainingFlow.Chords ->
-        chordsLevelRepository.getLevelById(session.levelId).collect { response ->
-          when (response) {
-            is ResponseState.Success ->
-              _state.update { it.copy(level = CompletedLevel.Chords(response.result)) }
-
-            is ResponseState.Error ->
-              Napier.w(response.throwable) { "Couldn't load the completed level" }
-
-            is ResponseState.Loading -> Unit
-          }
-        }
+    runCatching {
+      when (session.flow) {
+        TrainingFlow.Singles -> CompletedLevel.Singles(levelResolver.resolveSingles(session.levelId))
+        TrainingFlow.Melodies -> CompletedLevel.Melodies(levelResolver.resolveMelodies(session.levelId))
+        TrainingFlow.Chords -> CompletedLevel.Chords(levelResolver.resolveChords(session.levelId))
+      }
+    }.onSuccess { level ->
+      _state.update { it.copy(level = level) }
+    }.onFailure { error ->
+      Napier.w(error) { "Couldn't load the completed level" }
     }
   }
 }

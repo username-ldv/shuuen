@@ -11,6 +11,7 @@ import ldv.shuuen.data.repository.local.ContextLocalRepositoryImpl
 import ldv.shuuen.data.repository.local.MelodiesLocalLevelRepositoryImpl
 import ldv.shuuen.data.repository.local.SinglesLocalLevelRepositoryImpl
 import ldv.shuuen.data.repository.local.TrainingSessionRepositoryImpl
+import ldv.shuuen.data.repository.TrainingLevelResolverImpl
 import ldv.shuuen.data.settings.KStoreSettingsRepository
 import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.features.context.domain.ContextLocalRepository
@@ -18,6 +19,7 @@ import ldv.shuuen.features.training.chords.domain.ChordsLocalLevelRepository
 import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
 import ldv.shuuen.features.training.melodies.domain.MelodiesLocalLevelRepository
 import ldv.shuuen.features.training.single.domain.SinglesLocalLevelRepository
+import ldv.shuuen.features.training.course.domain.TrainingLevelResolver
 import org.koin.dsl.bind
 import org.koin.dsl.module
 import org.koin.plugin.module.dsl.single
@@ -36,4 +38,5 @@ val dataModule = module {
   single<MelodiesLocalLevelRepositoryImpl>() bind MelodiesLocalLevelRepository::class
   single<ChordsLocalLevelRepositoryImpl>() bind ChordsLocalLevelRepository::class
   single<TrainingSessionRepositoryImpl>() bind TrainingSessionRepository::class
+  single<TrainingLevelResolverImpl>() bind TrainingLevelResolver::class
 }

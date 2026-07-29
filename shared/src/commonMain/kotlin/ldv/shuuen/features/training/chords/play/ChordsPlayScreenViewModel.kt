@@ -43,7 +43,7 @@ import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
 import ldv.shuuen.features.training.chords.domain.ChordsLevel
-import ldv.shuuen.features.training.chords.domain.ChordsLocalLevelRepository
+import ldv.shuuen.features.training.course.domain.TrainingLevelResolver
 import ldv.shuuen.features.training.common.DegreeContextPlayer
 import ldv.shuuen.features.training.common.LevelPresetController
 import ldv.shuuen.features.training.common.TrainingFlow
@@ -73,7 +73,7 @@ val playChordDuration = 1800.milliseconds
 
 class ChordsPlayScreenViewModel(
     levelId: String,
-    levelRepository: ChordsLocalLevelRepository,
+    levelResolver: TrainingLevelResolver,
     val midiEngine: MidiEngine,
     settingsRepository: SettingsRepository,
     private val trainingSessionRepository: TrainingSessionRepository,
@@ -164,22 +164,19 @@ class ChordsPlayScreenViewModel(
         is MidiEngineStatus.Failed -> error("Failed MidiEngine audio initializition")
       }
 
-      lateinit var level: ChordsLevel
-      levelRepository.getLevelById(levelId).collect { responseState ->
-        _state.update {
-          it.copy(levelData = responseState)
-        }
-        if (responseState !is ResponseState.Success) return@collect
-        level = responseState.result
-      }
+      val level =
+        runCatching { levelResolver.resolveChords(levelId) }
+          .getOrElse { error ->
+            _state.update { it.copy(levelData = ResponseState.Error(error)) }
+            return@launch
+          }
+      _state.update { it.copy(levelData = ResponseState.Success(level)) }
       val allowSevenAccidentalKeys = settingsRepository.settings.map { it.allowSevenAccidentalKeys }.first()
       presets.begin()
       sustainNotes = level.sustainNotes
       quizzer = ChordsLevelQuizzer(level, allowSevenAccidentalKeys)
 
       val c = level.context
-
-      require(c != null) { "context is null, but need context for now" }
 
       quizzer?.quizState?.collect { quizState ->
         _state.update { it.copy(quizState = quizState) }
@@ -205,11 +202,14 @@ class ChordsPlayScreenViewModel(
         degreeContextPlayer?.questionAdvanced(if (isNewRoot) quizState.root else null)
 
         if (isNewRoot) {
-          val player: DegreeContextPlayer = degreeContextPlayer ?: startContext(c, quizState.root)
-          if (degreeContextPlayer == null) degreeContextPlayer = player
-
           lastHandledRoot = quizState.root
-          degreeContextPlayer?.ready?.first { it }
+          if (c != null) {
+            val player: DegreeContextPlayer = degreeContextPlayer ?: startContext(c, quizState.root)
+            if (degreeContextPlayer == null) degreeContextPlayer = player
+            degreeContextPlayer?.ready?.first { it }
+          } else {
+            _state.update { it.copy(phase = ChordsQuizPhase.AwaitingAnswer) }
+          }
         }
 
         Napier.v { "Playing chord ${quizState.currentChord}" }

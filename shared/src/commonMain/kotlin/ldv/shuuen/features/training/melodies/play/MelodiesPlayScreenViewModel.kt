@@ -46,7 +46,6 @@ import ldv.shuuen.core.music.decideAccidentalType
 import ldv.shuuen.core.music.generator.TimedNote
 import ldv.shuuen.core.music.generator.WeightedMelodyGenerator
 import ldv.shuuen.core.music.withTiming
-import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.InputMode
 import ldv.shuuen.core.settings.MusicLabelSettings
@@ -64,7 +63,8 @@ import ldv.shuuen.features.training.level_end.domain.TrainingSession
 import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
 import ldv.shuuen.features.training.level_end.domain.longestCleanRun
 import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
-import ldv.shuuen.features.training.melodies.domain.MelodiesLocalLevelRepository
+import ldv.shuuen.features.training.course.domain.TrainingLevelResolver
+import ldv.shuuen.features.training.melodies.domain.MidiContentResolver
 
 enum class MelodiesPlayMode {
   Midi,
@@ -176,9 +176,10 @@ private data class ActivePlaybackNote(val runId: Int, val note: Note)
 
 class MelodiesPlayScreenViewModel(
   private val levelId: String,
-  levelRepository: MelodiesLocalLevelRepository,
+  levelResolver: TrainingLevelResolver,
   private val midiEngine: MidiEngine,
   private val player: MidiFilePlayer,
+  private val midiContentResolver: MidiContentResolver,
   private val settingsRepository: SettingsRepository,
   private val trainingSessionRepository: TrainingSessionRepository,
   midiKeyboardInput: MidiKeyboardInput,
@@ -296,14 +297,16 @@ class MelodiesPlayScreenViewModel(
       }
 
       val level =
-        when (val response = levelRepository.getLevelById(levelId)
-          .first { it !is ResponseState.Loading }) {
-          is ResponseState.Success -> response.result
-          else -> {
-            _state.update { it.copy(isLoading = false, error = "Couldn't load the level.") }
+        runCatching { levelResolver.resolveMelodies(levelId) }
+          .getOrElse { error ->
+            _state.update {
+              it.copy(
+                isLoading = false,
+                error = "Couldn't load the level: ${error.message ?: "unknown error"}",
+              )
+            }
             return@launch
           }
-        }
 
       when (val config = level.config) {
         is LevelConfig.Melodies.Midi -> startMidiMode(level, config)
@@ -315,14 +318,19 @@ class MelodiesPlayScreenViewModel(
   // region Midi mode
 
   private suspend fun startMidiMode(level: MelodiesLevel, config: LevelConfig.Melodies.Midi) {
-    val bytes = runCatching { config.file.readBytes() }.getOrNull()
-    if (bytes == null || bytes.isEmpty()) {
+    val bytes = runCatching { midiContentResolver.resolve(config.midiSource) }.getOrElse { error ->
       _state.update {
         it.copy(
           title = level.name,
           isLoading = false,
-          error = "Couldn't read ${config.fileName}. Has the file moved?",
+          error = error.message ?: "Couldn't load ${config.fileName}.",
         )
+      }
+      return
+    }
+    if (bytes.isEmpty()) {
+      _state.update {
+        it.copy(title = level.name, isLoading = false, error = "${config.fileName} is empty.")
       }
       return
     }

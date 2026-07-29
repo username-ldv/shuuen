@@ -55,6 +55,11 @@ class TrainingSessionRepositoryImpl(
       .catch { emit(LevelAccuracyStats(windowSize = coercedLimit)) }
   }
 
+  override fun observeAttemptedLevelIds(flow: TrainingFlow): Flow<Set<String>> =
+    trainingSessionDao.observeAttemptedLevelIds(flow)
+      .map { it.toSet() }
+      .catch { emit(emptySet()) }
+
   private fun TrainingSession.toEntity() =
     TrainingSessionDbEntity(
       id = id,

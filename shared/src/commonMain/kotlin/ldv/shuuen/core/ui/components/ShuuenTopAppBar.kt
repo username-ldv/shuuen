@@ -41,7 +41,9 @@ fun ShuuenTopAppBar(
   statusContent: @Composable () -> Unit = {},
   /** Extra action buttons, sitting between the status content and the trailing icon. */
   actions: @Composable RowScope.() -> Unit = {},
-  type: ldv.shuuen.core.ui.components.ShuuenTopAppBarType = ldv.shuuen.core.ui.components.ShuuenTopAppBarType.Simple
+  type: ldv.shuuen.core.ui.components.ShuuenTopAppBarType = ldv.shuuen.core.ui.components.ShuuenTopAppBarType.Simple,
+  /** Replaces the standard title/subtitle column when the app bar needs interactive title UI. */
+  titleContent: (@Composable () -> Unit)? = null,
 ) {
   BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
     val compact = maxWidth < 430.dp
@@ -50,34 +52,38 @@ fun ShuuenTopAppBar(
     CenterAlignedTopAppBar(
       expandedHeight = type.height,
       title = {
-        Column(
-          horizontalAlignment = Alignment.CenterHorizontally,
-          verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-          if (title != null) {
-            Text(
-              text = title,
-              color = ldv.shuuen.core.ui.components.ShuuenUi.Text,
-              style = MaterialTheme.typography.displayMedium.copy(
-                fontSize = titleSize,
-                lineHeight = if (compact) 31.sp else 38.sp,
-                letterSpacing = ldv.shuuen.core.ui.components.ShuuenUi.titlesSpacing,
-                fontWeight = FontWeight.SemiBold,
-              ),
-              textAlign = TextAlign.Center,
-              maxLines = 1,
-              overflow = TextOverflow.Ellipsis,
-            )
-          }
-          if (subtitle != null) {
-            Text(
-              text = subtitle,
-              color = ldv.shuuen.core.ui.components.ShuuenUi.Muted,
-              style = if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
-              textAlign = TextAlign.Center,
-              maxLines = 2,
-              overflow = TextOverflow.Ellipsis,
-            )
+        if (titleContent != null) {
+          titleContent()
+        } else {
+          Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+          ) {
+            if (title != null) {
+              Text(
+                text = title,
+                color = ldv.shuuen.core.ui.components.ShuuenUi.Text,
+                style = MaterialTheme.typography.displayMedium.copy(
+                  fontSize = titleSize,
+                  lineHeight = if (compact) 31.sp else 38.sp,
+                  letterSpacing = ldv.shuuen.core.ui.components.ShuuenUi.titlesSpacing,
+                  fontWeight = FontWeight.SemiBold,
+                ),
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+              )
+            }
+            if (subtitle != null) {
+              Text(
+                text = subtitle,
+                color = ldv.shuuen.core.ui.components.ShuuenUi.Muted,
+                style = if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+              )
+            }
           }
         }
       },

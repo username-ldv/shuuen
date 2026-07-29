@@ -19,22 +19,43 @@ import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.core.settings.coerceLevelStatsWindow
 import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
 import ldv.shuuen.features.training.melodies.domain.MelodiesLocalLevelRepository
+import ldv.shuuen.features.training.course.domain.CourseRepository
+import ldv.shuuen.features.training.course.domain.PlayableTrainingLevel
+import ldv.shuuen.features.training.course.presentation.CourseLevelBrowser
 
 class MelodiesLevelSelectScreenViewModel(
   private val levelRepository: MelodiesLocalLevelRepository,
   settingsRepository: SettingsRepository,
   private val trainingSessionRepository: TrainingSessionRepository,
+  courseRepository: CourseRepository,
 ) : ViewModel() {
   private val refreshRequests = MutableStateFlow(0)
 
   @OptIn(ExperimentalCoroutinesApi::class)
   val levels = refreshRequests.flatMapLatest { levelRepository.getLevels() }
 
+  private val courseBrowser =
+    CourseLevelBrowser(
+      mode = TrainingFlow.Melodies,
+      repository = courseRepository,
+      scope = viewModelScope,
+      extract = { (it as? PlayableTrainingLevel.Melodies)?.level },
+    )
+  val courseState = courseBrowser.state
+
+  init {
+    courseBrowser.refreshCourses()
+  }
+
   private val statsWindow =
     settingsRepository.settings
       .map { coerceLevelStatsWindow(it.levelStatsWindow) }
       .distinctUntilChanged()
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DefaultLevelStatsWindow)
+
+  val attemptedLevelIds =
+    trainingSessionRepository.observeAttemptedLevelIds(TrainingFlow.Melodies)
+      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
   @OptIn(ExperimentalCoroutinesApi::class)
   fun levelStats(levelId: String): Flow<LevelAccuracyStats> =
@@ -48,4 +69,11 @@ class MelodiesLevelSelectScreenViewModel(
       refreshRequests.update { it + 1 }
     }
   }
+
+  fun refreshCourses() = courseBrowser.refreshCourses()
+  fun selectMyLevels() = courseBrowser.selectMyLevels()
+  fun selectCourse(courseId: Long) = courseBrowser.selectCourse(courseId)
+  fun selectGroup(groupId: String) = courseBrowser.selectGroup(groupId)
+  fun loadNextPage() = courseBrowser.loadNextPage()
+  fun retryCourseLevels() = courseBrowser.retryLevels()
 }

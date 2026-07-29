@@ -3,6 +3,7 @@ package ldv.shuuen.features.training.domain
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.PlatformFileSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
 import ldv.shuuen.core.music.Degree
 import ldv.shuuen.core.music.NoteRange
 import ldv.shuuen.core.music.Pitch
@@ -11,6 +12,8 @@ import ldv.shuuen.core.music.generator.ChordStyle
 import ldv.shuuen.core.music.generator.ChordStyles
 import ldv.shuuen.core.music.generator.MelodyStyle
 import ldv.shuuen.core.music.generator.MelodyStyles
+import ldv.shuuen.features.training.melodies.domain.MidiFileSource
+import ldv.shuuen.features.training.melodies.domain.MidiFileSourceSerializer
 
 @Serializable
 sealed interface LevelConfig {
@@ -102,13 +105,37 @@ sealed interface LevelConfig {
      */
     @Serializable
     data class Midi(
-      @Serializable(with = PlatformFileSerializer::class) val file: PlatformFile,
+      @SerialName("file")
+      @Serializable(with = MidiFileSourceSerializer::class)
+      val midiSource: MidiFileSource,
       val fileName: String,
       val useOriginalVelocities: Boolean = false,
       @Serializable(with = PlatformFileSerializer::class) val backingFile: PlatformFile? = null,
       val backingFileName: String? = null,
       val backingOffsetMs: Long = 0,
-    ) : Melodies
+    ) : Melodies {
+      /** Source-compatible constructor for locally created levels. */
+      constructor(
+        file: PlatformFile,
+        fileName: String,
+        useOriginalVelocities: Boolean = false,
+        backingFile: PlatformFile? = null,
+        backingFileName: String? = null,
+        backingOffsetMs: Long = 0,
+      ) : this(
+        midiSource = MidiFileSource.Local(file),
+        fileName = fileName,
+        useOriginalVelocities = useOriginalVelocities,
+        backingFile = backingFile,
+        backingFileName = backingFileName,
+        backingOffsetMs = backingOffsetMs,
+      )
+
+      /** Existing local setup/edit code intentionally remains local-file-only. */
+      val file: PlatformFile
+        get() = (midiSource as? MidiFileSource.Local)?.platformFile
+          ?: error("A backend MIDI level has no local PlatformFile.")
+    }
   }
 }
 

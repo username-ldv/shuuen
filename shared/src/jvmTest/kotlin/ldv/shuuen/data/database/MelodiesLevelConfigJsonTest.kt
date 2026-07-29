@@ -194,7 +194,7 @@ class MelodiesLevelConfigJsonTest {
   }
 
   @Test
-  fun midiConfigRoundTripsTheFileReference() {
+  fun legacyMidiConfigWithAPlatformFileStringStillRoundTrips() {
     val original = File("D:/melodies/tune.mid")
     val config: LevelConfig.Melodies =
       LevelConfig.Melodies.Midi(
@@ -203,7 +203,9 @@ class MelodiesLevelConfigJsonTest {
         useOriginalVelocities = true,
       )
 
-    val decoded = RoomJson.decode<LevelConfig.Melodies>(RoomJson.encode(config))
+    val legacyJson = RoomJson.encode(config)
+    assertTrue(Json.parseToJsonElement(legacyJson).jsonObject["file"] is kotlinx.serialization.json.JsonPrimitive)
+    val decoded = RoomJson.decode<LevelConfig.Melodies>(legacyJson)
 
     assertTrue(decoded is LevelConfig.Melodies.Midi)
     assertEquals("tune.mid", decoded.fileName)

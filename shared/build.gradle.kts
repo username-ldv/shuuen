@@ -34,6 +34,7 @@ kotlin {
     androidMain.dependencies {
       implementation(libs.compose.uiToolingPreview)
       implementation(libs.androidx.activity.compose)
+      implementation(libs.ktor.client.android)
     }
     commonMain.dependencies {
       api(projects.bass)
@@ -65,6 +66,9 @@ kotlin {
       // etc
       implementation(libs.kotlinx.serialization.core)
       implementation(libs.kotlinx.serialization.json)
+      implementation(libs.ktor.client.core)
+      implementation(libs.ktor.client.content.negotiation)
+      implementation(libs.ktor.serialization.json)
       implementation(libs.napier)
       implementation(libs.kstore)
       implementation(libs.kstore.file)
@@ -77,10 +81,12 @@ kotlin {
     }
     jvmMain.dependencies {
       implementation(libs.appdirs)
+      implementation(libs.ktor.client.cio)
     }
     commonTest.dependencies {
       implementation(libs.kotlin.test)
       implementation(libs.kotlinx.coroutinesTest)
+      implementation(libs.ktor.client.mock)
     }
   }
 }

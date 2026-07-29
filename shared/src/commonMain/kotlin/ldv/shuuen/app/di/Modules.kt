@@ -15,5 +15,5 @@ val commonModule = module {
   single<BassMidiEngine>() bind MidiEngine::class
   single<BassMidiFilePlayer>() bind MidiFilePlayer::class
 
-  includes(dataModule, navigationModule)
+  includes(apiModule, dataModule, navigationModule)
 }
