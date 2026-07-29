@@ -62,6 +62,7 @@ import ldv.shuuen.features.training.common.components.DeleteLevelDialog
 import ldv.shuuen.features.training.common.components.LevelAccuracyLabel
 import ldv.shuuen.features.training.common.components.LevelAccuracyStatsRow
 import ldv.shuuen.features.training.common.components.LevelListScrollControls
+import ldv.shuuen.features.training.common.components.LevelListScrollbar
 import ldv.shuuen.features.training.common.components.LocalLevelListHeaderItemCount
 import ldv.shuuen.features.training.common.components.LevelParametersFlow
 import ldv.shuuen.features.training.common.components.LevelSortAction
@@ -112,6 +113,10 @@ fun MelodiesLevelSelectScreen(
   val orderedLevelIds =
     if (showingLocal) orderedLocalLevels.map { it.id }
     else courseState.levels.map { it.reference }
+  val firstLevelItemIndex =
+    if (showingLocal) LocalLevelListHeaderItemCount else CourseLevelListHeaderItemCount
+  val totalLevelCount =
+    if (showingLocal) orderedLevelIds.size.toLong() else courseState.total
   var levelPendingDelete by remember { mutableStateOf<MelodiesLevel?>(null) }
   var levelPendingCustomization by remember { mutableStateOf<MidiLevelLaunchTarget?>(null) }
   StaticScreenFrame(
@@ -268,12 +273,19 @@ fun MelodiesLevelSelectScreen(
         }
       }
       }
+      LevelListScrollbar(
+        listState = listState,
+        loadedLevelCount = orderedLevelIds.size,
+        totalLevelCount = totalLevelCount,
+        firstLevelItemIndex = firstLevelItemIndex,
+        modifier =
+          Modifier.align(Alignment.CenterEnd).padding(vertical = 8.dp).padding(end = 2.dp),
+      )
       LevelListScrollControls(
         listState = listState,
         orderedLevelIds = orderedLevelIds,
         attemptedLevelIds = attemptedLevelIds,
-        firstLevelItemIndex =
-          if (showingLocal) LocalLevelListHeaderItemCount else CourseLevelListHeaderItemCount,
+        firstLevelItemIndex = firstLevelItemIndex,
         modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 8.dp),
       )
       }
