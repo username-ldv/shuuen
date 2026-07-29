@@ -242,7 +242,7 @@ A stored MIDI reference is explicit:
         "variant_id": 87,
         "file_name": "lesson.mid"
       },
-      "use_original_velocities": false
+      "use_original_velocities": true
     },
     "context": null
   }

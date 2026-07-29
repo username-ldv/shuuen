@@ -798,7 +798,8 @@ func IsValidLevelSource(value string) bool {
 func DefaultMIDIDefinition(melodyID uint, variantID uint, fileName string) json.RawMessage {
 	definition := MelodiesLevelDefinition{
 		Config: mustJSON(melodyMIDIConfig{
-			Type: "midi",
+			Type:                  "midi",
+			UseOriginalVelocities: true,
 			File: MIDIFileReference{
 				Type: "backend", MelodyID: &melodyID, VariantID: &variantID, FileName: fileName,
 			},

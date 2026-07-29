@@ -26,6 +26,18 @@ func TestPublicMIDIDefinitionRequiresBackendReference(t *testing.T) {
 
 func TestDefaultMIDIDefinitionRoundTripsThroughValidation(t *testing.T) {
 	raw := DefaultMIDIDefinition(12, 34, "lesson.mid")
+	var definition MelodiesLevelDefinition
+	if err := json.Unmarshal(raw, &definition); err != nil {
+		t.Fatal(err)
+	}
+	var config melodyMIDIConfig
+	if err := json.Unmarshal(definition.Config, &config); err != nil {
+		t.Fatal(err)
+	}
+	if !config.UseOriginalVelocities {
+		t.Fatal("generated MIDI definition does not preserve original note velocities")
+	}
+
 	references, err := ValidateDefinition(ModeMelodies, raw, true)
 	if err != nil {
 		t.Fatal(err)
@@ -75,12 +87,12 @@ func TestRandomMelodyDefinitionCarriesScaleContextAndStyle(t *testing.T) {
 			ScaleConfig: mustJSON(relativeScaleEnvelope{
 				Type: "relative",
 				RelativeScaleConfig: RelativeScaleConfig{
-					ScaleType: "Major",
+					ScaleType:    "Major",
 					DegreeStates: []DegreeState{{Degree: "D1", Active: true}, {Degree: "D3", Active: true}, {Degree: "D5", Active: true}},
 				},
 			}),
 			QuestionsNumber: &questions, NotesPerSequence: &notes, Tempo: 96,
-			Range: NoteRange{From: Note{MIDIIndex: 48}, To: Note{MIDIIndex: 72}},
+			Range:                NoteRange{From: Note{MIDIIndex: 48}, To: Note{MIDIIndex: 72}},
 			RotateEveryQuestions: &rotation,
 			MelodyStyle: &MelodyStyle{
 				ID: "quarters", Name: "Quarters", Tier: "Beginner",
@@ -93,9 +105,9 @@ func TestRandomMelodyDefinitionCarriesScaleContextAndStyle(t *testing.T) {
 		Context: &DegreeContext{
 			ID: "simple-drone", Source: "imported",
 			Nodes: []DegreeContextNode{{
-				FirstDegree: DegreeWithOctave{Degree: "D1", Octave: 2},
+				FirstDegree:  DegreeWithOctave{Degree: "D1", Octave: 2},
 				ExtraDegrees: []Degree{}, Sustain: Sustain{Type: "endless"},
-				Duration: ContextDuration{Type: "same_as_scale_rotation"},
+				Duration:          ContextDuration{Type: "same_as_scale_rotation"},
 				RelativeDirection: "Up",
 			}},
 		},
