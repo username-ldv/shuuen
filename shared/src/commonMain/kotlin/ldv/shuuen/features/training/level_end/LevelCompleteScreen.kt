@@ -67,11 +67,13 @@ import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.SurfaceCard
 import ldv.shuuen.core.music.DegreeContext
 import ldv.shuuen.core.util.toRoundedString
+import ldv.shuuen.features.training.common.LevelAccuracyStats
 import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.common.components.ChordStyleSummary
 import ldv.shuuen.features.training.common.components.ContextDetails
 import ldv.shuuen.features.training.common.components.DetailLabel
 import ldv.shuuen.features.training.common.components.DetailRow
+import ldv.shuuen.features.training.common.components.LevelAccuracyLabel
 import ldv.shuuen.features.training.common.components.MelodyStyleSummary
 import ldv.shuuen.features.training.common.components.sourceLabel
 import ldv.shuuen.features.training.common.toBoxedItems
@@ -122,6 +124,7 @@ fun LevelCompleteScreen(
         LevelCompleteContent(
           session = session.result,
           level = state.level,
+          levelAccuracyStats = state.levelAccuracyStats,
           nextLevelReference = state.nextLevelReference,
           onRetryLevel = onRetryLevel,
           onNextLevel = onNextLevel,
@@ -135,6 +138,7 @@ fun LevelCompleteScreen(
 private fun LevelCompleteContent(
   session: TrainingSession,
   level: CompletedLevel?,
+  levelAccuracyStats: LevelAccuracyStats?,
   nextLevelReference: String?,
   onRetryLevel: () -> Unit,
   onNextLevel: (levelReference: String) -> Unit,
@@ -153,7 +157,7 @@ private fun LevelCompleteContent(
           verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
           CompletionTitle(session, level)
-          ScoreHero(session)
+          ScoreHero(session, levelAccuracyStats)
           CompletionActions(
             onRetryLevel = onRetryLevel,
             nextLevelReference = nextLevelReference,
@@ -178,7 +182,7 @@ private fun LevelCompleteContent(
         verticalArrangement = Arrangement.spacedBy(18.dp),
       ) {
         CompletionTitle(session, level)
-        ScoreHero(session)
+        ScoreHero(session, levelAccuracyStats)
         CompletionActions(
           onRetryLevel = onRetryLevel,
           nextLevelReference = nextLevelReference,
@@ -264,7 +268,10 @@ private fun scaleLabel(scale: ScaleConfig.AbsoluteScaleConfig): String =
 // region Score
 
 @Composable
-private fun ScoreHero(session: TrainingSession) {
+private fun ScoreHero(
+  session: TrainingSession,
+  levelAccuracyStats: LevelAccuracyStats?,
+) {
   SurfaceCard {
     Row(
       modifier = Modifier.fillMaxWidth(),
@@ -272,7 +279,7 @@ private fun ScoreHero(session: TrainingSession) {
       horizontalArrangement = Arrangement.spacedBy(22.dp),
     ) {
       ScoreRing(session.accuracy)
-      ScoreSummary(session, Modifier.weight(1f))
+      ScoreSummary(session, levelAccuracyStats, Modifier.weight(1f))
     }
   }
 }
@@ -321,7 +328,11 @@ private fun ScoreRing(accuracy: Float) {
 }
 
 @Composable
-private fun ScoreSummary(session: TrainingSession, modifier: Modifier = Modifier) {
+private fun ScoreSummary(
+  session: TrainingSession,
+  levelAccuracyStats: LevelAccuracyStats?,
+  modifier: Modifier = Modifier,
+) {
   Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Text(
       text = "${session.correctNotes} / ${session.notesTotal} CORRECT",
@@ -337,6 +348,30 @@ private fun ScoreSummary(session: TrainingSession, modifier: Modifier = Modifier
       color = ShuuenUi.Muted,
       style = MaterialTheme.typography.bodyMedium,
     )
+    if (levelAccuracyStats != null) {
+      Column(
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+      ) {
+        Text(
+          text = "LEVEL ACCURACY",
+          color = ShuuenUi.Dim,
+          style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
+          maxLines = 1,
+        )
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+          LevelAccuracyLabel(stats = levelAccuracyStats)
+          Text(
+            text = "${levelAccuracyStats.games}/${levelAccuracyStats.windowSize} sessions",
+            color = ShuuenUi.Dim,
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+          )
+        }
+      }
+    }
   }
 }
 

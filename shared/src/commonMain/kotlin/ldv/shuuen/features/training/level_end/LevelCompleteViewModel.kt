@@ -3,12 +3,20 @@ package ldv.shuuen.features.training.level_end
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ldv.shuuen.core.result.ResponseState
+import ldv.shuuen.core.settings.SettingsRepository
+import ldv.shuuen.core.settings.coerceLevelStatsWindow
 import ldv.shuuen.features.training.chords.domain.ChordsLevel
+import ldv.shuuen.features.training.common.LevelAccuracyStats
 import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.course.domain.CourseRepository
 import ldv.shuuen.features.training.course.domain.LevelReference
@@ -34,24 +42,46 @@ data class LevelCompleteState(
   val level: CompletedLevel? = null,
   /** Encoded remote reference for the next level in this progression group, when one exists. */
   val nextLevelReference: String? = null,
+  /** The same rolling level accuracy shown on level select. */
+  val levelAccuracyStats: LevelAccuracyStats? = null,
 )
 
 class LevelCompleteViewModel(
   sessionId: String,
-  sessionRepository: TrainingSessionRepository,
+  private val sessionRepository: TrainingSessionRepository,
+  private val settingsRepository: SettingsRepository,
   private val levelResolver: TrainingLevelResolver,
   private val courseRepository: CourseRepository,
 ) : ViewModel() {
   private val _state = MutableStateFlow(LevelCompleteState())
   val state = _state.asStateFlow()
+  private var levelAccuracyJob: Job? = null
 
   init {
     viewModelScope.launch {
       sessionRepository.getSessionById(sessionId).collect { response ->
         _state.update { it.copy(session = response) }
-        if (response is ResponseState.Success) loadLevel(response.result)
+        if (response is ResponseState.Success) {
+          observeLevelAccuracy(response.result)
+          loadLevel(response.result)
+        }
       }
     }
+  }
+
+  @OptIn(ExperimentalCoroutinesApi::class)
+  private fun observeLevelAccuracy(session: TrainingSession) {
+    levelAccuracyJob?.cancel()
+    levelAccuracyJob =
+      viewModelScope.launch {
+        settingsRepository.settings
+          .map { coerceLevelStatsWindow(it.levelStatsWindow) }
+          .distinctUntilChanged()
+          .flatMapLatest { window ->
+            sessionRepository.observeLevelAccuracyStats(session.flow, session.levelId, window)
+          }
+          .collect { stats -> _state.update { it.copy(levelAccuracyStats = stats) } }
+      }
   }
 
   private suspend fun loadLevel(session: TrainingSession) {
