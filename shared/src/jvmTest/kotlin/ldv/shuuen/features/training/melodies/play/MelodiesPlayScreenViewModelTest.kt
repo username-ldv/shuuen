@@ -267,6 +267,12 @@ private class FakeTrainingSessionRepository : TrainingSessionRepository {
   ): Flow<LevelAccuracyStats> = flowOf(LevelAccuracyStats(windowSize = limit))
 
   override fun observeAttemptedLevelIds(flow: TrainingFlow): Flow<Set<String>> = flowOf(emptySet())
+
+  override suspend fun deleteLastLevelSession(flow: TrainingFlow, levelId: String) = Unit
+
+  override suspend fun deleteAllLevelSessions(flow: TrainingFlow, levelId: String) = Unit
+
+  override suspend fun deleteAllCourseSessions(courseId: Long) = Unit
 }
 
 private class FakeSettingsRepository : SettingsRepository {

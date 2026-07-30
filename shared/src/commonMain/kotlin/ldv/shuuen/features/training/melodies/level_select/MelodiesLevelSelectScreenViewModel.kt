@@ -70,6 +70,22 @@ class MelodiesLevelSelectScreenViewModel(
     }
   }
 
+  fun deleteLastPlayStatistics(levelId: String) {
+    viewModelScope.launch {
+      trainingSessionRepository.deleteLastLevelSession(TrainingFlow.Melodies, levelId)
+    }
+  }
+
+  fun deleteAllLevelStatistics(levelId: String) {
+    viewModelScope.launch {
+      trainingSessionRepository.deleteAllLevelSessions(TrainingFlow.Melodies, levelId)
+    }
+  }
+
+  fun deleteAllCourseStatistics(courseId: Long) {
+    viewModelScope.launch { trainingSessionRepository.deleteAllCourseSessions(courseId) }
+  }
+
   fun refreshCourses() = courseBrowser.refreshCourses()
   fun selectMyLevels() = courseBrowser.selectMyLevels()
   fun selectCourse(courseId: Long) = courseBrowser.selectCourse(courseId)

@@ -60,6 +60,19 @@ class TrainingSessionRepositoryImpl(
       .map { it.toSet() }
       .catch { emit(emptySet()) }
 
+  override suspend fun deleteLastLevelSession(flow: TrainingFlow, levelId: String) {
+    trainingSessionDao.deleteLastByLevelId(flow, levelId)
+  }
+
+  override suspend fun deleteAllLevelSessions(flow: TrainingFlow, levelId: String) {
+    trainingSessionDao.deleteAllByLevelId(flow, levelId)
+  }
+
+  override suspend fun deleteAllCourseSessions(courseId: Long) {
+    require(courseId > 0) { "A course ID must be positive." }
+    trainingSessionDao.deleteAllByCourseReferencePrefix("course:$courseId:")
+  }
+
   private fun TrainingSession.toEntity() =
     TrainingSessionDbEntity(
       id = id,

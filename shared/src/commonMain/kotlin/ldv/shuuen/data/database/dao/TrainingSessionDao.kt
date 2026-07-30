@@ -39,6 +39,26 @@ interface TrainingSessionDao {
   @Query("select distinct levelId from training_sessions where flow = :flow")
   fun observeAttemptedLevelIds(flow: TrainingFlow): Flow<List<String>>
 
+  @Query(
+    """
+    delete from training_sessions
+    where id = (
+      select id
+      from training_sessions
+      where flow = :flow and levelId = :levelId
+      order by completedAtEpochMillis desc, id desc
+      limit 1
+    )
+    """
+  )
+  suspend fun deleteLastByLevelId(flow: TrainingFlow, levelId: String)
+
+  @Query("delete from training_sessions where flow = :flow and levelId = :levelId")
+  suspend fun deleteAllByLevelId(flow: TrainingFlow, levelId: String)
+
+  @Query("delete from training_sessions where levelId like :courseReferencePrefix || '%'")
+  suspend fun deleteAllByCourseReferencePrefix(courseReferencePrefix: String)
+
   @Upsert
   suspend fun upsertSession(session: TrainingSessionDbEntity)
 }

@@ -55,6 +55,8 @@ import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.SurfaceCard
 import ldv.shuuen.features.training.common.LevelAccuracyStats
 import ldv.shuuen.features.training.common.components.ContextDetails
+import ldv.shuuen.features.training.common.components.CourseSettingsAction
+import ldv.shuuen.features.training.common.components.CourseSettingsSheet
 import ldv.shuuen.features.training.common.components.CourseLevelListHeaderItemCount
 import ldv.shuuen.features.training.common.components.DetailLabel
 import ldv.shuuen.features.training.common.components.DetailRow
@@ -65,6 +67,7 @@ import ldv.shuuen.features.training.common.components.LevelListScrollControls
 import ldv.shuuen.features.training.common.components.LevelListScrollbar
 import ldv.shuuen.features.training.common.components.LocalLevelListHeaderItemCount
 import ldv.shuuen.features.training.common.components.LevelParametersFlow
+import ldv.shuuen.features.training.common.components.LevelSettingsSheet
 import ldv.shuuen.features.training.common.components.LevelSortAction
 import ldv.shuuen.features.training.common.components.LevelSortOrder
 import ldv.shuuen.features.training.common.components.MelodyStyleSummary
@@ -98,6 +101,10 @@ fun MelodiesLevelSelectScreen(
   val attemptedLevelIds by viewModel.attemptedLevelIds.collectAsStateWithLifecycle()
   val listState = rememberLazyListState()
   val showingLocal = courseState.selection == CourseSourceSelection.MyLevels
+  val selectedCourse =
+    (courseState.selection as? CourseSourceSelection.Course)?.let { selection ->
+      courseState.courses.firstOrNull { it.id == selection.courseId }
+    }
   CoursePagingEffect(
     listState = listState,
     levels = courseState.levels,
@@ -118,7 +125,8 @@ fun MelodiesLevelSelectScreen(
   val totalLevelCount =
     if (showingLocal) orderedLevelIds.size.toLong() else courseState.total
   var levelPendingDelete by remember { mutableStateOf<MelodiesLevel?>(null) }
-  var levelPendingCustomization by remember { mutableStateOf<MidiLevelLaunchTarget?>(null) }
+  var levelPendingSettings by remember { mutableStateOf<LevelSettingsTarget?>(null) }
+  var courseSettingsOpen by remember { mutableStateOf(false) }
   StaticScreenFrame(
     topBar = {
       ShuuenTopAppBar(
@@ -127,7 +135,7 @@ fun MelodiesLevelSelectScreen(
           if (showingLocal) {
             LevelSortAction(sortOrder, onOrderChange = { sortOrder = it })
           } else {
-            Box(Modifier.size(48.dp))
+            CourseSettingsAction(onClick = { courseSettingsOpen = true })
           }
         },
         type = ShuuenTopAppBarType.Simple,
@@ -202,15 +210,14 @@ fun MelodiesLevelSelectScreen(
                   level,
                   stats = stats,
                   onLevelChosen = { onStartLevel(it.id, MidiTransposition()) },
-                  onCustomizeLevel =
-                    if (level.config is LevelConfig.Melodies.Midi) {
-                      {
-                        levelPendingCustomization =
-                          MidiLevelLaunchTarget(reference = level.id, name = level.name)
-                      }
-                    } else {
-                      null
-                    },
+                  onOpenSettings = {
+                    levelPendingSettings =
+                      LevelSettingsTarget(
+                        reference = level.id,
+                        name = level.name,
+                        hasMidiOptions = level.config is LevelConfig.Melodies.Midi,
+                      )
+                  },
                   onEditLevel = { onEditLevel(it.id) },
                   onDeleteLevel = { levelPendingDelete = it },
                 )
@@ -241,18 +248,14 @@ fun MelodiesLevelSelectScreen(
               level = item.playableLevel,
               stats = stats,
               onLevelChosen = { onStartLevel(item.reference, MidiTransposition()) },
-              onCustomizeLevel =
-                if (item.playableLevel.config is LevelConfig.Melodies.Midi) {
-                  {
-                    levelPendingCustomization =
-                      MidiLevelLaunchTarget(
-                        reference = item.reference,
-                        name = item.playableLevel.name,
-                      )
-                  }
-                } else {
-                  null
-                },
+              onOpenSettings = {
+                levelPendingSettings =
+                  LevelSettingsTarget(
+                    reference = item.reference,
+                    name = item.playableLevel.name,
+                    hasMidiOptions = item.playableLevel.config is LevelConfig.Melodies.Midi,
+                  )
+              },
               onEditLevel = null,
               onDeleteLevel = null,
             )
@@ -302,20 +305,50 @@ fun MelodiesLevelSelectScreen(
       onDismiss = { levelPendingDelete = null },
     )
   }
-  levelPendingCustomization?.let { level ->
-    MidiLevelOptionsSheet(
-      levelName = level.name,
-      levelReference = level.reference,
-      onStart = { transposition ->
-        levelPendingCustomization = null
-        onStartLevel(level.reference, transposition)
-      },
-      onDismiss = { levelPendingCustomization = null },
+  levelPendingSettings?.let { level ->
+    val statsFlow = remember(viewModel, level.reference) { viewModel.levelStats(level.reference) }
+    val stats by statsFlow.collectAsStateWithLifecycle(LevelAccuracyStats())
+    if (level.hasMidiOptions) {
+      MidiLevelOptionsSheet(
+        levelName = level.name,
+        levelReference = level.reference,
+        stats = stats,
+        onStart = { transposition ->
+          levelPendingSettings = null
+          onStartLevel(level.reference, transposition)
+        },
+        onDeleteLastPlayStatistics = {
+          viewModel.deleteLastPlayStatistics(level.reference)
+        },
+        onDeleteAllStatistics = { viewModel.deleteAllLevelStatistics(level.reference) },
+        onDismiss = { levelPendingSettings = null },
+      )
+    } else {
+      LevelSettingsSheet(
+        levelName = level.name,
+        hasStatistics = stats.games > 0,
+        onDeleteLastPlayStatistics = {
+          viewModel.deleteLastPlayStatistics(level.reference)
+        },
+        onDeleteAllStatistics = { viewModel.deleteAllLevelStatistics(level.reference) },
+        onDismiss = { levelPendingSettings = null },
+      )
+    }
+  }
+  if (courseSettingsOpen && selectedCourse != null) {
+    CourseSettingsSheet(
+      courseName = selectedCourse.name,
+      onDeleteAllStatistics = { viewModel.deleteAllCourseStatistics(selectedCourse.id) },
+      onDismiss = { courseSettingsOpen = false },
     )
   }
 }
 
-private data class MidiLevelLaunchTarget(val reference: String, val name: String)
+private data class LevelSettingsTarget(
+  val reference: String,
+  val name: String,
+  val hasMidiOptions: Boolean,
+)
 
 @Composable
 private fun EmptyState() {
@@ -343,7 +376,7 @@ private fun LevelCard(
   level: MelodiesLevel,
   stats: LevelAccuracyStats,
   onLevelChosen: (MelodiesLevel) -> Unit,
-  onCustomizeLevel: (() -> Unit)?,
+  onOpenSettings: () -> Unit,
   onEditLevel: ((MelodiesLevel) -> Unit)?,
   onDeleteLevel: ((MelodiesLevel) -> Unit)?,
 ) {
@@ -386,15 +419,13 @@ private fun LevelCard(
       horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
       LevelAccuracyStatsRow(stats = stats, modifier = Modifier.weight(1f))
-      if (onCustomizeLevel != null) {
-        IconButton(onClick = onCustomizeLevel, modifier = Modifier.size(34.dp)) {
-          Icon(
-            imageVector = Icons.Rounded.Tune,
-            contentDescription = "Customize level",
-            tint = ShuuenUi.Text,
-            modifier = Modifier.size(20.dp),
-          )
-        }
+      IconButton(onClick = onOpenSettings, modifier = Modifier.size(34.dp)) {
+        Icon(
+          imageVector = Icons.Rounded.Tune,
+          contentDescription = "Level settings",
+          tint = ShuuenUi.Text,
+          modifier = Modifier.size(20.dp),
+        )
       }
       if (onEditLevel != null) {
         IconButton(onClick = { onEditLevel(level) }, modifier = Modifier.size(34.dp)) {

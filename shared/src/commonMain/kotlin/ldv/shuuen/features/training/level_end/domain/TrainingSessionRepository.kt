@@ -17,4 +17,10 @@ interface TrainingSessionRepository {
   ): Flow<LevelAccuracyStats>
 
   fun observeAttemptedLevelIds(flow: TrainingFlow): Flow<Set<String>>
+
+  suspend fun deleteLastLevelSession(flow: TrainingFlow, levelId: String)
+
+  suspend fun deleteAllLevelSessions(flow: TrainingFlow, levelId: String)
+
+  suspend fun deleteAllCourseSessions(courseId: Long)
 }

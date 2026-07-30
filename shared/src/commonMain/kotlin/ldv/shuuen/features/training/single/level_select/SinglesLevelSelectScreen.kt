@@ -44,6 +44,8 @@ import ldv.shuuen.features.training.common.LevelAccuracyStats
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.single.domain.SinglesLevel
 import ldv.shuuen.features.training.common.components.ContextDetails
+import ldv.shuuen.features.training.common.components.CourseSettingsAction
+import ldv.shuuen.features.training.common.components.CourseSettingsSheet
 import ldv.shuuen.features.training.common.components.CourseLevelListHeaderItemCount
 import ldv.shuuen.features.training.common.components.DetailLabel
 import ldv.shuuen.features.training.common.components.DetailRow
@@ -54,6 +56,7 @@ import ldv.shuuen.features.training.common.components.LevelListScrollControls
 import ldv.shuuen.features.training.common.components.LevelListScrollbar
 import ldv.shuuen.features.training.common.components.LocalLevelListHeaderItemCount
 import ldv.shuuen.features.training.common.components.LevelParametersFlow
+import ldv.shuuen.features.training.common.components.LevelSettingsSheet
 import ldv.shuuen.features.training.common.components.LevelSortAction
 import ldv.shuuen.features.training.common.components.LevelSortOrder
 import ldv.shuuen.features.training.common.components.sourceLabel
@@ -90,6 +93,10 @@ fun SinglesLevelSelectScreen(
   val attemptedLevelIds by viewModel.attemptedLevelIds.collectAsStateWithLifecycle()
   val listState = rememberLazyListState()
   val showingLocal = courseState.selection == CourseSourceSelection.MyLevels
+  val selectedCourse =
+      (courseState.selection as? CourseSourceSelection.Course)?.let { selection ->
+        courseState.courses.firstOrNull { it.id == selection.courseId }
+      }
   CoursePagingEffect(
       listState = listState,
       levels = courseState.levels,
@@ -110,6 +117,8 @@ fun SinglesLevelSelectScreen(
   val totalLevelCount =
       if (showingLocal) orderedLevelIds.size.toLong() else courseState.total
   var levelPendingDelete by remember { mutableStateOf<SinglesLevel?>(null) }
+  var levelPendingSettings by remember { mutableStateOf<LevelSettingsTarget?>(null) }
+  var courseSettingsOpen by remember { mutableStateOf(false) }
   StaticScreenFrame(
       topBar = {
         ShuuenTopAppBar(
@@ -118,7 +127,7 @@ fun SinglesLevelSelectScreen(
               if (showingLocal) {
                 LevelSortAction(sortOrder, onOrderChange = { sortOrder = it })
               } else {
-                Box(Modifier.size(48.dp))
+                CourseSettingsAction(onClick = { courseSettingsOpen = true })
               }
             },
             type = ShuuenTopAppBarType.Simple,
@@ -188,6 +197,9 @@ fun SinglesLevelSelectScreen(
                     level,
                     stats = stats,
                     onLevelChosen = { onStartLevel(it.id) },
+                    onOpenSettings = {
+                      levelPendingSettings = LevelSettingsTarget(level.id, level.name)
+                    },
                     onEditLevel = { onEditLevel(it.id) },
                     onDeleteLevel = { levelPendingDelete = it },
                 )
@@ -217,6 +229,10 @@ fun SinglesLevelSelectScreen(
                 level = item.playableLevel,
                 stats = stats,
                 onLevelChosen = { onStartLevel(item.reference) },
+                onOpenSettings = {
+                  levelPendingSettings =
+                      LevelSettingsTarget(item.reference, item.playableLevel.name)
+                },
                 onEditLevel = null,
                 onDeleteLevel = null,
             )
@@ -265,13 +281,36 @@ fun SinglesLevelSelectScreen(
         onDismiss = { levelPendingDelete = null },
     )
   }
+  levelPendingSettings?.let { level ->
+    val statsFlow = remember(viewModel, level.reference) { viewModel.levelStats(level.reference) }
+    val stats by statsFlow.collectAsStateWithLifecycle(LevelAccuracyStats())
+    LevelSettingsSheet(
+        levelName = level.name,
+        hasStatistics = stats.games > 0,
+        onDeleteLastPlayStatistics = {
+          viewModel.deleteLastPlayStatistics(level.reference)
+        },
+        onDeleteAllStatistics = { viewModel.deleteAllLevelStatistics(level.reference) },
+        onDismiss = { levelPendingSettings = null },
+    )
+  }
+  if (courseSettingsOpen && selectedCourse != null) {
+    CourseSettingsSheet(
+        courseName = selectedCourse.name,
+        onDeleteAllStatistics = { viewModel.deleteAllCourseStatistics(selectedCourse.id) },
+        onDismiss = { courseSettingsOpen = false },
+    )
+  }
 }
+
+private data class LevelSettingsTarget(val reference: String, val name: String)
 
 @Composable
 private fun LevelCard(
     level: SinglesLevel,
     stats: LevelAccuracyStats,
     onLevelChosen: (SinglesLevel) -> Unit,
+    onOpenSettings: () -> Unit,
     onEditLevel: ((SinglesLevel) -> Unit)?,
     onDeleteLevel: ((SinglesLevel) -> Unit)?,
 ) {
@@ -314,6 +353,14 @@ private fun LevelCard(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
       LevelAccuracyStatsRow(stats = stats, modifier = Modifier.weight(1f))
+      IconButton(onClick = onOpenSettings, modifier = Modifier.size(34.dp)) {
+        Icon(
+            imageVector = Icons.Rounded.Tune,
+            contentDescription = "Level settings",
+            tint = ShuuenUi.Text,
+            modifier = Modifier.size(20.dp),
+        )
+      }
       if (onEditLevel != null) {
         IconButton(onClick = { onEditLevel(level) }, modifier = Modifier.size(34.dp)) {
           Icon(
