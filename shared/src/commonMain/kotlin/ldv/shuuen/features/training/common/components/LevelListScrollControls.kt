@@ -13,8 +13,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.semantics.contentDescription
@@ -23,6 +27,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import ldv.shuuen.core.ui.components.ShuuenUi
 
 private const val LevelJumpSize = 10
@@ -33,15 +38,15 @@ const val LocalLevelListHeaderItemCount = 2
 /** Only the discovery message precedes course levels; group tabs live above the swipe area. */
 const val CourseLevelListHeaderItemCount = 1
 
-internal fun nextLevelAfterLastAttemptedIndex(
+internal fun firstUnattemptedLevelIndex(
   orderedLevelIds: List<String>,
   attemptedLevelIds: Set<String>,
 ): Int =
   if (orderedLevelIds.isEmpty()) {
     -1
   } else {
-    (orderedLevelIds.indexOfLast { it in attemptedLevelIds } + 1)
-      .coerceAtMost(orderedLevelIds.lastIndex)
+    orderedLevelIds.indexOfFirst { it !in attemptedLevelIds }.takeIf { it >= 0 }
+      ?: orderedLevelIds.lastIndex
   }
 
 internal fun jumpLevelIndex(currentIndex: Int, amount: Int, lastIndex: Int): Int =
@@ -61,50 +66,48 @@ fun LevelListScrollControls(
   listState: LazyListState,
   orderedLevelIds: List<String>,
   attemptedLevelIds: Set<String>,
+  resolveFirstUnattemptedLevelId: (suspend () -> String?)? = null,
   modifier: Modifier = Modifier,
   firstLevelItemIndex: Int = LocalLevelListHeaderItemCount,
 ) {
   if (orderedLevelIds.isEmpty()) return
 
   val scope = rememberCoroutineScope()
+  val currentOrderedLevelIds by rememberUpdatedState(orderedLevelIds)
+  val currentResolver by rememberUpdatedState(resolveFirstUnattemptedLevelId)
+  var isResolvingTarget by remember { mutableStateOf(false) }
   val lastLevelIndex = orderedLevelIds.lastIndex
   val currentLevelIndex by remember(listState, firstLevelItemIndex, lastLevelIndex) {
     derivedStateOf {
       (listState.firstVisibleItemIndex - firstLevelItemIndex).coerceIn(0, lastLevelIndex)
     }
   }
-  val targetLevelIndex =
-    remember(orderedLevelIds, attemptedLevelIds) {
-      nextLevelAfterLastAttemptedIndex(orderedLevelIds, attemptedLevelIds)
-    }
   val isAtStart = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
 
   fun scrollToLevel(levelIndex: Int) {
     scope.launch { listState.animateScrollToItem(firstLevelItemIndex + levelIndex) }
   }
 
-  fun scrollToLevelCentered(levelIndex: Int) {
-    scope.launch {
-      val itemIndex = firstLevelItemIndex + levelIndex
-      val layoutInfo = listState.layoutInfo
-      val targetItemSize = layoutInfo.visibleItemsInfo.firstOrNull { it.index == itemIndex }?.size
-      val measuredLevelSizes =
-        layoutInfo.visibleItemsInfo
-          .filter { it.index in firstLevelItemIndex..(firstLevelItemIndex + lastLevelIndex) }
-          .map { it.size }
-          .filter { it > 0 }
-      val estimatedItemSize =
-        targetItemSize
-          ?: measuredLevelSizes.takeIf { it.isNotEmpty() }?.let { it.sum() / it.size }
-          ?: (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset) / 4
-      val centeredOffset =
-        centeredItemScrollOffset(
-          viewportStartOffset = layoutInfo.viewportStartOffset,
-          viewportEndOffset = layoutInfo.viewportEndOffset,
-          itemSize = estimatedItemSize,
-        )
-      listState.animateScrollToItem(itemIndex, centeredOffset)
-    }
+  suspend fun scrollToLevelCentered(levelIndex: Int) {
+    val itemIndex = firstLevelItemIndex + levelIndex
+    val layoutInfo = listState.layoutInfo
+    val targetItemSize = layoutInfo.visibleItemsInfo.firstOrNull { it.index == itemIndex }?.size
+    val measuredLevelSizes =
+      layoutInfo.visibleItemsInfo
+        .filter { it.index in firstLevelItemIndex..(firstLevelItemIndex + lastLevelIndex) }
+        .map { it.size }
+        .filter { it > 0 }
+    val estimatedItemSize =
+      targetItemSize
+        ?: measuredLevelSizes.takeIf { it.isNotEmpty() }?.let { it.sum() / it.size }
+        ?: (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset) / 4
+    val centeredOffset =
+      centeredItemScrollOffset(
+        viewportStartOffset = layoutInfo.viewportStartOffset,
+        viewportEndOffset = layoutInfo.viewportEndOffset,
+        itemSize = estimatedItemSize,
+      )
+    listState.animateScrollToItem(itemIndex, centeredOffset)
   }
 
   Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -138,9 +141,28 @@ fun LevelListScrollControls(
       Text("↓10", fontWeight = FontWeight.Bold)
     }
     LevelScrollFab(
-      enabled = true,
-      contentDescription = "Scroll to the level after the last attempted level, or end",
-      onClick = { scrollToLevelCentered(targetLevelIndex) },
+      enabled = !isResolvingTarget,
+      contentDescription = "Scroll to the first unattempted level, or end",
+      onClick = {
+        scope.launch {
+          if (isResolvingTarget) return@launch
+          isResolvingTarget = true
+          try {
+            val targetLevelId =
+              currentResolver?.invoke()
+                ?: currentOrderedLevelIds.getOrNull(
+                  firstUnattemptedLevelIndex(currentOrderedLevelIds, attemptedLevelIds)
+                )
+            if (targetLevelId != null) {
+              val targetLevelIndex =
+                snapshotFlow { currentOrderedLevelIds.indexOf(targetLevelId) }.first { it >= 0 }
+              scrollToLevelCentered(targetLevelIndex)
+            }
+          } finally {
+            isResolvingTarget = false
+          }
+        }
+      },
     ) {
       Icon(
         imageVector = Icons.Rounded.Flag,

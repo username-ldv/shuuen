@@ -246,6 +246,9 @@ fun SinglesLevelSelectScreen(
           listState = listState,
           orderedLevelIds = orderedLevelIds,
           attemptedLevelIds = attemptedLevelIds,
+          resolveFirstUnattemptedLevelId =
+              if (showingLocal) null
+              else ({ viewModel.firstUnattemptedCourseLevel(attemptedLevelIds) }),
           firstLevelItemIndex = firstLevelItemIndex,
           modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 8.dp),
       )

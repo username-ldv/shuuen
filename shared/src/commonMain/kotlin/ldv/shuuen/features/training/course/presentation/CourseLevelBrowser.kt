@@ -248,6 +248,31 @@ class CourseLevelBrowser<T : Any>(
     }
   }
 
+  /**
+   * Finds the first level in sequence without a local attempt. Pages are fetched only while every
+   * level currently loaded has already been attempted; the normal page size and endpoint are
+   * reused. If the whole group was attempted, the final level is returned as the fallback target.
+   */
+  suspend fun firstUnattemptedReference(attemptedLevelIds: Set<String>): String? {
+    val requestedGeneration = generation
+    while (requestedGeneration == generation) {
+      val current = _state.value
+      current.levels.firstOrNull { it.reference !in attemptedLevelIds }?.let { return it.reference }
+
+      val allLevelsLoaded = current.levels.size.toLong() >= current.total
+      if (allLevelsLoaded) return current.levels.lastOrNull()?.reference
+      if (current.levelsError != null) return null
+
+      if (!current.isLoadingMore) {
+        if (!current.canLoadMore) return null
+        loadNextPage()
+      }
+      val activePagingJob = pagingJob ?: return null
+      activePagingJob.join()
+    }
+    return null
+  }
+
   fun retryLevels() {
     val current = _state.value
     val selection = current.selection as? CourseSourceSelection.Course ?: return

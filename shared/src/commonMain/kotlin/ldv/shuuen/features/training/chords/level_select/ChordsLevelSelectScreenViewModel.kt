@@ -75,5 +75,7 @@ class ChordsLevelSelectScreenViewModel(
   fun selectCourse(courseId: Long) = courseBrowser.selectCourse(courseId)
   fun selectGroup(groupId: String) = courseBrowser.selectGroup(groupId)
   fun loadNextPage() = courseBrowser.loadNextPage()
+  suspend fun firstUnattemptedCourseLevel(attemptedLevelIds: Set<String>): String? =
+      courseBrowser.firstUnattemptedReference(attemptedLevelIds)
   fun retryCourseLevels() = courseBrowser.retryLevels()
 }

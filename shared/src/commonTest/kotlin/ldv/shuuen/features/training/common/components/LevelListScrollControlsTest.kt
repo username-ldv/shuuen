@@ -7,23 +7,31 @@ class LevelListScrollControlsTest {
   private val levels = listOf("one", "two", "three", "four")
 
   @Test
-  fun progressTargetFollowsTheLastAttemptedLevel() {
-    assertEquals(3, nextLevelAfterLastAttemptedIndex(levels, setOf("one", "three")))
+  fun progressTargetFindsTheFirstGapInSequence() {
+    assertEquals(1, firstUnattemptedLevelIndex(levels, setOf("one", "three")))
   }
 
   @Test
   fun progressTargetStartsAtTheFirstLevelWhenNoneWereAttempted() {
-    assertEquals(0, nextLevelAfterLastAttemptedIndex(levels, emptySet()))
+    assertEquals(0, firstUnattemptedLevelIndex(levels, emptySet()))
   }
 
   @Test
-  fun progressTargetFallsBackToEndWhenTheLastLevelWasAttempted() {
-    assertEquals(3, nextLevelAfterLastAttemptedIndex(levels, setOf("four")))
+  fun progressTargetFallsBackToEndWhenEveryLevelWasAttempted() {
+    assertEquals(3, firstUnattemptedLevelIndex(levels, levels.toSet()))
   }
 
   @Test
   fun progressTargetReturnsNoTargetForAnEmptyList() {
-    assertEquals(-1, nextLevelAfterLastAttemptedIndex(emptyList(), emptySet()))
+    assertEquals(-1, firstUnattemptedLevelIndex(emptyList(), emptySet()))
+  }
+
+  @Test
+  fun laterAttemptDoesNotSkipAnEarlierGap() {
+    val tenLevels = (1..10).map(Int::toString)
+    val attempted = (1..5).map(Int::toString).toSet() + "10"
+
+    assertEquals(5, firstUnattemptedLevelIndex(tenLevels, attempted))
   }
 
   @Test

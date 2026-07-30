@@ -3,6 +3,7 @@ package ldv.shuuen.features.training.course.presentation
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -59,7 +60,50 @@ class CourseLevelBrowserTest {
     assertFalse(state.canLoadMore)
     assertEquals(listOf(0, 20), repository.requestedOffsets)
   }
+
+  @Test
+  fun firstUnattemptedLoadsPastTheInitialPageWhenNeeded() = runTest {
+    val repository = PagingCourseRepository()
+    val browser = melodiesBrowser(repository, this)
+    browser.refreshCourses()
+    advanceUntilIdle()
+    browser.selectCourse(1)
+    advanceUntilIdle()
+    val attempted = (0 until 22).map(::remoteReference).toSet()
+
+    val target = browser.firstUnattemptedReference(attempted)
+
+    assertEquals(remoteReference(22), target)
+    assertEquals(listOf(0, 20), repository.requestedOffsets)
+  }
+
+  @Test
+  fun firstUnattemptedStopsAtAnEarlierGapDespiteALaterAttempt() = runTest {
+    val repository = PagingCourseRepository()
+    val browser = melodiesBrowser(repository, this)
+    browser.refreshCourses()
+    advanceUntilIdle()
+    browser.selectCourse(1)
+    advanceUntilIdle()
+    val attempted = (0 until 5).map(::remoteReference).toSet() + remoteReference(10)
+
+    val target = browser.firstUnattemptedReference(attempted)
+
+    assertEquals(remoteReference(5), target)
+    assertEquals(listOf(0), repository.requestedOffsets)
+  }
 }
+
+private fun melodiesBrowser(repository: CourseRepository, scope: CoroutineScope) =
+  CourseLevelBrowser(
+    mode = TrainingFlow.Melodies,
+    repository = repository,
+    scope = scope,
+    extract = { (it as? PlayableTrainingLevel.Melodies)?.level },
+  )
+
+private fun remoteReference(index: Int): String =
+  LevelReference.Remote(1, TrainingFlow.Melodies, "level-$index").encoded
 
 private class PagingCourseRepository : CourseRepository {
   val requestedOffsets = mutableListOf<Int>()
