@@ -149,7 +149,7 @@ func SeedCTonic(ctx context.Context, db *gorm.DB, catalogConfig config.CatalogCo
 						return &id
 					}(),
 				}
-				if err := upsertCTonicLevel(tx, level); err != nil {
+				if err := upsertSeededLevel(tx, level); err != nil {
 					return err
 				}
 				result.Levels++
@@ -194,29 +194,7 @@ func cTonicDefinition(active map[coursedomain.Pitch]bool, chromatic bool, tempo 
 			},
 			MelodyStyle: steadyQuartersStyle(),
 		},
-		Context: &coursedomain.DegreeContext{
-			ID: "seed-c-tonic-drone", Source: "built_in", Name: &contextName,
-			Nodes: []coursedomain.DegreeContextNode{
-				{
-					FirstDegree:  coursedomain.DegreeWithOctave{Degree: "D1", Octave: 2},
-					ExtraDegrees: []coursedomain.Degree{},
-					Sustain:      coursedomain.Sustain{Type: "endless"},
-					Duration:     coursedomain.ContextDuration{Type: "same_as_scale_rotation"},
-					SetupMelody: &coursedomain.SetupMelody{
-						Melody: coursedomain.RelativeMelody{
-							FirstDegree: coursedomain.DegreeWithOctave{Degree: "D1", Octave: 3},
-							ExtraDegrees: []coursedomain.DirectedDegree{
-								{Degree: "D3", Direction: "Up"},
-								{Degree: "D5", Direction: "Up"},
-								{Degree: "D1", Direction: "Up"},
-							},
-						},
-						Repeat: "Once",
-					},
-					RelativeDirection: "Up",
-				},
-			},
-		},
+		Context: tonicDroneContext("seed-c-tonic-drone", contextName),
 	}
 	if chromatic {
 		definition.Config.ScaleConfig.ScaleType = "Chromatic"
@@ -247,6 +225,32 @@ func steadyQuartersStyle() coursedomain.MelodyStyle {
 		},
 		NoteWeights: coursedomain.NoteWeights{
 			IntervalWeights: []float64{}, DegreeWeights: map[coursedomain.Degree]float64{}, ChordToneBoost: 1,
+		},
+	}
+}
+
+func tonicDroneContext(id string, name string) *coursedomain.DegreeContext {
+	return &coursedomain.DegreeContext{
+		ID: id, Source: "built_in", Name: &name,
+		Nodes: []coursedomain.DegreeContextNode{
+			{
+				FirstDegree:  coursedomain.DegreeWithOctave{Degree: "D1", Octave: 2},
+				ExtraDegrees: []coursedomain.Degree{},
+				Sustain:      coursedomain.Sustain{Type: "endless"},
+				Duration:     coursedomain.ContextDuration{Type: "same_as_scale_rotation"},
+				SetupMelody: &coursedomain.SetupMelody{
+					Melody: coursedomain.RelativeMelody{
+						FirstDegree: coursedomain.DegreeWithOctave{Degree: "D1", Octave: 3},
+						ExtraDegrees: []coursedomain.DirectedDegree{
+							{Degree: "D3", Direction: "Up"},
+							{Degree: "D5", Direction: "Up"},
+							{Degree: "D1", Direction: "Up"},
+						},
+					},
+					Repeat: "Once",
+				},
+				RelativeDirection: "Up",
+			},
 		},
 	}
 }
@@ -415,7 +419,7 @@ func upsertCTonicProgressionGroup(db *gorm.DB, modeID uint, libraryGroupID uint,
 	return progression, nil
 }
 
-func upsertCTonicLevel(db *gorm.DB, level model.CourseLevel) error {
+func upsertSeededLevel(db *gorm.DB, level model.CourseLevel) error {
 	var existing model.CourseLevel
 	err := db.Unscoped().Where("id = ?", level.ID).First(&existing).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {

@@ -40,4 +40,14 @@ func main() {
 		Int("groups", result.Groups).
 		Int("levels", result.Levels).
 		Msg("C tonic course seeded")
+
+	randomResult, err := seed.SeedRandomTonic(ctx, db, cfg.Catalog)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to seed Random tonic course")
+	}
+	log.Info().
+		Uint("course_id", randomResult.CourseID).
+		Int("groups", randomResult.Groups).
+		Int("levels", randomResult.Levels).
+		Msg("Random tonic course seeded")
 }

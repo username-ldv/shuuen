@@ -262,14 +262,18 @@ may instead use `{"type":"local","path":"...","file_name":"..."}`. Local
 paths are therefore never returned by anonymous course reads. Deleting or moving
 a course-level record does not delete or move the referenced MIDI file.
 
-### C tonic test course
+### Generated test courses
 
-Seed the configured database and catalog root with the public `C tonic` test
-course:
+Seed the configured database and catalog root with the public `C tonic` and
+`Random tonic` test courses:
 
 ```bash
 go run ./cmd/seed-c-tonic
 ```
+
+`Random tonic` mirrors the six C-tonic tempo progressions using relative Major
+degree states. Its tonic rotates every five questions, its questions contain
+five-note sequences, and the groups cumulatively add ♯4, ♭2, ♭6, ♭3, and ♭7.
 
 The command is idempotent. It creates one `melodies` mode containing six
 progression tabs and 66 generated-melody levels (60–160 BPM in 10 BPM steps).
