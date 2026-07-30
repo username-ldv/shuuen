@@ -17,6 +17,16 @@ interface TrainingSessionDao {
   @Query("select * from training_sessions where id = :id")
   suspend fun getById(id: String): TrainingSessionDbEntity?
 
+  @Query(
+    """
+    select *
+    from training_sessions
+    order by completedAtEpochMillis desc, id desc
+    limit 1
+    """
+  )
+  fun observeLatest(): Flow<TrainingSessionDbEntity?>
+
   @Query("select * from training_sessions where levelId = :levelId order by completedAtEpochMillis desc")
   suspend fun getByLevelId(levelId: String): List<TrainingSessionDbEntity>
 
@@ -38,6 +48,11 @@ interface TrainingSessionDao {
 
   @Query("select distinct levelId from training_sessions where flow = :flow")
   fun observeAttemptedLevelIds(flow: TrainingFlow): Flow<List<String>>
+
+  @Query(
+    "select distinct levelId from training_sessions where flow = :flow and finishedEarly = 0"
+  )
+  fun observeCompletedLevelIds(flow: TrainingFlow): Flow<List<String>>
 
   @Query(
     """

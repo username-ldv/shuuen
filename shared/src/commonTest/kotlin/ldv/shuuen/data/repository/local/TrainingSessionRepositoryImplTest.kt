@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import ldv.shuuen.data.database.dao.TrainingSessionDao
@@ -12,6 +13,19 @@ import ldv.shuuen.data.database.entity.TrainingSessionDbEntity
 import ldv.shuuen.features.training.common.TrainingFlow
 
 class TrainingSessionRepositoryImplTest {
+  @Test
+  fun exposesTheLatestPersistedSession() = runTest {
+    val dao = RecordingTrainingSessionDao()
+    dao.latestSession = testSessionEntity()
+    val repository = TrainingSessionRepositoryImpl(dao)
+
+    val latest = repository.observeLatestSession().first()
+
+    assertEquals("latest-session", latest?.id)
+    assertEquals("Latest level", latest?.levelName)
+    assertEquals(42, latest?.completedAtEpochMillis)
+  }
+
   @Test
   fun levelStatisticsDeletionKeepsFlowAndLevelIdentity() = runTest {
     val dao = RecordingTrainingSessionDao()
@@ -45,11 +59,14 @@ class TrainingSessionRepositoryImplTest {
 }
 
 private class RecordingTrainingSessionDao : TrainingSessionDao {
+  var latestSession: TrainingSessionDbEntity? = null
   var lastLevelDeletion: Pair<TrainingFlow, String>? = null
   var allLevelDeletion: Pair<TrainingFlow, String>? = null
   var courseReferencePrefix: String? = null
 
   override suspend fun getById(id: String): TrainingSessionDbEntity? = null
+
+  override fun observeLatest(): Flow<TrainingSessionDbEntity?> = flowOf(latestSession)
 
   override suspend fun getByLevelId(levelId: String): List<TrainingSessionDbEntity> = emptyList()
 
@@ -60,6 +77,9 @@ private class RecordingTrainingSessionDao : TrainingSessionDao {
   ): Flow<List<TrainingSessionScoreProjection>> = flowOf(emptyList())
 
   override fun observeAttemptedLevelIds(flow: TrainingFlow): Flow<List<String>> =
+    flowOf(emptyList())
+
+  override fun observeCompletedLevelIds(flow: TrainingFlow): Flow<List<String>> =
     flowOf(emptyList())
 
   override suspend fun deleteLastByLevelId(flow: TrainingFlow, levelId: String) {
@@ -76,3 +96,24 @@ private class RecordingTrainingSessionDao : TrainingSessionDao {
 
   override suspend fun upsertSession(session: TrainingSessionDbEntity) = Unit
 }
+
+private fun testSessionEntity() =
+  TrainingSessionDbEntity(
+    id = "latest-session",
+    flow = TrainingFlow.Singles,
+    levelId = "level",
+    levelName = "Latest level",
+    completedAtEpochMillis = 42,
+    finishedEarly = false,
+    questionsAnswered = 1,
+    notesTotal = 1,
+    correctNotes = 1,
+    missedNotes = 0,
+    replays = 0,
+    durationMillis = 100,
+    avgAnswerMillis = 50,
+    avgDeltaMillis = null,
+    bestStreak = 1,
+    keysPracticed = 1,
+    questionResults = emptyList(),
+  )

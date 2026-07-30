@@ -260,6 +260,8 @@ private class FakeTrainingSessionRepository : TrainingSessionRepository {
   override fun getSessionById(id: String): Flow<ResponseState<TrainingSession>> =
     flowOf(ResponseState.Error(IllegalStateException("not implemented")))
 
+  override fun observeLatestSession(): Flow<TrainingSession?> = flowOf(null)
+
   override fun observeLevelAccuracyStats(
     flow: TrainingFlow,
     levelId: String,
@@ -267,6 +269,8 @@ private class FakeTrainingSessionRepository : TrainingSessionRepository {
   ): Flow<LevelAccuracyStats> = flowOf(LevelAccuracyStats(windowSize = limit))
 
   override fun observeAttemptedLevelIds(flow: TrainingFlow): Flow<Set<String>> = flowOf(emptySet())
+
+  override fun observeCompletedLevelIds(flow: TrainingFlow): Flow<Set<String>> = flowOf(emptySet())
 
   override suspend fun deleteLastLevelSession(flow: TrainingFlow, levelId: String) = Unit
 

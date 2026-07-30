@@ -10,6 +10,9 @@ interface TrainingSessionRepository {
 
   fun getSessionById(id: String): Flow<ResponseState<TrainingSession>>
 
+  /** The most recently finished play across every training flow, or null before the first play. */
+  fun observeLatestSession(): Flow<TrainingSession?>
+
   fun observeLevelAccuracyStats(
     flow: TrainingFlow,
     levelId: String,
@@ -17,6 +20,9 @@ interface TrainingSessionRepository {
   ): Flow<LevelAccuracyStats>
 
   fun observeAttemptedLevelIds(flow: TrainingFlow): Flow<Set<String>>
+
+  /** Level references with at least one session that reached its natural end. */
+  fun observeCompletedLevelIds(flow: TrainingFlow): Flow<Set<String>>
 
   suspend fun deleteLastLevelSession(flow: TrainingFlow, levelId: String)
 

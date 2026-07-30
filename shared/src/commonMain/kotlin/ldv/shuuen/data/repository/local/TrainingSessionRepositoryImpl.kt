@@ -33,6 +33,11 @@ class TrainingSessionRepositoryImpl(
     }
   }
 
+  override fun observeLatestSession(): Flow<TrainingSession?> =
+    trainingSessionDao.observeLatest()
+      .map { it?.toDomain() }
+      .catch { emit(null) }
+
   override fun observeLevelAccuracyStats(
     flow: TrainingFlow,
     levelId: String,
@@ -57,6 +62,11 @@ class TrainingSessionRepositoryImpl(
 
   override fun observeAttemptedLevelIds(flow: TrainingFlow): Flow<Set<String>> =
     trainingSessionDao.observeAttemptedLevelIds(flow)
+      .map { it.toSet() }
+      .catch { emit(emptySet()) }
+
+  override fun observeCompletedLevelIds(flow: TrainingFlow): Flow<Set<String>> =
+    trainingSessionDao.observeCompletedLevelIds(flow)
       .map { it.toSet() }
       .catch { emit(emptySet()) }
 

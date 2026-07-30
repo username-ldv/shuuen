@@ -1,5 +1,11 @@
 package ldv.shuuen.features.main
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -10,11 +16,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.LibraryBooks
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.BarChart
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.ModeNight
@@ -24,7 +33,12 @@ import androidx.compose.material.icons.rounded.Waves
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -35,6 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ldv.shuuen.core.ui.components.BackendStatusBadge
 import ldv.shuuen.core.ui.components.Hairline
 import ldv.shuuen.core.ui.components.LinearTrainingProgress
@@ -44,12 +59,15 @@ import ldv.shuuen.core.ui.components.ShuuenTopAppBarType
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.SurfaceCard
+import ldv.shuuen.features.training.common.TrainingFlow
 import org.jetbrains.compose.resources.painterResource
 import shuuen.shared.generated.resources.Res
 import shuuen.shared.generated.resources.shuuen_main_logo
 
 @Composable
 fun MainMenuScreen(
+  viewModel: MainMenuViewModel,
+  onStartLevel: (TrainingFlow, String) -> Unit,
   onOpenFreePlay: () -> Unit,
   onOpenMelodies: () -> Unit,
   onOpenSingles: () -> Unit,
@@ -57,6 +75,8 @@ fun MainMenuScreen(
   onOpenPitchSlide: () -> Unit,
   onOpenSettings: () -> Unit,
 ) {
+  val state by viewModel.state.collectAsStateWithLifecycle()
+
   StaticScreenFrame(
     topBar = {
       ShuuenTopAppBar(
@@ -95,7 +115,13 @@ fun MainMenuScreen(
       }
     }
 
-    ContinueCard()
+    state.continueCard?.let { continueCard ->
+      ContinueCard(
+        state = continueCard,
+        onContinue = { onStartLevel(continueCard.flow, continueCard.levelReference) },
+        onNext = { nextReference -> onStartLevel(continueCard.flow, nextReference) },
+      )
+    }
 
     ExerciseList(
       onOpenSingles = onOpenSingles,
@@ -117,10 +143,19 @@ fun MainMenuScreen(
 }
 
 @Composable
-private fun ContinueCard() {
-  SurfaceCard(verticalSpacing = Arrangement.spacedBy(10.dp)) {
+private fun ContinueCard(
+  state: ContinueCardState,
+  onContinue: () -> Unit,
+  onNext: (String) -> Unit,
+) {
+  var groupsExpanded by rememberSaveable(state.levelReference) { mutableStateOf(false) }
+  val course = state.course
+  val currentGroup = course?.currentGroup
+  val otherGroups = course?.groups.orEmpty().filterNot { it.id == currentGroup?.id }
+
+  SurfaceCard(verticalSpacing = Arrangement.spacedBy(0.dp)) {
     Row(
-      modifier = Modifier.fillMaxWidth(),
+      modifier = Modifier.fillMaxWidth().clickable(onClick = onContinue),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Column(
@@ -136,29 +171,171 @@ private fun ContinueCard() {
           ),
         )
         Text(
-          text = "Singles — D Major — 20 questions",
+          text = "${state.flow.label} — ${state.levelName}",
           color = ShuuenUi.Text,
           style = MaterialTheme.typography.titleMedium,
           maxLines = 2,
           overflow = TextOverflow.Ellipsis,
         )
+        course?.let {
+          Text(
+            text = it.name,
+            color = ShuuenUi.Muted,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+          )
+        }
       }
       Icon(
         imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-        contentDescription = null,
+        contentDescription = "Continue last played level",
         tint = ShuuenUi.Dim,
         modifier = Modifier.size(28.dp),
       )
     }
-    LinearTrainingProgress(progress = 0.68f)
-    Text(
-      text = "68% complete",
-      color = ShuuenUi.Dim,
-      style = MaterialTheme.typography.bodyMedium,
-      maxLines = 1,
-    )
+
+    when {
+      state.isLoadingCourse ->
+        Text(
+          text = "Loading course progress…",
+          color = ShuuenUi.Dim,
+          style = MaterialTheme.typography.bodyMedium,
+          modifier = Modifier.padding(top = 10.dp),
+        )
+      course != null -> {
+        currentGroup?.let { group ->
+          ProgressBlock(
+            label = group.name,
+            progress = group.progress,
+            modifier = Modifier.padding(top = 10.dp),
+          )
+        }
+
+        if (course.groups.size > 1) {
+          ProgressBlock(
+            label = "Course total",
+            progress = course.total,
+            modifier = Modifier.padding(top = 10.dp),
+          )
+        } else if (currentGroup == null) {
+          ProgressBlock(
+            label = "Course total",
+            progress = course.total,
+            modifier = Modifier.padding(top = 10.dp),
+          )
+        }
+
+        AnimatedVisibility(
+          visible = groupsExpanded && otherGroups.isNotEmpty(),
+          enter = fadeIn(tween(180)) + expandVertically(
+            animationSpec = tween(220),
+            expandFrom = Alignment.Top,
+          ),
+          exit = fadeOut(tween(140)) + shrinkVertically(
+            animationSpec = tween(200),
+            shrinkTowards = Alignment.Top,
+          ),
+        ) {
+          Column(
+            modifier = Modifier.padding(top = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+          ) {
+            Hairline()
+            otherGroups.forEach { group ->
+              ProgressBlock(label = group.name, progress = group.progress, compact = true)
+            }
+          }
+        }
+      }
+      state.isCourseLevel ->
+        Text(
+          text = "Course progress unavailable",
+          color = ShuuenUi.Dim,
+          style = MaterialTheme.typography.bodyMedium,
+          modifier = Modifier.padding(top = 10.dp),
+        )
+      else ->
+        Text(
+          text = "Local level",
+          color = ShuuenUi.Dim,
+          style = MaterialTheme.typography.bodyMedium,
+          modifier = Modifier.padding(top = 10.dp),
+        )
+    }
+
+    if (otherGroups.isNotEmpty() || state.nextLevelReference != null) {
+      Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        if (otherGroups.isNotEmpty()) {
+          TextButton(onClick = { groupsExpanded = !groupsExpanded }) {
+            Text(if (groupsExpanded) "HIDE GROUPS" else "ALL GROUPS")
+            Icon(
+              imageVector = if (groupsExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+              contentDescription = null,
+              modifier = Modifier.size(20.dp),
+            )
+          }
+        }
+        Spacer(Modifier.weight(1f))
+        state.nextLevelReference?.let { nextReference ->
+          TextButton(onClick = { onNext(nextReference) }) {
+            Text("NEXT LEVEL")
+            Icon(
+              imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+              contentDescription = null,
+              modifier = Modifier.size(20.dp),
+            )
+          }
+        }
+      }
+    }
   }
 }
+
+@Composable
+private fun ProgressBlock(
+  label: String,
+  progress: CompletionProgress,
+  modifier: Modifier = Modifier,
+  compact: Boolean = false,
+) {
+  Column(
+    modifier = modifier,
+    verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 8.dp),
+  ) {
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Text(
+        text = label,
+        color = if (compact) ShuuenUi.Muted else ShuuenUi.Text,
+        style = if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.labelLarge,
+        modifier = Modifier.weight(1f),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+      )
+      Text(
+        text = "${progress.percentage}% complete",
+        color = ShuuenUi.Dim,
+        style = MaterialTheme.typography.bodyMedium,
+        maxLines = 1,
+      )
+    }
+    LinearTrainingProgress(progress = progress.fraction)
+  }
+}
+
+private val TrainingFlow.label: String
+  get() = when (this) {
+    TrainingFlow.Singles -> "Singles"
+    TrainingFlow.Melodies -> "Melodies"
+    TrainingFlow.Chords -> "Chords"
+  }
 
 @Composable
 private fun ExerciseList(
