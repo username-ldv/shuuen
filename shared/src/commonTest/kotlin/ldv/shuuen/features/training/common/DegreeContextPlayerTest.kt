@@ -175,6 +175,8 @@ private class FakeMidiEngine : MidiEngine {
 
   override fun setPreset(channel: MidiChannel, preset: Preset): Boolean = true
 
+  override fun setCutoff(channel: MidiChannel, value: Int): Boolean = true
+
   override fun setVolume(channel: MidiChannel, value: Int): Boolean = true
 
   override fun availablePresets(): List<Preset> = emptyList()

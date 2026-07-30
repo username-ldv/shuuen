@@ -17,6 +17,8 @@ object Bass {
     get() = BassConstants.BASS_ATTRIB_BUFFER
   val BASS_ATTRIB_VOL: Int
     get() = BassConstants.BASS_ATTRIB_VOL
+  val BASS_ATTRIB_MIDI_SRC: Int
+    get() = BassConstants.BASS_ATTRIB_MIDI_SRC
   val BASS_STREAM_DECODE: Int
     get() = BassConstants.BASS_STREAM_DECODE
   val BASS_STREAM_PRESCAN: Int
@@ -37,6 +39,8 @@ object Bass {
     get() = BassConstants.MIDI_EVENT_VOLUME
   val MIDI_EVENT_EXPRESSION: Int
     get() = BassConstants.MIDI_EVENT_EXPRESSION
+  val MIDI_EVENT_CUTOFF: Int
+    get() = BassConstants.MIDI_EVENT_CUTOFF
   val MIDI_EVENT_FINETUNE: Int
     get() = BassConstants.MIDI_EVENT_FINETUNE
   val MIDI_EVENT_PITCH: Int
@@ -142,6 +146,7 @@ object Bass {
     preset: Int = 0,
     bank: Int = 0,
     normalizeNoteVelocity: Boolean = true,
+    cutoffOverride: Int? = null,
   ): Boolean =
     BassPlatform.setMidiStreamMelodyFilter(
       streamHandle,
@@ -149,6 +154,7 @@ object Bass {
       preset,
       bank,
       normalizeNoteVelocity,
+      cutoffOverride,
     )
 
   fun loadSoundFont(filePath: String, flags: Int = 0): Int =

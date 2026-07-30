@@ -95,6 +95,7 @@ internal actual object BassPlatform {
     preset: Int,
     bank: Int,
     normalizeNoteVelocity: Boolean,
+    cutoffOverride: Int?,
   ): Boolean {
     if (!enabled) {
       melodyFilters.remove(streamHandle)
@@ -117,6 +118,13 @@ internal actual object BassPlatform {
           BassConstants.MIDI_EVENT_EXPRESSION -> {
             event.param = NormalizedMidiValue
             event.write()
+          }
+
+          BassConstants.MIDI_EVENT_CUTOFF -> {
+            if (cutoffOverride != null) {
+              event.param = cutoffOverride
+              event.write()
+            }
           }
 
           BassConstants.MIDI_EVENT_PROGRAM,

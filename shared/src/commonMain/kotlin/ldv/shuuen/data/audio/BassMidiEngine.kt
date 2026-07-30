@@ -8,6 +8,7 @@ import ldv.shuuen.core.audio.engine.MidiEngine
 import ldv.shuuen.core.audio.engine.MidiEngineStatus
 import ldv.shuuen.core.audio.engine.SoundFontProvider
 import ldv.shuuen.core.audio.midi.MidiChannel
+import ldv.shuuen.core.audio.midi.NeutralPresetCutoff
 import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.audio.midi.scaledChannelVolume
 import ldv.shuuen.core.music.Chord
@@ -39,6 +40,7 @@ class BassMidiEngine(
 
       midiStreamHandle = Bass.createLiveMidiStream(channels = 128)
       require(midiStreamHandle != 0) { "Unable to create MIDI stream: ${Bass.errorCode()}." }
+      enableSincMidiInterpolation(midiStreamHandle)
       Bass.setChannelAttribute(midiStreamHandle, Bass.BASS_ATTRIB_BUFFER, 0f)
       Bass.start(midiStreamHandle)
 
@@ -59,6 +61,11 @@ class BassMidiEngine(
       MidiChannel.entries.forEach { channel ->
         val preset = settings.presets.forChannel(channel)
         setPreset(channel, preset)
+        setCutoff(
+          channel,
+          settings.presetCutoffs.effectiveForPreset(preset, originalVelocityMelody = false)
+            ?: NeutralPresetCutoff,
+        )
         setVolume(
           channel,
           scaledChannelVolume(
@@ -154,6 +161,16 @@ class BassMidiEngine(
       midiStreamHandle,
       channel.id,
       Bass.MIDI_EVENT_VOLUME,
+      value.coerceIn(0, 127),
+    )
+  }
+
+  override fun setCutoff(channel: MidiChannel, value: Int): Boolean {
+    if (midiStreamHandle == 0) return false
+    return Bass.streamEvent(
+      midiStreamHandle,
+      channel.id,
+      Bass.MIDI_EVENT_CUTOFF,
       value.coerceIn(0, 127),
     )
   }

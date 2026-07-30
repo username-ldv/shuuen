@@ -4,6 +4,8 @@ import ldv.shuuen.core.audio.midi.ChannelPresets
 import ldv.shuuen.core.audio.midi.ChannelVolumes
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
+import ldv.shuuen.core.audio.midi.PresetCutoffs
+import ldv.shuuen.core.audio.midi.PresetCutoffScope
 import ldv.shuuen.core.audio.midi.PresetVolumes
 import ldv.shuuen.core.online.BackendStatus
 import ldv.shuuen.core.settings.DefaultLevelStatsWindow
@@ -37,6 +39,7 @@ data class SettingsUiState(
   val presetShuffle: PresetShuffleSettings = PresetShuffleSettings(),
   val selectedVolumes: ChannelVolumes = ChannelVolumes(),
   val presetVolumes: PresetVolumes = PresetVolumes(),
+  val presetCutoffs: PresetCutoffs = PresetCutoffs(),
   val melodyOriginalVolumeBoost: Int = 0,
   /** Volume (0..127) of a melody level's backing track. */
   val backingTrackVolume: Int = 100,
@@ -146,6 +149,21 @@ sealed interface SettingsAction {
   ) : SettingsAction
 
   data class CommitPresetVolume(val preset: Preset, val percent: Int) : SettingsAction
+
+  /** Applied live to the engine while dragging a preset's brightness compensation. */
+  data class SetPresetCutoff(
+    val channel: MidiChannel,
+    val preset: Preset,
+    val cutoff: Int,
+  ) : SettingsAction
+
+  data class CommitPresetCutoff(val preset: Preset, val cutoff: Int) : SettingsAction
+
+  data class SetPresetCutoffScope(
+    val channel: MidiChannel,
+    val preset: Preset,
+    val scope: PresetCutoffScope,
+  ) : SettingsAction
 
   /** Applied live to the engine while dragging, not persisted. */
   data class SetVolume(val channel: MidiChannel, val value: Int) : SettingsAction

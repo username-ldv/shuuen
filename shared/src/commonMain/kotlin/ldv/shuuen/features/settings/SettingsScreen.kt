@@ -197,6 +197,7 @@ fun SettingsScreen(
       soundbanks = state.soundbanks,
       selectedPresets = state.resolvedChoices(channel),
       presetVolumes = state.presetVolumes,
+      presetCutoffs = state.presetCutoffs,
       onTogglePreset = { viewModel.onAction(SettingsAction.TogglePreset(channel, it)) },
       onPreviewPreset = { viewModel.onAction(SettingsAction.PreviewPreset(channel, it)) },
       onPresetVolumeChange = { preset, percent ->
@@ -204,6 +205,15 @@ fun SettingsScreen(
       },
       onPresetVolumeCommit = { preset, percent ->
         viewModel.onAction(SettingsAction.CommitPresetVolume(preset, percent))
+      },
+      onPresetCutoffChange = { preset, cutoff ->
+        viewModel.onAction(SettingsAction.SetPresetCutoff(channel, preset, cutoff))
+      },
+      onPresetCutoffCommit = { preset, cutoff ->
+        viewModel.onAction(SettingsAction.CommitPresetCutoff(preset, cutoff))
+      },
+      onPresetCutoffScopeChange = { preset, scope ->
+        viewModel.onAction(SettingsAction.SetPresetCutoffScope(channel, preset, scope))
       },
       onDismiss = { viewModel.onAction(SettingsAction.ClosePicker) },
     )

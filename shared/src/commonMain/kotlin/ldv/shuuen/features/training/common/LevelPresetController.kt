@@ -5,7 +5,9 @@ import ldv.shuuen.core.audio.engine.MidiEngine
 import ldv.shuuen.core.audio.midi.ChannelPresets
 import ldv.shuuen.core.audio.midi.ChannelVolumes
 import ldv.shuuen.core.audio.midi.MidiChannel
+import ldv.shuuen.core.audio.midi.NeutralPresetCutoff
 import ldv.shuuen.core.audio.midi.Preset
+import ldv.shuuen.core.audio.midi.PresetCutoffs
 import ldv.shuuen.core.audio.midi.PresetVolumes
 import ldv.shuuen.core.audio.midi.scaledChannelVolume
 import ldv.shuuen.core.settings.PresetShuffleSettings
@@ -37,6 +39,7 @@ class LevelPresetController(
   private var chosen: ChannelPresets? = null
   private var volumes: ChannelVolumes = ChannelVolumes()
   private var presetVolumes: PresetVolumes = PresetVolumes()
+  private var presetCutoffs: PresetCutoffs = PresetCutoffs()
 
   /** Starts a session whose notes never sound one at a time (singles, chords). */
   suspend fun begin() = begin { false }
@@ -50,6 +53,7 @@ class LevelPresetController(
     chosen = settings.presets
     volumes = settings.volumes
     presetVolumes = settings.presetVolumes
+    presetCutoffs = settings.presetCutoffs
     val shuffler =
       PresetShuffler(
         presets = settings.presets,
@@ -86,6 +90,11 @@ class LevelPresetController(
   /** Puts [preset] on [channel] at the channel volume its own loudness trim asks for. */
   private fun sound(channel: MidiChannel, preset: Preset) {
     midiEngine.setPreset(channel, preset)
+    midiEngine.setCutoff(
+      channel,
+      presetCutoffs.effectiveForPreset(preset, originalVelocityMelody = false)
+        ?: NeutralPresetCutoff,
+    )
     midiEngine.setVolume(
       channel,
       scaledChannelVolume(volumes.forChannel(channel), presetVolumes.forPreset(preset)),

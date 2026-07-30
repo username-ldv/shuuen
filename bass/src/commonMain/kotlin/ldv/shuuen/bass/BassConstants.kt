@@ -9,6 +9,8 @@ internal expect object BassConstants {
   val BASS_CONFIG_DEV_PERIOD: Int
   val BASS_ATTRIB_BUFFER: Int
   val BASS_ATTRIB_VOL: Int
+  /** BASSMIDI sample interpolation: -1 none, 0 linear, 1 8-point sinc, 2 16-point sinc. */
+  val BASS_ATTRIB_MIDI_SRC: Int
   val BASS_STREAM_DECODE: Int
 
   /** Pre-scan MP3/MP2/MP1 files at stream creation for accurate seeking and length reading. */
@@ -21,6 +23,8 @@ internal expect object BassConstants {
   val MIDI_EVENT_BANK_LSB: Int
   val MIDI_EVENT_VOLUME: Int
   val MIDI_EVENT_EXPRESSION: Int
+  /** MIDI CC74 / BASSMIDI filter-cutoff adjustment (64 is neutral). */
+  val MIDI_EVENT_CUTOFF: Int
   val MIDI_EVENT_FINETUNE: Int
   val MIDI_EVENT_PITCH: Int
   val MIDI_EVENT_PITCHRANGE: Int

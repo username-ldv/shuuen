@@ -85,6 +85,7 @@ internal actual object BassPlatform {
     preset: Int,
     bank: Int,
     normalizeNoteVelocity: Boolean,
+    cutoffOverride: Int?,
   ): Boolean {
     if (!enabled) {
       // The Android Java wrapper crashes in JNI when proc/user are null. The filter belongs to the
@@ -112,6 +113,10 @@ internal actual object BassPlatform {
             BASSMIDI.MIDI_EVENT_VOLUME,
             BASSMIDI.MIDI_EVENT_EXPRESSION -> {
               event.param = NormalizedMidiValue
+            }
+
+            BASSMIDI.MIDI_EVENT_CUTOFF -> {
+              if (cutoffOverride != null) event.param = cutoffOverride
             }
 
             BASSMIDI.MIDI_EVENT_PROGRAM,

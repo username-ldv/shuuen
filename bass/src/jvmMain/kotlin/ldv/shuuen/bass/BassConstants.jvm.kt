@@ -9,6 +9,7 @@ internal actual object BassConstants {
   actual val BASS_CONFIG_DEV_PERIOD: Int = 53
   actual val BASS_ATTRIB_BUFFER: Int = 13
   actual val BASS_ATTRIB_VOL: Int = 2
+  actual val BASS_ATTRIB_MIDI_SRC: Int = 0x12006
   actual val BASS_STREAM_DECODE: Int = 0x200000
   actual val BASS_STREAM_PRESCAN: Int = 0x20000
   actual val BASS_MIDI_DECAYEND: Int = 0x1000
@@ -19,6 +20,7 @@ internal actual object BassConstants {
   actual val MIDI_EVENT_BANK_LSB: Int = 70
   actual val MIDI_EVENT_VOLUME: Int = 12
   actual val MIDI_EVENT_EXPRESSION: Int = 14
+  actual val MIDI_EVENT_CUTOFF: Int = 25
   actual val MIDI_EVENT_FINETUNE: Int = 7
   actual val MIDI_EVENT_PITCH: Int = 4
   actual val MIDI_EVENT_PITCHRANGE: Int = 5

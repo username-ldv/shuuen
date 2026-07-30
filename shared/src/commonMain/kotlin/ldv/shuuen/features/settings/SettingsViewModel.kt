@@ -13,6 +13,7 @@ import ldv.shuuen.core.audio.engine.MidiEngine
 import ldv.shuuen.core.audio.engine.MidiEngineStatus
 import ldv.shuuen.core.audio.input.MidiKeyboardInput
 import ldv.shuuen.core.audio.midi.MidiChannel
+import ldv.shuuen.core.audio.midi.NeutralPresetCutoff
 import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.audio.midi.scaledChannelVolume
 import ldv.shuuen.core.music.Chord
@@ -52,6 +53,7 @@ class SettingsViewModel(
             presetShuffle = settings.presetShuffle,
             selectedVolumes = settings.volumes,
             presetVolumes = settings.presetVolumes,
+            presetCutoffs = settings.presetCutoffs,
             melodyOriginalVolumeBoost = settings.melodyOriginalVolumeBoost,
             backingTrackVolume = settings.backingTrackVolume,
             backingTrackMutesMelody = settings.backingTrackMutesMelody,
@@ -187,6 +189,7 @@ class SettingsViewModel(
         mutableState.update { it.copy(openPickerChannel = null, auditioningPreset = null) }
         channel?.let {
           midiEngine.setPreset(it, mutableState.value.selectedPresets.forChannel(it))
+          applyPresetCutoff(it)
           applyChannelVolume(it)
         }
       }
@@ -216,7 +219,8 @@ class SettingsViewModel(
 
       is SettingsAction.PreviewPreset -> {
         audition(action.channel, action.preset)
-        preview(action.channel)
+        // A medium strike exposes the velocity-dependent filtering this preset setting controls.
+        preview(action.channel, velocity = PresetSettingsPreviewVelocity)
       }
 
       is SettingsAction.SetPresetVolume -> {
@@ -232,6 +236,32 @@ class SettingsViewModel(
         viewModelScope.launch {
           settingsRepository.setPresetVolume(action.preset, action.percent)
         }
+
+      is SettingsAction.SetPresetCutoff -> {
+        // Like trim, cutoff is auditioned on its own preset while the slider moves.
+        audition(action.channel, action.preset)
+        mutableState.update {
+          it.copy(presetCutoffs = it.presetCutoffs.with(action.preset, action.cutoff))
+        }
+        applyPresetCutoff(action.channel, ignoreScope = true)
+      }
+
+      is SettingsAction.CommitPresetCutoff ->
+        viewModelScope.launch {
+          settingsRepository.setPresetCutoff(action.preset, action.cutoff)
+        }
+
+      is SettingsAction.SetPresetCutoffScope -> {
+        audition(action.channel, action.preset)
+        mutableState.update {
+          it.copy(presetCutoffs = it.presetCutoffs.withScope(action.preset, action.scope))
+        }
+        // Preset-setting previews always expose the configured brightness, regardless of scope.
+        applyPresetCutoff(action.channel, ignoreScope = true)
+        viewModelScope.launch {
+          settingsRepository.setPresetCutoffScope(action.preset, action.scope)
+        }
+      }
 
       is SettingsAction.SetVolume -> {
         mutableState.update { it.copy(selectedVolumes = it.selectedVolumes.with(action.channel, action.value)) }
@@ -328,8 +358,24 @@ class SettingsViewModel(
     if (mutableState.value.auditioningPreset?.toPacked() != preset.toPacked()) {
       mutableState.update { it.copy(auditioningPreset = preset) }
       midiEngine.setPreset(channel, preset)
+      applyPresetCutoff(channel, ignoreScope = true)
     }
     applyChannelVolume(channel)
+  }
+
+  /** Applies the active preset's optional brightness compensation, or resets CC74 to neutral. */
+  private fun applyPresetCutoff(channel: MidiChannel, ignoreScope: Boolean = false) {
+    val state = mutableState.value
+    val preset = state.activePreset(channel)
+    midiEngine.setCutoff(
+      channel,
+      if (ignoreScope) {
+        state.presetCutoffs.forPreset(preset) ?: NeutralPresetCutoff
+      } else {
+        state.presetCutoffs.effectiveForPreset(preset, originalVelocityMelody = false)
+          ?: NeutralPresetCutoff
+      },
+    )
   }
 
   /** Sends the channel volume the active preset's trim asks for. */
@@ -363,7 +409,7 @@ class SettingsViewModel(
   }
 
   /** Auditions the channel's current preset with a short phrase. */
-  private fun preview(channel: MidiChannel) {
+  private fun preview(channel: MidiChannel, velocity: Int = 127) {
     if (!mutableState.value.audioReady) return
     previewJob?.cancel()
     previewJob = viewModelScope.launch {
@@ -371,7 +417,7 @@ class SettingsViewModel(
       when {
         channel == MidiChannel.Drone || channel == MidiChannel.Cadence -> {
           val chord = Chord.major(Note(Pitch.random(), octave = (3..4).random()))
-          midiEngine.playChord(chord, channel)
+          midiEngine.playChord(chord, channel, velocity)
           try {
             delay(1200.milliseconds)
           } finally {
@@ -381,7 +427,7 @@ class SettingsViewModel(
 
         else -> {
           val note = Note(Pitch.random(), octave = (2..7).random())
-          midiEngine.playNote(note, channel)
+          midiEngine.playNote(note, channel, velocity)
           try {
             delay(1400.milliseconds)
           } finally {
@@ -394,6 +440,10 @@ class SettingsViewModel(
 
   override fun onCleared() {
     midiEngine.stopAll()
+  }
+
+  private companion object {
+    const val PresetSettingsPreviewVelocity = 80
   }
 }
 

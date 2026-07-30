@@ -49,6 +49,9 @@ interface MidiEngine {
 
   fun setPreset(channel: MidiChannel, preset: Preset): Boolean
 
+  /** Sets MIDI CC74 / BASSMIDI's channel cutoff control (64 is neutral). */
+  fun setCutoff(channel: MidiChannel, value: Int): Boolean
+
   fun setVolume(channel: MidiChannel, value: Int): Boolean
 
   fun availablePresets(): List<Preset>

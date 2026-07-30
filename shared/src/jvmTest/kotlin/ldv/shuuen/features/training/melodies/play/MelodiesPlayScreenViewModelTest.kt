@@ -29,6 +29,7 @@ import ldv.shuuen.core.audio.input.MidiKeyboardEvent
 import ldv.shuuen.core.audio.input.MidiKeyboardInput
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
+import ldv.shuuen.core.audio.midi.PresetCutoffScope
 import ldv.shuuen.core.music.Chord
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.NoteRange
@@ -281,6 +282,10 @@ private class FakeSettingsRepository : SettingsRepository {
 
   override suspend fun setPresetVolume(preset: Preset, percent: Int) = Unit
 
+  override suspend fun setPresetCutoff(preset: Preset, cutoff: Int) = Unit
+
+  override suspend fun setPresetCutoffScope(preset: Preset, scope: PresetCutoffScope) = Unit
+
   override suspend fun setPerNoteShuffleOnImportedMelodies(value: Boolean) = Unit
 
   override suspend fun setVolume(channel: MidiChannel, value: Int) = Unit
@@ -347,6 +352,8 @@ private class FakeMidiEngine : MidiEngine {
   override fun setPitchBend(channel: MidiChannel, semitones: Double): Boolean = true
 
   override fun setPreset(channel: MidiChannel, preset: Preset): Boolean = true
+
+  override fun setCutoff(channel: MidiChannel, value: Int): Boolean = true
 
   override fun setVolume(channel: MidiChannel, value: Int): Boolean = true
 

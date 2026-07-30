@@ -9,8 +9,10 @@ import ldv.shuuen.core.audio.engine.MelodyNote
 import ldv.shuuen.core.audio.engine.MidiFilePlaybackOptions
 import ldv.shuuen.core.audio.engine.MidiFilePlayer
 import ldv.shuuen.core.audio.midi.FullPresetVolume
+import ldv.shuuen.core.audio.midi.NeutralPresetCutoff
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
+import ldv.shuuen.core.audio.midi.PresetCutoffs
 import ldv.shuuen.core.audio.midi.PresetVolumes
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.settings.SettingsRepository
@@ -31,6 +33,9 @@ class BassMidiFilePlayer(
   // both snapshotted at load so a preset swap mid-playback can recompute the gain on its own.
   private var untrimmedMelodyGain: Float = 1f
   private var presetVolumes: PresetVolumes = PresetVolumes()
+  private var presetCutoffs: PresetCutoffs = PresetCutoffs()
+  private var normalizeNoteVelocity: Boolean = true
+  private var cutoffOverrideApplied: Boolean = false
 
   // Backing track: a parallel BASS audio stream linked to the MIDI stream, so both start
   // simultaneously; only its position is managed by hand (see alignBackingTrack).
@@ -59,6 +64,7 @@ class BassMidiFilePlayer(
       }
     Bass.setConfig(Bass.BASS_CONFIG_BUFFER, LiveStreamBufferMs)
     require(handle != 0) { "Unable to create MIDI stream from file: ${Bass.errorCode()}." }
+    enableSincMidiInterpolation(handle)
     if (backing != null && backingStream == 0) {
       Bass.freeStream(handle)
       error("Unable to create the backing track stream: ${Bass.errorCode()}.")
@@ -82,6 +88,11 @@ class BassMidiFilePlayer(
         preset = notesPreset.id,
         bank = notesPreset.bank,
         normalizeNoteVelocity = !options.useOriginalVelocities,
+        cutoffOverride =
+          settings.presetCutoffs.effectiveForPreset(
+            notesPreset,
+            originalVelocityMelody = options.useOriginalVelocities,
+          ),
       ),
     ) {
       "Unable to set MIDI stream filter: ${Bass.errorCode()}."
@@ -114,6 +125,8 @@ class BassMidiFilePlayer(
         )
       }
     presetVolumes = settings.presetVolumes
+    presetCutoffs = settings.presetCutoffs
+    normalizeNoteVelocity = !options.useOriginalVelocities
     require(Bass.setChannelAttribute(handle, Bass.BASS_ATTRIB_VOL, trimmedGain(notesPreset))) {
       "Unable to set MIDI stream volume boost: ${Bass.errorCode()}."
     }
@@ -275,6 +288,9 @@ class BassMidiFilePlayer(
     activePreset = null
     untrimmedMelodyGain = 1f
     presetVolumes = PresetVolumes()
+    presetCutoffs = PresetCutoffs()
+    normalizeNoteVelocity = true
+    cutoffOverrideApplied = false
   }
 
   /** Folds a raw MIDI note number into the supported 88-key piano range by whole octaves. */
@@ -290,7 +306,33 @@ class BassMidiFilePlayer(
 
   private fun applyActivePreset() {
     val preset = activePreset ?: return
-    if (streamHandle != 0) applyPresetToAllChannels(streamHandle, preset)
+    if (streamHandle == 0) return
+    val cutoffOverride =
+      presetCutoffs.effectiveForPreset(
+        preset,
+        originalVelocityMelody = !normalizeNoteVelocity,
+      )
+    // File events can restore CC74 during playback and seeking. Reinstalling the filter makes a
+    // configured preset override those events while allowing the MIDI's authored CC74 otherwise.
+    Bass.setMidiStreamMelodyFilter(
+      streamHandle = streamHandle,
+      enabled = true,
+      preset = preset.id,
+      bank = preset.bank,
+      normalizeNoteVelocity = normalizeNoteVelocity,
+      cutoffOverride = cutoffOverride,
+    )
+    applyPresetToAllChannels(streamHandle, preset)
+    when {
+      cutoffOverride != null -> {
+        applyCutoffToAllChannels(streamHandle, cutoffOverride)
+        cutoffOverrideApplied = true
+      }
+      cutoffOverrideApplied -> {
+        applyCutoffToAllChannels(streamHandle, NeutralPresetCutoff)
+        cutoffOverrideApplied = false
+      }
+    }
   }
 
   private fun seekWithPreset(position: Long, mode: Int) {
@@ -355,6 +397,12 @@ class BassMidiFilePlayer(
       Bass.streamEvent(streamHandle, channel, Bass.MIDI_EVENT_BANK_LSB, DefaultBankLsb)
       Bass.streamEvent(streamHandle, channel, Bass.MIDI_EVENT_BANK, preset.bank)
       Bass.streamEvent(streamHandle, channel, Bass.MIDI_EVENT_PROGRAM, preset.id)
+    }
+  }
+
+  private fun applyCutoffToAllChannels(streamHandle: Int, cutoff: Int) {
+    repeat(MidiFileChannelCount) { channel ->
+      Bass.streamEvent(streamHandle, channel, Bass.MIDI_EVENT_CUTOFF, cutoff)
     }
   }
 

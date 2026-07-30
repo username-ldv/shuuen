@@ -30,6 +30,7 @@ internal expect object BassPlatform {
     preset: Int,
     bank: Int,
     normalizeNoteVelocity: Boolean,
+    cutoffOverride: Int?,
   ): Boolean
   fun loadSoundFont(filePath: String, flags: Int): Int
   fun setStreamSoundFont(streamHandle: Int, soundFontHandle: Int, preset: Int, bank: Int): Boolean

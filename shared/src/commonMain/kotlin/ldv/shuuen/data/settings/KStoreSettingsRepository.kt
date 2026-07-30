@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.io.files.Path
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
+import ldv.shuuen.core.audio.midi.PresetCutoffScope
 import ldv.shuuen.core.settings.AppSettings
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.PresetShuffleMode
@@ -35,6 +36,14 @@ class KStoreSettingsRepository(
 
   override suspend fun setPresetVolume(preset: Preset, percent: Int) {
     store.update { it?.copy(presetVolumes = it.presetVolumes.with(preset, percent)) }
+  }
+
+  override suspend fun setPresetCutoff(preset: Preset, cutoff: Int) {
+    store.update { it?.copy(presetCutoffs = it.presetCutoffs.with(preset, cutoff)) }
+  }
+
+  override suspend fun setPresetCutoffScope(preset: Preset, scope: PresetCutoffScope) {
+    store.update { it?.copy(presetCutoffs = it.presetCutoffs.withScope(preset, scope)) }
   }
 
   override suspend fun setPerNoteShuffleOnImportedMelodies(value: Boolean) {

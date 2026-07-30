@@ -7,6 +7,8 @@ import ldv.shuuen.core.audio.midi.ChannelPresets
 import ldv.shuuen.core.audio.midi.ChannelVolumes
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
+import ldv.shuuen.core.audio.midi.PresetCutoffScope
+import ldv.shuuen.core.audio.midi.PresetCutoffs
 import ldv.shuuen.core.audio.midi.PresetVolumes
 
 interface SettingsRepository {
@@ -24,6 +26,11 @@ interface SettingsRepository {
 
   /** Trims [preset] to [percent] (0..100) of whatever channel volume it plays at. */
   suspend fun setPresetVolume(preset: Preset, percent: Int)
+
+  /** Sets a per-preset CC74 brightness override; 64 removes the override. */
+  suspend fun setPresetCutoff(preset: Preset, cutoff: Int)
+
+  suspend fun setPresetCutoffScope(preset: Preset, scope: PresetCutoffScope)
 
   suspend fun setPerNoteShuffleOnImportedMelodies(value: Boolean)
 
@@ -80,6 +87,8 @@ data class AppSettings(
   val volumes: ChannelVolumes = ChannelVolumes(),
   /** Per-instrument loudness trims, scaling whatever channel volume the preset plays at. */
   val presetVolumes: PresetVolumes = PresetVolumes(),
+  /** Optional per-instrument CC74 compensation for velocity-dependent SoundFont filtering. */
+  val presetCutoffs: PresetCutoffs = PresetCutoffs(),
   @SerialName("melodyOriginalVelocityBoost")
   val melodyOriginalVolumeBoost: Int = 0,
   val inputMethod: InputMethod = InputMethod(),
