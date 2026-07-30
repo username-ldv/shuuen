@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- The backend URL is user-configurable and may be an HTTP server on the local network. -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
