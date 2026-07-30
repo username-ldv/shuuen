@@ -1,25 +1,51 @@
 package ldv.shuuen.data.remote
 
 import io.ktor.client.HttpClient
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNamingStrategy
 
-data class ApiConfig(val baseUrl: String) {
-  init {
-    require(baseUrl.startsWith("http://") || baseUrl.startsWith("https://")) {
-      "The API base URL must use HTTP or HTTPS."
-    }
-  }
+class ApiConfig(
+  defaultBaseUrl: String,
+  configuredBaseUrl: Flow<String?> = flowOf(null),
+) {
+  val normalizedDefaultBaseUrl: String =
+    requireNotNull(normalizeBackendUrl(defaultBaseUrl)) { "The default backend URL is blank." }
 
-  val normalizedBaseUrl: String = baseUrl.trimEnd('/')
+  val baseUrl: Flow<String> = configuredBaseUrl
+    .map(::effectiveBaseUrl)
+    .distinctUntilChanged()
 
-  fun resolve(pathOrUrl: String): String =
+  fun effectiveBaseUrl(configured: String?): String =
+    normalizeBackendUrl(configured) ?: normalizedDefaultBaseUrl
+
+  suspend fun currentBaseUrl(): String = baseUrl.first()
+
+  suspend fun resolve(pathOrUrl: String): String =
     if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
       pathOrUrl
     } else {
-      "$normalizedBaseUrl/${pathOrUrl.trimStart('/')}"
+      "${currentBaseUrl()}/${pathOrUrl.trimStart('/')}"
     }
+}
+
+/** Trims a user-entered base URL, or returns null when the platform default should be used. */
+fun normalizeBackendUrl(value: String?): String? {
+  val normalized = value?.trim()?.trimEnd('/').orEmpty()
+  if (normalized.isEmpty()) return null
+  require(normalized.startsWith("http://") || normalized.startsWith("https://")) {
+    "Enter a URL beginning with http:// or https://."
+  }
+  val authority = normalized.substringAfter("://").substringBefore('/')
+  require(authority.isNotBlank() && authority.none(Char::isWhitespace)) {
+    "Enter a valid backend URL."
+  }
+  return normalized
 }
 
 @OptIn(ExperimentalSerializationApi::class)

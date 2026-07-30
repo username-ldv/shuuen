@@ -19,7 +19,7 @@ internal class CourseApi(
 ) {
   suspend fun listCourses(limit: Int, offset: Int): PageEnvelopeDto<CourseDto> =
     client.get {
-      url(config.normalizedBaseUrl)
+      url(config.currentBaseUrl())
       url {
         appendPathSegments("api", "v1", "courses")
         parameters.append("limit", limit.toString())
@@ -29,13 +29,13 @@ internal class CourseApi(
 
   suspend fun getCourse(courseId: Long): DataEnvelopeDto<CourseDto> =
     client.get {
-      url(config.normalizedBaseUrl)
+      url(config.currentBaseUrl())
       url { appendPathSegments("api", "v1", "courses", courseId.toString()) }
     }.body()
 
   suspend fun getCourseMode(courseId: Long, mode: TrainingFlow): DataEnvelopeDto<CourseModeDto> =
     client.get {
-      url(config.normalizedBaseUrl)
+      url(config.currentBaseUrl())
       url { appendPathSegments("api", "v1", "courses", courseId.toString(), mode.apiName) }
     }.body()
 
@@ -47,7 +47,7 @@ internal class CourseApi(
     offset: Int,
   ): PageEnvelopeDto<CourseLevelDto> =
     client.get {
-      url(config.normalizedBaseUrl)
+      url(config.currentBaseUrl())
       url {
         appendPathSegments("api", "v1", "courses", courseId.toString(), mode.apiName, "levels")
         parameters.append("group_id", groupId)
@@ -62,7 +62,7 @@ internal class CourseApi(
     levelId: String,
   ): DataEnvelopeDto<CourseLevelDto> =
     client.get {
-      url(config.normalizedBaseUrl)
+      url(config.currentBaseUrl())
       url {
         appendPathSegments(
           "api",
@@ -82,7 +82,7 @@ internal class CourseApi(
     levelIds: List<String>,
   ): DataEnvelopeDto<List<CourseLevelDto>> =
     client.post {
-      url(config.normalizedBaseUrl)
+      url(config.currentBaseUrl())
       url {
         appendPathSegments(
           "api",

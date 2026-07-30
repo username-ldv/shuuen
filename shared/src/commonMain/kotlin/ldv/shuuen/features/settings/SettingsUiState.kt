@@ -5,6 +5,7 @@ import ldv.shuuen.core.audio.midi.ChannelVolumes
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.audio.midi.PresetVolumes
+import ldv.shuuen.core.online.BackendStatus
 import ldv.shuuen.core.settings.DefaultLevelStatsWindow
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.MusicLabelSettings
@@ -21,6 +22,13 @@ data class Soundbank(
 }
 
 data class SettingsUiState(
+  /** Persisted override; blank means to use [defaultBackendUrl]. */
+  val backendUrl: String = "",
+  val defaultBackendUrl: String = "",
+  val backendStatus: BackendStatus = BackendStatus.Checking,
+  val backendUrlDialogOpen: Boolean = false,
+  val backendUrlDraft: String = "",
+  val backendUrlError: String? = null,
   val loadingPresets: Boolean = true,
   val audioReady: Boolean = false,
   val errorMessage: String? = null,
@@ -54,6 +62,9 @@ data class SettingsUiState(
   val openShuffleChannel: MidiChannel? = null,
   val openLabelEditor: LabelEditor? = null,
 ) {
+  val effectiveBackendUrl: String
+    get() = backendUrl.ifBlank { defaultBackendUrl }
+
   /** The preset [channel] is currently sounding: an audition in the open sheet, else its base. */
   fun activePreset(channel: MidiChannel): Preset =
     auditioningPreset?.takeIf { openPickerChannel == channel } ?: selectedPresets.forChannel(channel)
@@ -77,6 +88,14 @@ enum class LabelEditor {
 }
 
 sealed interface SettingsAction {
+  data object OpenBackendUrlDialog : SettingsAction
+
+  data object CloseBackendUrlDialog : SettingsAction
+
+  data class SetBackendUrlDraft(val value: String) : SettingsAction
+
+  data object SaveBackendUrl : SettingsAction
+
   data class SelectInputMethod(val inputMethod: InputMethod) : SettingsAction
 
   data class SetTheme(val theme: ThemeSettings) : SettingsAction

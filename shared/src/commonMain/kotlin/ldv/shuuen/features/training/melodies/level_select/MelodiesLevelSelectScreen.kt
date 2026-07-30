@@ -175,8 +175,6 @@ fun MelodiesLevelSelectScreen(
       item {
         CourseDiscoveryMessage(
           isLoading = courseState.isDiscoveringCourses,
-          error = courseState.courseDiscoveryError,
-          onRetry = viewModel::refreshCourses,
         )
       }
       if (showingLocal) {

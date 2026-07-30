@@ -19,16 +19,23 @@ import ldv.shuuen.core.music.Chord
 import ldv.shuuen.core.music.MusicLabelDefaults
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.Pitch
+import ldv.shuuen.core.online.BackendStatusMonitor
 import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.core.settings.coerceLevelStatsWindow
+import ldv.shuuen.data.remote.ApiConfig
+import ldv.shuuen.data.remote.normalizeBackendUrl
 import kotlin.time.Duration.Companion.milliseconds
 
 class SettingsViewModel(
     private val midiEngine: MidiEngine,
     private val settingsRepository: SettingsRepository,
     midiKeyboardInput: MidiKeyboardInput,
+    private val apiConfig: ApiConfig,
+    private val backendStatusMonitor: BackendStatusMonitor,
 ) : ViewModel() {
-  private val mutableState = MutableStateFlow(SettingsUiState())
+  private val mutableState = MutableStateFlow(
+    SettingsUiState(defaultBackendUrl = apiConfig.normalizedDefaultBaseUrl)
+  )
   val state: StateFlow<SettingsUiState> = mutableState.asStateFlow()
 
   private var previewJob: Job? = null
@@ -38,6 +45,9 @@ class SettingsViewModel(
       settingsRepository.settings.collect { settings ->
         mutableState.update {
           it.copy(
+            backendUrl = settings.backendUrl.orEmpty(),
+            backendUrlDraft =
+              if (it.backendUrlDialogOpen) it.backendUrlDraft else settings.backendUrl.orEmpty(),
             selectedPresets = settings.presets,
             presetShuffle = settings.presetShuffle,
             selectedVolumes = settings.volumes,
@@ -53,6 +63,11 @@ class SettingsViewModel(
             musicLabels = settings.musicLabels,
           )
         }
+      }
+    }
+    viewModelScope.launch {
+      backendStatusMonitor.status.collect { status ->
+        mutableState.update { it.copy(backendStatus = status) }
       }
     }
     viewModelScope.launch {
@@ -89,6 +104,28 @@ class SettingsViewModel(
 
   fun onAction(action: SettingsAction) {
     when (action) {
+      SettingsAction.OpenBackendUrlDialog -> {
+        mutableState.update {
+          it.copy(
+            backendUrlDialogOpen = true,
+            backendUrlDraft = it.backendUrl,
+            backendUrlError = null,
+          )
+        }
+      }
+
+      SettingsAction.CloseBackendUrlDialog -> {
+        mutableState.update { it.copy(backendUrlDialogOpen = false, backendUrlError = null) }
+      }
+
+      is SettingsAction.SetBackendUrlDraft -> {
+        mutableState.update {
+          it.copy(backendUrlDraft = action.value, backendUrlError = null)
+        }
+      }
+
+      SettingsAction.SaveBackendUrl -> saveBackendUrl()
+
       is SettingsAction.SelectInputMethod -> {
         viewModelScope.launch { settingsRepository.setInputMethod(action.inputMethod) }
       }
@@ -215,6 +252,29 @@ class SettingsViewModel(
 
       is SettingsAction.SetBackingTrackMutesMelody ->
         viewModelScope.launch { settingsRepository.setBackingTrackMutesMelody(action.value) }
+    }
+  }
+
+  private fun saveBackendUrl() {
+    val normalized =
+      try {
+        normalizeBackendUrl(mutableState.value.backendUrlDraft)
+      } catch (error: IllegalArgumentException) {
+        mutableState.update { it.copy(backendUrlError = error.message) }
+        return
+      }
+
+    mutableState.update {
+      it.copy(
+        backendUrl = normalized.orEmpty(),
+        backendUrlDraft = normalized.orEmpty(),
+        backendUrlDialogOpen = false,
+        backendUrlError = null,
+      )
+    }
+    viewModelScope.launch {
+      settingsRepository.setBackendUrl(normalized)
+      backendStatusMonitor.refresh()
     }
   }
 

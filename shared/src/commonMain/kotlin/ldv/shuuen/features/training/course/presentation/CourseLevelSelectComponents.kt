@@ -265,26 +265,15 @@ fun CourseSectionDivider(sections: List<CourseSection>, modifier: Modifier = Mod
 @Composable
 fun CourseDiscoveryMessage(
   isLoading: Boolean,
-  error: String?,
-  onRetry: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  when {
-    error != null ->
-      InlineCourseMessage(
-        message = "Public courses unavailable: $error",
-        action = "RETRY",
-        onAction = onRetry,
-        isError = true,
-        modifier = modifier,
-      )
-    isLoading ->
-      Text(
-        "Loading public courses…",
-        color = ShuuenUi.Muted,
-        style = MaterialTheme.typography.bodyMedium,
-        modifier = modifier,
-      )
+  if (isLoading) {
+    Text(
+      "Loading public courses…",
+      color = ShuuenUi.Muted,
+      style = MaterialTheme.typography.bodyMedium,
+      modifier = modifier,
+    )
   }
 }
 

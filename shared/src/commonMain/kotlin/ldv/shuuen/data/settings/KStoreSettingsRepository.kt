@@ -20,6 +20,10 @@ class KStoreSettingsRepository(
   val store = storeOf(file = Path(path, "settings.json"), default = AppSettings())
   override val settings: Flow<AppSettings> = store.updates.map { it ?: AppSettings() }
 
+  override suspend fun setBackendUrl(url: String?) {
+    store.update { it?.copy(backendUrl = url) }
+  }
+
   override suspend fun setPresetChoices(channel: MidiChannel, presets: List<Preset>) {
     if (presets.isEmpty()) return
     store.update { it?.copy(presets = it.presets.withChoices(channel, presets)) }

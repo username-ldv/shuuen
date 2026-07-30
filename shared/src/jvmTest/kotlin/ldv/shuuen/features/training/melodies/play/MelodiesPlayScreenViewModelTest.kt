@@ -271,6 +271,8 @@ private class FakeTrainingSessionRepository : TrainingSessionRepository {
 private class FakeSettingsRepository : SettingsRepository {
   override val settings: Flow<AppSettings> = MutableStateFlow(AppSettings())
 
+  override suspend fun setBackendUrl(url: String?) = Unit
+
   override suspend fun setSoundFontPath(path: String?) = Unit
 
   override suspend fun setPresetChoices(channel: MidiChannel, presets: List<Preset>) = Unit

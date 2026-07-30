@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Article
 import androidx.compose.material.icons.automirrored.rounded.VolumeDown
@@ -36,11 +37,14 @@ import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Waves
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,6 +57,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -71,6 +76,8 @@ import ldv.shuuen.core.settings.PresetShuffleMode
 import ldv.shuuen.core.settings.ThemeAppearance
 import ldv.shuuen.core.settings.ThemeSettings
 import ldv.shuuen.core.settings.ThemeStyle
+import ldv.shuuen.core.ui.components.BackendStatusBadge
+import ldv.shuuen.core.ui.components.BackendStatusIcon
 import ldv.shuuen.core.ui.components.FlatSection
 import ldv.shuuen.core.ui.components.Hairline
 import ldv.shuuen.core.ui.components.IconBubble
@@ -82,6 +89,7 @@ import ldv.shuuen.core.ui.components.ShuuenTopAppBarType
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.SoftControl
 import ldv.shuuen.core.ui.components.StaticScreenFrame
+import ldv.shuuen.core.ui.components.label
 
 @Composable
 fun SettingsScreen(
@@ -97,7 +105,10 @@ fun SettingsScreen(
         title = "SETTINGS",
         onBack = onNavigateBack,
         trailingIcon = Icons.Rounded.Tune,
-        statusContent = { MidiKeyboardBadge() },
+        statusContent = {
+          BackendStatusBadge()
+          MidiKeyboardBadge()
+        },
         type = ShuuenTopAppBarType.Simple
       )
     },
@@ -136,6 +147,7 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(26.dp),
           ) {
             SoundfontSection(state = state, onAction = viewModel::onAction)
+            OnlineSection(state = state, onAction = viewModel::onAction)
           }
         }
       } else {
@@ -149,6 +161,8 @@ fun SettingsScreen(
           )
           Hairline()
           MidiKeyboardSection(state = state, onAction = viewModel::onAction)
+          Hairline()
+          OnlineSection(state = state, onAction = viewModel::onAction)
           Hairline()
           SoundfontSection(state = state, onAction = viewModel::onAction)
           Hairline()
@@ -245,6 +259,104 @@ fun SettingsScreen(
       onDismiss = { viewModel.onAction(SettingsAction.CloseLabelEditor) },
     )
   }
+
+  if (state.backendUrlDialogOpen) {
+    BackendUrlDialog(state = state, onAction = viewModel::onAction)
+  }
+}
+
+@Composable
+private fun OnlineSection(
+  state: SettingsUiState,
+  onAction: (SettingsAction) -> Unit,
+) {
+  FlatSection(label = "ONLINE") {
+    Row(
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .clip(ShuuenUi.ControlShape)
+          .clickable { onAction(SettingsAction.OpenBackendUrlDialog) }
+          .padding(vertical = 6.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+      BackendStatusIcon(state.backendStatus, size = 22.dp)
+      Column(modifier = Modifier.weight(1f)) {
+        Text(
+          text = "Backend",
+          color = ShuuenUi.Text,
+          style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+          text = state.effectiveBackendUrl,
+          color = ShuuenUi.Dim,
+          style = MaterialTheme.typography.bodySmall,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+      }
+      Text(
+        text = state.backendStatus.label().uppercase(),
+        color = if (state.backendStatus == ldv.shuuen.core.online.BackendStatus.Available) {
+          ShuuenUi.Correct
+        } else {
+          ShuuenUi.Dim
+        },
+        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = ShuuenUi.labelSpacing),
+      )
+      Icon(
+        Icons.Rounded.ChevronRight,
+        contentDescription = "Edit backend URL",
+        tint = ShuuenUi.Dim,
+        modifier = Modifier.size(24.dp),
+      )
+    }
+  }
+}
+
+@Composable
+private fun BackendUrlDialog(
+  state: SettingsUiState,
+  onAction: (SettingsAction) -> Unit,
+) {
+  AlertDialog(
+    onDismissRequest = { onAction(SettingsAction.CloseBackendUrlDialog) },
+    icon = { BackendStatusIcon(state.backendStatus, size = 28.dp) },
+    title = { Text("Backend URL") },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(
+          value = state.backendUrlDraft,
+          onValueChange = { onAction(SettingsAction.SetBackendUrlDraft(it)) },
+          modifier = Modifier.fillMaxWidth(),
+          label = { Text("URL") },
+          placeholder = { Text(state.defaultBackendUrl) },
+          trailingIcon = { BackendStatusIcon(state.backendStatus) },
+          supportingText = {
+            Text(
+              state.backendUrlError
+                ?: "Leave blank to use the platform default: ${state.defaultBackendUrl}",
+            )
+          },
+          isError = state.backendUrlError != null,
+          singleLine = true,
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+        )
+        Text(
+          text = "Backend status: ${state.backendStatus.label().lowercase()}",
+          color = ShuuenUi.Muted,
+          style = MaterialTheme.typography.bodySmall,
+        )
+      }
+    },
+    confirmButton = {
+      TextButton(onClick = { onAction(SettingsAction.SaveBackendUrl) }) { Text("SAVE") }
+    },
+    dismissButton = {
+      TextButton(onClick = { onAction(SettingsAction.CloseBackendUrlDialog) }) { Text("CANCEL") }
+    },
+  )
 }
 
 @Composable

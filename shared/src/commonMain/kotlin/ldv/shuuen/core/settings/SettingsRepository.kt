@@ -12,6 +12,9 @@ import ldv.shuuen.core.audio.midi.PresetVolumes
 interface SettingsRepository {
   val settings: Flow<AppSettings>
 
+  /** Overrides the platform backend URL; null restores the platform default. */
+  suspend fun setBackendUrl(url: String?)
+
   suspend fun setSoundFontPath(path: String?)
 
   /** Replaces the presets chosen for [channel]; an empty list is ignored. */
@@ -68,6 +71,8 @@ data class MusicLabelSettings(
 
 @Serializable
 data class AppSettings(
+  /** Custom API base URL. Null keeps the platform/environment-provided default. */
+  val backendUrl: String? = null,
   val soundFontPath: String? = null,
   val presets: ChannelPresets = ChannelPresets(),
   /** How each channel re-rolls among its chosen presets while a level runs. */
