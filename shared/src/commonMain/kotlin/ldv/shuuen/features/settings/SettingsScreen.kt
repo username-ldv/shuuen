@@ -97,6 +97,7 @@ fun SettingsScreen(
   onNavigateBack: () -> Unit,
 ) {
   val state by viewModel.state.collectAsStateWithLifecycle()
+  LaunchedEffect(Unit) { viewModel.refreshBackendStatus() }
 
   StaticScreenFrame(
     maxWidth = 920.dp,

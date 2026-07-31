@@ -7,6 +7,7 @@ import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.CloudDone
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -19,10 +20,22 @@ import org.koin.compose.koinInject
 
 /** App-bar indicator for the optional backend. Unlike the MIDI badge, it remains visible offline. */
 @Composable
-fun BackendStatusBadge(modifier: Modifier = Modifier) {
+fun BackendStatusBadge(
+  modifier: Modifier = Modifier,
+  onClick: (() -> Unit)? = null,
+) {
   val monitor = koinInject<BackendStatusMonitor>()
   val status by monitor.status.collectAsStateWithLifecycle()
-  BackendStatusIcon(status, modifier.padding(end = 10.dp))
+  if (onClick == null) {
+    BackendStatusIcon(status, modifier.padding(end = 10.dp))
+  } else {
+    IconButton(
+      onClick = onClick,
+      modifier = modifier,
+    ) {
+      BackendStatusIcon(status)
+    }
+  }
 }
 
 @Composable

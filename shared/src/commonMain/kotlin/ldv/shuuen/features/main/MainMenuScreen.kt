@@ -35,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -74,8 +75,10 @@ fun MainMenuScreen(
   onOpenChords: () -> Unit,
   onOpenPitchSlide: () -> Unit,
   onOpenSettings: () -> Unit,
+  onRefreshBackend: () -> Unit,
 ) {
   val state by viewModel.state.collectAsStateWithLifecycle()
+  LaunchedEffect(Unit) { onRefreshBackend() }
 
   StaticScreenFrame(
     topBar = {
@@ -83,7 +86,7 @@ fun MainMenuScreen(
         trailingIcon = Icons.Rounded.Settings,
         onTrailingClick = onOpenSettings,
         statusContent = {
-          BackendStatusBadge()
+          BackendStatusBadge(onClick = onRefreshBackend)
           MidiKeyboardBadge()
         },
         type = ShuuenTopAppBarType.Simple

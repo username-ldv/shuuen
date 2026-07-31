@@ -2,7 +2,9 @@ package ldv.shuuen.features.main
 
 import ldv.shuuen.app.navigation.AppRoute
 import ldv.shuuen.app.navigation.LocalAppNavigator
+import ldv.shuuen.core.online.BackendStatusMonitor
 import ldv.shuuen.features.training.common.TrainingFlow
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.annotation.KoinExperimentalAPI
 import org.koin.dsl.module
@@ -15,6 +17,7 @@ val mainMenuNavigationModule = module {
 
   navigation<AppRoute.MainMenu> {
     val navigator = LocalAppNavigator.current
+    val backendStatusMonitor = koinInject<BackendStatusMonitor>()
     MainMenuScreen(
         viewModel = koinViewModel(),
         onStartLevel = { flow, levelReference ->
@@ -32,6 +35,7 @@ val mainMenuNavigationModule = module {
         onOpenChords = { navigator.add(AppRoute.ChordsLevelSelect) },
         onOpenPitchSlide = { navigator.add(AppRoute.PitchSlide) },
         onOpenSettings = { navigator.add(AppRoute.Settings) },
+        onRefreshBackend = backendStatusMonitor::refresh,
     )
   }
 }

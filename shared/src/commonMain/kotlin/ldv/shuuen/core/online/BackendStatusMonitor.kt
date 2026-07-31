@@ -11,6 +11,6 @@ enum class BackendStatus {
 interface BackendStatusMonitor {
   val status: StateFlow<BackendStatus>
 
-  /** Requests an immediate check, for example after saving the same URL again. */
+  /** Runs a single availability check against the currently configured backend URL. */
   fun refresh()
 }

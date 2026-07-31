@@ -285,6 +285,10 @@ class SettingsViewModel(
     }
   }
 
+  fun refreshBackendStatus() {
+    backendStatusMonitor.refresh()
+  }
+
   private fun saveBackendUrl() {
     val normalized =
       try {

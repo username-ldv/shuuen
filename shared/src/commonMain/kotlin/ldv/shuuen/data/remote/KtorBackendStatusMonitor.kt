@@ -8,18 +8,13 @@ import io.ktor.http.appendPathSegments
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.withTimeoutOrNull
 import ldv.shuuen.core.online.BackendStatus
 import ldv.shuuen.core.online.BackendStatusMonitor
 
@@ -30,22 +25,14 @@ internal class KtorBackendStatusMonitor(
 ) : BackendStatusMonitor {
   private val mutableStatus = MutableStateFlow(BackendStatus.Checking)
   override val status = mutableStatus.asStateFlow()
-  private val refreshRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-
-  init {
-    scope.launch {
-      config.baseUrl.collectLatest { baseUrl ->
-        mutableStatus.value = BackendStatus.Checking
-        while (currentCoroutineContext().isActive) {
-          mutableStatus.value = check(baseUrl)
-          withTimeoutOrNull(CheckIntervalMillis) { refreshRequests.first() }
-        }
-      }
-    }
-  }
+  private var checkJob: Job? = null
 
   override fun refresh() {
-    refreshRequests.tryEmit(Unit)
+    checkJob?.cancel()
+    checkJob = scope.launch {
+      mutableStatus.value = BackendStatus.Checking
+      mutableStatus.value = check(config.currentBaseUrl())
+    }
   }
 
   private suspend fun check(baseUrl: String): BackendStatus =
@@ -71,6 +58,5 @@ internal class KtorBackendStatusMonitor(
 
   private companion object {
     const val CheckTimeoutMillis = 3_000L
-    const val CheckIntervalMillis = 10_000L
   }
 }
