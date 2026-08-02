@@ -1,5 +1,6 @@
 package ldv.shuuen.app.di
 
+import ldv.shuuen.features.auth.loginNavigationModule
 import ldv.shuuen.features.settings.settingsNavigationModule
 import ldv.shuuen.features.context.contextNavigationModule
 import ldv.shuuen.features.free_play.freePlayNavigationModule
@@ -21,6 +22,7 @@ val navigationModule = module {
       freePlayNavigationModule,
       pitchSlideNavigationModule,
       settingsNavigationModule,
+      loginNavigationModule,
       contextNavigationModule,
       singlesTrainingNavigationModule,
       melodiesTrainingNavigationModule,

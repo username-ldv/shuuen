@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ldv.shuuen.core.ui.components.AccountBadge
 import ldv.shuuen.core.ui.components.BackendStatusBadge
 import ldv.shuuen.core.ui.components.Hairline
 import ldv.shuuen.core.ui.components.LinearTrainingProgress
@@ -75,6 +76,7 @@ fun MainMenuScreen(
   onOpenChords: () -> Unit,
   onOpenPitchSlide: () -> Unit,
   onOpenSettings: () -> Unit,
+  onOpenAccount: () -> Unit,
   onRefreshBackend: () -> Unit,
 ) {
   val state by viewModel.state.collectAsStateWithLifecycle()
@@ -87,6 +89,7 @@ fun MainMenuScreen(
         onTrailingClick = onOpenSettings,
         statusContent = {
           BackendStatusBadge(onClick = onRefreshBackend)
+          AccountBadge(onClick = onOpenAccount)
           MidiKeyboardBadge()
         },
         type = ShuuenTopAppBarType.Simple

@@ -35,6 +35,7 @@ val mainMenuNavigationModule = module {
         onOpenChords = { navigator.add(AppRoute.ChordsLevelSelect) },
         onOpenPitchSlide = { navigator.add(AppRoute.PitchSlide) },
         onOpenSettings = { navigator.add(AppRoute.Settings) },
+        onOpenAccount = { navigator.add(AppRoute.Login) },
         onRefreshBackend = backendStatusMonitor::refresh,
     )
   }

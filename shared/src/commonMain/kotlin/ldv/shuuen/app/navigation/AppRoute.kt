@@ -15,6 +15,9 @@ sealed interface AppRoute : NavKey {
 
   @Serializable data object Settings : AppRoute
 
+  /** The optional backend account: sign in, or review and drop the current session. */
+  @Serializable data object Login : AppRoute
+
   @Serializable data class Context(
     val recipient: ContextRecipient,
     val contextId: String? = null,
