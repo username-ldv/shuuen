@@ -18,9 +18,9 @@ import ldv.shuuen.data.remote.createPlatformApiHttpClient
 import ldv.shuuen.data.remote.defaultApiBaseUrl
 import ldv.shuuen.features.training.course.domain.CourseRepository
 import ldv.shuuen.features.training.melodies.domain.MidiContentResolver
-import org.koin.core.qualifier.named
 import org.koin.dsl.bind
 import org.koin.dsl.module
+import org.koin.plugin.module.dsl.single
 
 val apiModule = module {
   single {
@@ -30,11 +30,11 @@ val apiModule = module {
     )
   }
   single<HttpClient> { createPlatformApiHttpClient(ApiJson) }
-  single { CourseApi(get(), get()) }
-  single { AuthApi(get()) }
-  single { AuthRepositoryImpl(get(named("files")), get(), get()) } bind AuthRepository::class
-  single { KtorBackendStatusMonitor(get(), get()) } bind BackendStatusMonitor::class
+  single<CourseApi>()
+  single<AuthApi>()
+  single<AuthRepositoryImpl>() bind AuthRepository::class
+  single<KtorBackendStatusMonitor>() bind BackendStatusMonitor::class
   single { CourseDefinitionMapper(ApiJson) }
-  single { CourseRepositoryImpl(get(), get()) } bind CourseRepository::class
-  single { MidiContentResolverImpl(get()) } bind MidiContentResolver::class
+  single<CourseRepositoryImpl>() bind CourseRepository::class
+  single<MidiContentResolverImpl>() bind MidiContentResolver::class
 }

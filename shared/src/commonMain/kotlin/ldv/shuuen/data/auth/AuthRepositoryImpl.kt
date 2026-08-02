@@ -24,6 +24,7 @@ import ldv.shuuen.data.remote.ApiConfig
 import ldv.shuuen.data.remote.auth.ApiErrorDto
 import ldv.shuuen.data.remote.auth.AuthApi
 import ldv.shuuen.data.remote.auth.AuthUserDto
+import org.koin.core.annotation.Named
 
 /** The on-disk shape of a session. Kept private to this file so the domain model can change. */
 @Serializable
@@ -49,7 +50,7 @@ internal data class StoredAuthUser(
  * shared secure-storage API.
  */
 internal class AuthRepositoryImpl(
-  path: Path,
+  @Named("files") path: Path,
   private val api: AuthApi,
   private val config: ApiConfig,
   scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
