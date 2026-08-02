@@ -348,9 +348,52 @@ Before production:
 
 The Docker image runs as a non-root user, excludes local data/secrets from its build context, and includes a health check. Docker Compose values are development-only and must not be reused as production secrets.
 
-## Future User-Data Sync
+## User Data Sync
 
-User-data sync remains intentionally out of scope. Timestamps and catalog tombstones are useful groundwork, but a real sync protocol still needs stable public identifiers, per-user ownership, a monotonically increasing change log, conflict rules, and a tombstone-retention policy. A practical future API could include:
+Authenticated users can manually synchronize the app's singles, melodies, and
+chords level definitions through one request type:
 
-- `GET /api/v1/sync/changes?since_revision=...`
-- `POST /api/v1/sync/push`
+- `POST /api/v1/sync/levels`
+
+The request carries the device's per-user `since_revision` cursor and at most
+500 changed records. Each record has a stable `(kind, id)` identity and the
+server revision on which the local edit was based. The response contains only
+the latest records changed after that cursor, plus any touched records needed to
+resolve a retry or conflict. The app persists the returned cursor only after it
+has applied every returned change.
+
+Revisions are monotonic per user. A matching live record is not rewritten, so a
+repeat manual sync with no local edits does no database writes and transfers no
+level definitions. Deletes are durable tombstones rather than hard deletes;
+they are retained indefinitely for now so a long-offline device cannot restore
+an old level accidentally. Concurrent edits use a deterministic
+**server-newer-wins** rule: a mutation whose `base_revision` no longer matches is
+skipped and the current server row is returned to the device.
+
+`user_levels` keeps `kind`, `level_id`, `name`, `source`, ownership, revision,
+and deletion state in ordinary indexed columns. The mode-specific `definition`
+is native JSON on SQLite and JSONB on Postgres and uses the same stable schema as
+course level definitions. It is therefore available for future web views and
+statistics queries without decoding an app-specific binary/blob format.
+
+Finished training sessions synchronize independently through:
+
+- `POST /api/v1/sync/training-sessions`
+
+The session endpoint uses the same 500-record incremental, per-user,
+server-newer-wins protocol with its own revision cursor. Session deletions are
+also durable tombstones. The app derives accuracy, attempted/completed progress,
+continue state, and history from the synchronized session records rather than
+syncing redundant aggregates that could disagree.
+
+`user_training_sessions` stores flow, level identity/name snapshot, completion
+time, finished-early state, accuracy counters, timing statistics, streak,
+replays, and keys practiced in ordinary queryable columns. Per-question results
+are native JSON on SQLite and JSONB on Postgres. The history and level-statistics
+indexes are intended to support later web statistics endpoints without changing
+the sync representation.
+
+Global settings and context-library settings remain local. A context embedded
+in a level definition travels with that level because it is required to
+reconstruct the level; local MIDI/backing-file references are metadata only and
+the media bytes are never uploaded. No audio or other media is synchronized.

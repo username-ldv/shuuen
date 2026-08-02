@@ -98,6 +98,10 @@ func NewServer(deps ServerDeps) *fiber.App {
 	authRoutes.Get("/me", AuthRequired(deps.Auth, deps.DB), h.Me)
 	authRoutes.Post("/password", authLimiter, AuthRequired(deps.Auth, deps.DB), h.ChangePassword)
 
+	syncRoutes := api.Group("/sync", AuthRequired(deps.Auth, deps.DB))
+	syncRoutes.Post("/levels", h.SyncLevels)
+	syncRoutes.Post("/training-sessions", h.SyncTrainingSessions)
+
 	library := api.Group("/library", OptionalAuth(deps.Auth, deps.DB), VisibilityScope)
 	library.Get("/groups", h.ListGroups)
 	library.Get("/groups/:id", h.GetGroup)

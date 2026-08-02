@@ -70,6 +70,13 @@ func TestMigrateUpgradesLegacyVisibilityColumnsAndIsIdempotent(t *testing.T) {
 	if !fresh.Migrator().HasIndex("file_variants", "idx_file_variants_melody_format_order") {
 		t.Fatal("melody-first variant lookup index was not created")
 	}
+	if !fresh.Migrator().HasColumn(&model.UserSyncState{}, "TrainingSessionRevision") ||
+		!fresh.Migrator().HasTable(&model.UserTrainingSession{}) {
+		t.Fatal("training session sync schema was not created")
+	}
+	if !fresh.Migrator().HasIndex(&model.UserTrainingSession{}, "idx_user_training_sessions_level_stats") {
+		t.Fatal("training session level-statistics index was not created")
+	}
 	var variantStatistics int64
 	if err := gorm.G[int64](fresh).Raw("SELECT COUNT(*) FROM sqlite_stat1 WHERE tbl = ?", "file_variants").Scan(t.Context(), &variantStatistics); err != nil {
 		t.Fatal(err)

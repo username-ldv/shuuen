@@ -9,8 +9,9 @@ import (
 	"gorm.io/gorm/schema"
 )
 
-// JSONDocument keeps the API's typed level definition intact while using the
-// native JSON type on both supported databases.
+// JSONDocument keeps typed API structures such as level definitions and
+// per-question results intact while using the native JSON type on both
+// supported databases.
 type JSONDocument []byte
 
 func NewJSONDocument(value any) (JSONDocument, error) {

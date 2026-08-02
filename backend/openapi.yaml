@@ -6,9 +6,9 @@ info:
     name: The Supreme Mandate of the Void 1.2
     url: https://github.com/username-ldv/shuuen-backend/blob/main/LICENSE
   description: >-
-    Public catalog reads and role-aware account access. Catalog mutations require
-    an administrator bearer token. Private reads additionally require
-    include_private=true.
+    Public catalog reads, role-aware account access, and revision-based user-level
+    sync. Catalog mutations require an administrator bearer token. Private reads
+    additionally require include_private=true.
 servers:
   - url: /
     description: Current origin
@@ -409,6 +409,121 @@ components:
           type: array
           items: { $ref: '#/components/schemas/CourseLevel' }
         meta: { $ref: '#/components/schemas/ListMeta' }
+    LevelSyncMutation:
+      type: object
+      description: >-
+        One optimistic level upsert or tombstone. base_revision is zero only when
+        the client has never observed this identity. Live records require name,
+        source, and definition; deleted records omit them.
+      required: [kind, id, base_revision, deleted]
+      properties:
+        kind: { type: string, enum: [singles, melodies, chords] }
+        id: { type: string, maxLength: 128 }
+        base_revision: { type: integer, format: int64, minimum: 0 }
+        deleted: { type: boolean }
+        name: { type: string, maxLength: 220 }
+        source: { type: string, enum: [built_in, user, imported] }
+        definition: { $ref: '#/components/schemas/CourseLevelDefinition' }
+    LevelSyncChange:
+      type: object
+      description: Latest server state for one changed level identity.
+      required: [kind, id, revision, deleted]
+      properties:
+        kind: { type: string, enum: [singles, melodies, chords] }
+        id: { type: string, maxLength: 128 }
+        revision: { type: integer, format: int64, minimum: 1 }
+        deleted: { type: boolean }
+        name: { type: string, maxLength: 220 }
+        source: { type: string, enum: [built_in, user, imported] }
+        definition: { $ref: '#/components/schemas/CourseLevelDefinition' }
+    LevelSyncResult:
+      type: object
+      required: [revision, applied, conflicts, changes]
+      properties:
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+          description: New per-user cursor to persist after applying every returned change.
+        applied: { type: integer, minimum: 0 }
+        conflicts:
+          type: integer
+          minimum: 0
+          description: Stale mutations skipped under the server-newer-wins rule.
+        changes:
+          type: array
+          items: { $ref: '#/components/schemas/LevelSyncChange' }
+    TrainingQuestionResult:
+      type: object
+      required: [question_number, note_count, missed_count]
+      properties:
+        question_number: { type: integer, minimum: 1 }
+        note_count: { type: integer, minimum: 0 }
+        missed_count: { type: integer, minimum: 0 }
+    TrainingSessionSyncFields:
+      type: object
+      description: >-
+        Complete source data for accuracy, progress, and history. Live records
+        contain every field; tombstones omit these fields.
+      properties:
+        flow: { type: string, enum: [singles, melodies, chords] }
+        level_id: { type: string, maxLength: 640 }
+        level_name: { type: string, maxLength: 220 }
+        completed_at_epoch_millis: { type: integer, format: int64, minimum: 0 }
+        finished_early: { type: boolean }
+        questions_answered: { type: integer, minimum: 0 }
+        notes_total: { type: integer, minimum: 0 }
+        correct_notes: { type: integer, minimum: 0 }
+        missed_notes: { type: integer, minimum: 0 }
+        replays: { type: integer, minimum: 0 }
+        duration_millis: { type: integer, format: int64, minimum: 0 }
+        avg_answer_millis: { type: [integer, 'null'], format: int64, minimum: 0 }
+        avg_delta_millis: { type: [integer, 'null'], format: int64, minimum: 0 }
+        best_streak: { type: integer, minimum: 0 }
+        keys_practiced: { type: integer, minimum: 0 }
+        question_results:
+          type: array
+          maxItems: 10000
+          items: { $ref: '#/components/schemas/TrainingQuestionResult' }
+    TrainingSessionSyncMutation:
+      allOf:
+        - $ref: '#/components/schemas/TrainingSessionSyncFields'
+        - type: object
+          description: >-
+            One optimistic session upsert or tombstone. A live mutation includes
+            every TrainingSessionSyncFields property.
+          required: [id, base_revision, deleted]
+          properties:
+            id: { type: string, maxLength: 128 }
+            base_revision: { type: integer, format: int64, minimum: 0 }
+            deleted: { type: boolean }
+    TrainingSessionSyncChange:
+      allOf:
+        - $ref: '#/components/schemas/TrainingSessionSyncFields'
+        - type: object
+          description: Latest server state for one changed training-session identity.
+          required: [id, revision, deleted]
+          properties:
+            id: { type: string, maxLength: 128 }
+            revision: { type: integer, format: int64, minimum: 1 }
+            deleted: { type: boolean }
+    TrainingSessionSyncResult:
+      type: object
+      required: [revision, applied, conflicts, changes]
+      properties:
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+          description: New per-user session cursor to persist after applying every returned change.
+        applied: { type: integer, minimum: 0 }
+        conflicts:
+          type: integer
+          minimum: 0
+          description: Stale mutations skipped under the server-newer-wins rule.
+        changes:
+          type: array
+          items: { $ref: '#/components/schemas/TrainingSessionSyncChange' }
   responses:
     BadRequest:
       description: Invalid request
@@ -501,6 +616,79 @@ paths:
           description: Password changed and replacement token issued
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/sync/levels:
+    post:
+      summary: Push local level diffs and pull unseen level revisions
+      operationId: syncLevels
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [since_revision, changes]
+              properties:
+                since_revision: { type: integer, format: int64, minimum: 0 }
+                changes:
+                  type: array
+                  maxItems: 500
+                  items: { $ref: '#/components/schemas/LevelSyncMutation' }
+      responses:
+        '200':
+          description: Mutations applied and unseen/current conflicting records returned
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/LevelSyncResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: Client cursor is ahead of the server
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/sync/training-sessions:
+    post:
+      summary: Push local training-session diffs and pull unseen session revisions
+      description: >-
+        Synchronizes the source records used to derive accuracy, progress, and
+        history. Settings and media are not included.
+      operationId: syncTrainingSessions
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [since_revision, changes]
+              properties:
+                since_revision: { type: integer, format: int64, minimum: 0 }
+                changes:
+                  type: array
+                  maxItems: 500
+                  items: { $ref: '#/components/schemas/TrainingSessionSyncMutation' }
+      responses:
+        '200':
+          description: Mutations applied and unseen/current conflicting records returned
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/TrainingSessionSyncResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: Client cursor is ahead of the server
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /api/v1/courses:
     get:
       summary: List public courses without level payloads

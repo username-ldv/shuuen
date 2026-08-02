@@ -68,6 +68,8 @@ var migrations = []migration{
 	{version: 5, apply: constrainPostgresCatalogPaths},
 	{version: 6, apply: addCourseSchema},
 	{version: 7, apply: addVariantLookupIndex},
+	{version: 8, apply: addUserLevelSyncSchema},
+	{version: 9, apply: addTrainingSessionSyncSchema},
 }
 
 func Migrate(ctx context.Context, db *gorm.DB) error {
@@ -157,6 +159,56 @@ func addVariantLookupIndex(ctx context.Context, db *gorm.DB) error {
 	}
 	if db.Dialector.Name() == "sqlite" {
 		return gorm.G[any](db).Exec(ctx, "ANALYZE file_variants")
+	}
+	return nil
+}
+
+func addUserLevelSyncSchema(ctx context.Context, db *gorm.DB) error {
+	// These are new tables. Create them independently so AutoMigrate cannot
+	// rebuild an established users table through the belongs-to association.
+	for _, table := range []any{&model.UserSyncState{}, &model.UserLevel{}} {
+		if db.Migrator().HasTable(table) {
+			continue
+		}
+		if err := db.Migrator().CreateTable(table); err != nil {
+			return err
+		}
+	}
+	statements := []string{
+		"CREATE UNIQUE INDEX IF NOT EXISTS idx_user_levels_identity ON user_levels (user_id, kind, level_id)",
+		"CREATE INDEX IF NOT EXISTS idx_user_levels_changes ON user_levels (user_id, revision)",
+		"CREATE INDEX IF NOT EXISTS idx_user_levels_kind ON user_levels (user_id, kind, deleted)",
+	}
+	for _, statement := range statements {
+		if err := gorm.G[any](db).Exec(ctx, statement); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func addTrainingSessionSyncSchema(ctx context.Context, db *gorm.DB) error {
+	if !db.Migrator().HasColumn(&model.UserSyncState{}, "TrainingSessionRevision") {
+		if err := db.Migrator().AddColumn(&model.UserSyncState{}, "TrainingSessionRevision"); err != nil {
+			return err
+		}
+	}
+	if !db.Migrator().HasTable(&model.UserTrainingSession{}) {
+		if err := db.Migrator().CreateTable(&model.UserTrainingSession{}); err != nil {
+			return err
+		}
+	}
+	statements := []string{
+		"CREATE UNIQUE INDEX IF NOT EXISTS idx_user_training_sessions_identity ON user_training_sessions (user_id, session_id)",
+		"CREATE INDEX IF NOT EXISTS idx_user_training_sessions_changes ON user_training_sessions (user_id, revision)",
+		"CREATE INDEX IF NOT EXISTS idx_user_training_sessions_history ON user_training_sessions (user_id, deleted, completed_at_epoch_millis DESC, session_id)",
+		"CREATE INDEX IF NOT EXISTS idx_user_training_sessions_level_stats ON user_training_sessions (user_id, flow, level_id, deleted, completed_at_epoch_millis DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_user_training_sessions_progress ON user_training_sessions (user_id, flow, deleted, finished_early, level_id)",
+	}
+	for _, statement := range statements {
+		if err := gorm.G[any](db).Exec(ctx, statement); err != nil {
+			return err
+		}
 	}
 	return nil
 }
