@@ -176,6 +176,8 @@ internal data class MidiFileReferenceDto(
   val variantId: Long? = null,
   val path: String? = null,
   val fileName: String,
+  /** Included by user-level sync; course reads normally provide this in their midi resource. */
+  val downloadUrl: String? = null,
 )
 
 @Serializable
@@ -183,6 +185,10 @@ internal data class MidiMelodyConfigDto(
   val type: String,
   val file: MidiFileReferenceDto,
   val useOriginalVelocities: Boolean = false,
+  /** Local backing-audio references are metadata only; sync never uploads the audio bytes. */
+  val backingFilePath: String? = null,
+  val backingFileName: String? = null,
+  val backingOffsetMs: Long = 0,
 )
 
 @Serializable

@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ldv.shuuen.features.training.common.TrainingFlow
+import ldv.shuuen.core.sync.LevelSyncRepository
+import ldv.shuuen.core.sync.LevelSyncStatus
 import ldv.shuuen.features.training.course.domain.CourseRepository
 import ldv.shuuen.features.training.course.domain.LevelReference
 import ldv.shuuen.features.training.level_end.domain.TrainingSession
@@ -22,6 +24,7 @@ import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
 
 data class MainMenuState(
   val continueCard: ContinueCardState? = null,
+  val levelSyncStatus: LevelSyncStatus = LevelSyncStatus.Idle,
 )
 
 data class ContinueCardState(
@@ -71,6 +74,7 @@ data class CompletionProgress(
 class MainMenuViewModel(
   private val trainingSessionRepository: TrainingSessionRepository,
   private val courseRepository: CourseRepository,
+  private val levelSyncRepository: LevelSyncRepository,
 ) : ViewModel() {
   private val _state = MutableStateFlow(MainMenuState())
   val state = _state.asStateFlow()
@@ -100,7 +104,7 @@ class MainMenuViewModel(
         .collectLatest { snapshot ->
           val latest = snapshot.latest
           if (latest == null) {
-            _state.value = MainMenuState()
+            _state.update { it.copy(continueCard = null) }
             return@collectLatest
           }
 
@@ -108,12 +112,12 @@ class MainMenuViewModel(
             runCatching { LevelReference.decode(latest.levelId) }.getOrNull()
               as? LevelReference.Remote
           val baseCard = latest.toContinueCard(remoteReference != null)
-          _state.value = MainMenuState(baseCard)
+          _state.update { it.copy(continueCard = baseCard) }
           if (remoteReference == null) return@collectLatest
 
           try {
             val courseCard = loadCourseProgress(latest, remoteReference, snapshot.completedLevelIds)
-            _state.value = MainMenuState(courseCard)
+            _state.update { current -> current.copy(continueCard = courseCard) }
           } catch (error: CancellationException) {
             throw error
           } catch (error: Throwable) {
@@ -128,6 +132,27 @@ class MainMenuViewModel(
             }
           }
         }
+    }
+  }
+
+  fun syncLevels() {
+    if (_state.value.levelSyncStatus == LevelSyncStatus.Syncing) return
+    viewModelScope.launch {
+      _state.update { it.copy(levelSyncStatus = LevelSyncStatus.Syncing) }
+      try {
+        val result = levelSyncRepository.sync()
+        _state.update { it.copy(levelSyncStatus = LevelSyncStatus.Complete(result)) }
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Throwable) {
+        Napier.w(error) { "Couldn't sync levels" }
+        _state.update {
+          it.copy(
+            levelSyncStatus =
+              LevelSyncStatus.Failed(error.message ?: "Couldn't sync levels."),
+          )
+        }
+      }
     }
   }
 

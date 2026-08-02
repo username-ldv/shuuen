@@ -23,6 +23,9 @@ import ldv.shuuen.core.music.NoteRange
 import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.ScaleType
 import ldv.shuuen.core.result.ResponseState
+import ldv.shuuen.core.sync.LevelSyncRepository
+import ldv.shuuen.core.sync.LevelSyncResult
+import ldv.shuuen.core.sync.LevelSyncStatus
 import ldv.shuuen.features.training.common.LevelAccuracyStats
 import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.course.domain.CourseLevelItem
@@ -63,7 +66,7 @@ class MainMenuViewModelTest {
   fun localLevelCanBeContinuedWithoutCoursePercentage() = runTest(dispatcher) {
     val sessions = FakeTrainingSessionRepository(localSession())
     val courses = FakeCourseRepository()
-    val viewModel = MainMenuViewModel(sessions, courses)
+    val viewModel = MainMenuViewModel(sessions, courses, FakeLevelSyncRepository())
 
     advanceUntilIdle()
 
@@ -84,7 +87,7 @@ class MainMenuViewModelTest {
         session(levelId = latestReference, levelName = "Level A"),
         completed = setOf(latestReference, courses.reference("c"), courses.reference("d")),
       )
-    val viewModel = MainMenuViewModel(sessions, courses)
+    val viewModel = MainMenuViewModel(sessions, courses, FakeLevelSyncRepository())
 
     advanceUntilIdle()
 
@@ -114,7 +117,7 @@ class MainMenuViewModelTest {
         session(levelId = latestReference, levelName = "Level A", finishedEarly = true),
         completed = setOf(courses.reference("c"), courses.reference("d")),
       )
-    val viewModel = MainMenuViewModel(sessions, courses)
+    val viewModel = MainMenuViewModel(sessions, courses, FakeLevelSyncRepository())
 
     advanceUntilIdle()
 
@@ -124,6 +127,33 @@ class MainMenuViewModelTest {
     assertEquals(courses.reference("b"), card.nextLevelReference)
     assertEquals(0, progress.currentGroup?.progress?.percentage)
     assertEquals(50, progress.total.percentage)
+  }
+
+  @Test
+  fun manualLevelSyncPublishesItsResultWithoutLosingContinueState() = runTest(dispatcher) {
+    val sessions = FakeTrainingSessionRepository(localSession())
+    val result = LevelSyncResult(pushed = 2, received = 3, conflicts = 1)
+    val sync = FakeLevelSyncRepository(result)
+    val viewModel = MainMenuViewModel(sessions, FakeCourseRepository(), sync)
+    advanceUntilIdle()
+
+    viewModel.syncLevels()
+    advanceUntilIdle()
+
+    assertEquals(1, sync.calls)
+    assertEquals(LevelSyncStatus.Complete(result), viewModel.state.value.levelSyncStatus)
+    assertNotNull(viewModel.state.value.continueCard)
+  }
+}
+
+private class FakeLevelSyncRepository(
+  private val result: LevelSyncResult = LevelSyncResult(pushed = 0, received = 0, conflicts = 0),
+) : LevelSyncRepository {
+  var calls = 0
+
+  override suspend fun sync(): LevelSyncResult {
+    calls++
+    return result
   }
 }
 

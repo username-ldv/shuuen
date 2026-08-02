@@ -55,6 +55,9 @@ val ApiJson = Json {
   namingStrategy = JsonNamingStrategy.SnakeCase
 }
 
+/** Koin qualifier for the API's snake-case JSON format. */
+internal const val ApiJsonQualifier = "apiJson"
+
 internal expect fun defaultApiBaseUrl(): String
 
 internal expect fun createPlatformApiHttpClient(json: Json): HttpClient

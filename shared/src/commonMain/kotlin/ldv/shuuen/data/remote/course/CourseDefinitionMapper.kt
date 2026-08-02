@@ -50,8 +50,12 @@ import ldv.shuuen.features.training.domain.ScaleConfig
 import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
 import ldv.shuuen.features.training.melodies.domain.MidiFileSource
 import ldv.shuuen.features.training.single.domain.SinglesLevel
+import ldv.shuuen.data.remote.ApiJsonQualifier
+import org.koin.core.annotation.Named
 
-internal class CourseDefinitionMapper(private val json: Json) {
+internal class CourseDefinitionMapper(
+  @Named(ApiJsonQualifier) private val json: Json,
+) {
   fun map(courseId: Long, mode: TrainingFlow, dto: CourseLevelDto): CourseLevelItem {
     val context = MappingContext(dto.id)
     return context.at("definition") {
@@ -217,6 +221,9 @@ internal class CourseDefinitionMapper(private val json: Json) {
             midiSource = midiSource,
             fileName = fileName,
             useOriginalVelocities = value.useOriginalVelocities,
+            backingFile = value.backingFilePath?.let(::PlatformFile),
+            backingFileName = value.backingFileName,
+            backingOffsetMs = value.backingOffsetMs,
           )
         }
         else -> context.fail("definition.config.type", "expected random or midi, was '$configType'")

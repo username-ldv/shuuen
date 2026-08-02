@@ -29,7 +29,10 @@ import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.ModeNight
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Sync
+import androidx.compose.material.icons.rounded.SyncProblem
 import androidx.compose.material.icons.rounded.Waves
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -46,6 +49,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -61,8 +66,11 @@ import ldv.shuuen.core.ui.components.ShuuenTopAppBarType
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.SurfaceCard
+import ldv.shuuen.core.auth.AuthRepository
+import ldv.shuuen.core.sync.LevelSyncStatus
 import ldv.shuuen.features.training.common.TrainingFlow
 import org.jetbrains.compose.resources.painterResource
+import org.koin.compose.koinInject
 import shuuen.shared.generated.resources.Res
 import shuuen.shared.generated.resources.shuuen_main_logo
 
@@ -90,6 +98,7 @@ fun MainMenuScreen(
         statusContent = {
           BackendStatusBadge(onClick = onRefreshBackend)
           AccountBadge(onClick = onOpenAccount)
+          LevelSyncButton(status = state.levelSyncStatus, onClick = viewModel::syncLevels)
           MidiKeyboardBadge()
         },
         type = ShuuenTopAppBarType.Simple
@@ -144,6 +153,48 @@ fun MainMenuScreen(
       FooterLink("LIBRARY", Icons.AutoMirrored.Rounded.LibraryBooks)
       FooterLink("STATISTICS", Icons.Rounded.BarChart)
       FooterLink("POCKET", Icons.Rounded.ModeNight)
+    }
+  }
+}
+
+@Composable
+private fun LevelSyncButton(
+  status: LevelSyncStatus,
+  onClick: () -> Unit,
+) {
+  val authRepository = koinInject<AuthRepository>()
+  val session by authRepository.session.collectAsStateWithLifecycle()
+  if (session == null) return
+
+  val description =
+    when (status) {
+      LevelSyncStatus.Idle -> "Sync levels"
+      LevelSyncStatus.Syncing -> "Syncing levels"
+      is LevelSyncStatus.Complete ->
+        buildString {
+          append("Levels synced: ${status.result.pushed} sent, ${status.result.received} received")
+          if (status.result.conflicts > 0) append(", ${status.result.conflicts} conflicts resolved")
+        }
+      is LevelSyncStatus.Failed -> "Level sync failed: ${status.message}. Tap to retry"
+    }
+  androidx.compose.material3.IconButton(
+    onClick = onClick,
+    enabled = status != LevelSyncStatus.Syncing,
+  ) {
+    if (status == LevelSyncStatus.Syncing) {
+      CircularProgressIndicator(
+        modifier = Modifier.size(18.dp).semantics { contentDescription = description },
+        color = ShuuenUi.Muted,
+        strokeWidth = 2.dp,
+      )
+    } else {
+      Icon(
+        imageVector =
+          if (status is LevelSyncStatus.Failed) Icons.Rounded.SyncProblem else Icons.Rounded.Sync,
+        contentDescription = description,
+        tint = ShuuenUi.Muted,
+        modifier = Modifier.size(20.dp),
+      )
     }
   }
 }

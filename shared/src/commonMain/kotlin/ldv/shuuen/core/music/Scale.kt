@@ -53,7 +53,8 @@ data class Scale(
 
   companion object {
     fun chromatic(root: Pitch): Scale =
-      fromFormula(root, listOf(0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1), ScaleType.Chromatic)
+      // Scale configuration stores pitch classes, not the repeated root at the octave.
+      fromFormula(root, listOf(0) + List(11) { 1 }, ScaleType.Chromatic)
 
     fun major(root: Pitch): Scale = fromFormula(root, listOf(0, 2, 2, 1, 2, 2, 2), ScaleType.Major)
 

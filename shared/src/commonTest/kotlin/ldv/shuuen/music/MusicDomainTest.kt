@@ -60,6 +60,14 @@ class MusicDomainTest {
   }
 
   @Test
+  fun chromaticScaleHasTwelveUniquePitchClasses() {
+    val pitches = Scale.chromatic(Pitch.C).pitches
+
+    assertEquals(12, pitches.size)
+    assertEquals(12, pitches.distinct().size)
+  }
+
+  @Test
   fun buildsMajorChord() {
     assertEquals(
       listOf(60, 64, 67),
