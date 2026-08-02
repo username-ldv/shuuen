@@ -6,16 +6,6 @@ data class LevelSyncResult(
   val conflicts: Int,
 )
 
-sealed interface LevelSyncStatus {
-  data object Idle : LevelSyncStatus
-
-  data object Syncing : LevelSyncStatus
-
-  data class Complete(val result: LevelSyncResult) : LevelSyncStatus
-
-  data class Failed(val message: String) : LevelSyncStatus
-}
-
 class LevelSyncException(
   override val message: String,
   override val cause: Throwable? = null,

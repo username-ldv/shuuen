@@ -10,15 +10,15 @@ import io.ktor.http.appendPathSegments
 import io.ktor.http.contentType
 import ldv.shuuen.data.remote.bodyAndClose
 
-internal class LevelSyncApi(private val client: HttpClient) {
+internal class TrainingSessionSyncApi(private val client: HttpClient) {
   suspend fun sync(
     baseUrl: String,
     accessToken: String,
-    request: LevelSyncRequestDto,
-  ): LevelSyncEnvelopeDto<LevelSyncResponseDto> =
+    request: TrainingSessionSyncRequestDto,
+  ): LevelSyncEnvelopeDto<TrainingSessionSyncResponseDto> =
     client.post {
       url(baseUrl)
-      url { appendPathSegments("api", "v1", "sync", "levels") }
+      url { appendPathSegments("api", "v1", "sync", "training-sessions") }
       bearerAuth(accessToken)
       contentType(ContentType.Application.Json)
       setBody(request)

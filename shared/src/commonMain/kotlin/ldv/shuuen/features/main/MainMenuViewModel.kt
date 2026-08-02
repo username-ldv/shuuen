@@ -15,8 +15,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ldv.shuuen.features.training.common.TrainingFlow
+import ldv.shuuen.core.sync.DataSyncResult
+import ldv.shuuen.core.sync.DataSyncStatus
 import ldv.shuuen.core.sync.LevelSyncRepository
-import ldv.shuuen.core.sync.LevelSyncStatus
+import ldv.shuuen.core.sync.TrainingSessionSyncRepository
 import ldv.shuuen.features.training.course.domain.CourseRepository
 import ldv.shuuen.features.training.course.domain.LevelReference
 import ldv.shuuen.features.training.level_end.domain.TrainingSession
@@ -24,7 +26,7 @@ import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
 
 data class MainMenuState(
   val continueCard: ContinueCardState? = null,
-  val levelSyncStatus: LevelSyncStatus = LevelSyncStatus.Idle,
+  val dataSyncStatus: DataSyncStatus = DataSyncStatus.Idle,
 )
 
 data class ContinueCardState(
@@ -75,6 +77,7 @@ class MainMenuViewModel(
   private val trainingSessionRepository: TrainingSessionRepository,
   private val courseRepository: CourseRepository,
   private val levelSyncRepository: LevelSyncRepository,
+  private val trainingSessionSyncRepository: TrainingSessionSyncRepository,
 ) : ViewModel() {
   private val _state = MutableStateFlow(MainMenuState())
   val state = _state.asStateFlow()
@@ -135,21 +138,23 @@ class MainMenuViewModel(
     }
   }
 
-  fun syncLevels() {
-    if (_state.value.levelSyncStatus == LevelSyncStatus.Syncing) return
+  fun syncData() {
+    if (_state.value.dataSyncStatus == DataSyncStatus.Syncing) return
     viewModelScope.launch {
-      _state.update { it.copy(levelSyncStatus = LevelSyncStatus.Syncing) }
+      _state.update { it.copy(dataSyncStatus = DataSyncStatus.Syncing) }
       try {
-        val result = levelSyncRepository.sync()
-        _state.update { it.copy(levelSyncStatus = LevelSyncStatus.Complete(result)) }
+        val levels = levelSyncRepository.sync()
+        val trainingSessions = trainingSessionSyncRepository.sync()
+        val result = DataSyncResult(levels = levels, trainingSessions = trainingSessions)
+        _state.update { it.copy(dataSyncStatus = DataSyncStatus.Complete(result)) }
       } catch (error: CancellationException) {
         throw error
       } catch (error: Throwable) {
-        Napier.w(error) { "Couldn't sync levels" }
+        Napier.w(error) { "Couldn't sync data" }
         _state.update {
           it.copy(
-            levelSyncStatus =
-              LevelSyncStatus.Failed(error.message ?: "Couldn't sync levels."),
+            dataSyncStatus =
+              DataSyncStatus.Failed(error.message ?: "Couldn't sync data."),
           )
         }
       }

@@ -7,6 +7,7 @@ import ldv.shuuen.core.auth.AuthRepository
 import ldv.shuuen.core.online.BackendStatusMonitor
 import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.core.sync.LevelSyncRepository
+import ldv.shuuen.core.sync.TrainingSessionSyncRepository
 import ldv.shuuen.data.auth.AuthRepositoryImpl
 import ldv.shuuen.data.remote.ApiConfig
 import ldv.shuuen.data.remote.ApiJson
@@ -20,6 +21,8 @@ import ldv.shuuen.data.remote.course.MidiContentResolverImpl
 import ldv.shuuen.data.remote.course.LevelDefinitionCodec
 import ldv.shuuen.data.remote.sync.LevelSyncApi
 import ldv.shuuen.data.remote.sync.LevelSyncRepositoryImpl
+import ldv.shuuen.data.remote.sync.TrainingSessionSyncApi
+import ldv.shuuen.data.remote.sync.TrainingSessionSyncRepositoryImpl
 import ldv.shuuen.data.remote.createPlatformApiHttpClient
 import ldv.shuuen.data.remote.defaultApiBaseUrl
 import ldv.shuuen.features.training.course.domain.CourseRepository
@@ -43,9 +46,11 @@ val apiModule = module {
   single<CourseApi>()
   single<AuthApi>()
   single<LevelSyncApi>()
+  single<TrainingSessionSyncApi>()
   single<AuthRepositoryImpl>() bind AuthRepository::class
   single<LevelDefinitionCodec>()
   single<LevelSyncRepositoryImpl>() bind LevelSyncRepository::class
+  single<TrainingSessionSyncRepositoryImpl>() bind TrainingSessionSyncRepository::class
   single<KtorBackendStatusMonitor>() bind BackendStatusMonitor::class
   single<CourseDefinitionMapper>()
   single<CourseRepositoryImpl>() bind CourseRepository::class

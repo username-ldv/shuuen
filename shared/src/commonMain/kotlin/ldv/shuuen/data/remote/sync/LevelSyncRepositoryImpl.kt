@@ -1,7 +1,6 @@
 package ldv.shuuen.data.remote.sync
 
 import io.github.xxfast.kstore.file.storeOf
-import io.ktor.client.call.body
 import io.ktor.client.plugins.ResponseException
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CancellationException
@@ -29,6 +28,7 @@ import ldv.shuuen.data.database.entity.toDbEntity
 import ldv.shuuen.data.database.entity.toDomainEntity
 import ldv.shuuen.data.remote.auth.ApiErrorDto
 import ldv.shuuen.data.remote.ApiJsonQualifier
+import ldv.shuuen.data.remote.bodyAndClose
 import ldv.shuuen.data.remote.course.LevelDefinitionCodec
 import ldv.shuuen.features.training.chords.domain.ChordsLevel
 import ldv.shuuen.features.training.common.TrainingFlow
@@ -119,7 +119,7 @@ internal class LevelSyncRepositoryImpl(
       throw error
     } catch (error: ResponseException) {
       val serverMessage =
-        runCatching { error.response.body<ApiErrorDto>().error }
+        runCatching { error.response.bodyAndClose<ApiErrorDto>().error }
           .getOrNull()
           ?.takeIf { it.isNotBlank() }
       val message =

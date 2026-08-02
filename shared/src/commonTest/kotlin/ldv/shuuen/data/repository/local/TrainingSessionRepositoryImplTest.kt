@@ -64,6 +64,8 @@ private class RecordingTrainingSessionDao : TrainingSessionDao {
   var allLevelDeletion: Pair<TrainingFlow, String>? = null
   var courseReferencePrefix: String? = null
 
+  override suspend fun getAll(): List<TrainingSessionDbEntity> = emptyList()
+
   override suspend fun getById(id: String): TrainingSessionDbEntity? = null
 
   override fun observeLatest(): Flow<TrainingSessionDbEntity?> = flowOf(latestSession)
@@ -94,7 +96,13 @@ private class RecordingTrainingSessionDao : TrainingSessionDao {
     this.courseReferencePrefix = courseReferencePrefix
   }
 
+  override suspend fun deleteById(id: String) = Unit
+
+  override suspend fun deleteByIds(ids: List<String>) = Unit
+
   override suspend fun upsertSession(session: TrainingSessionDbEntity) = Unit
+
+  override suspend fun upsertSessions(sessions: List<TrainingSessionDbEntity>) = Unit
 }
 
 private fun testSessionEntity() =

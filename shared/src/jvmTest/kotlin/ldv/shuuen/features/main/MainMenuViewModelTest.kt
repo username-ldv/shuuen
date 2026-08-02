@@ -23,9 +23,12 @@ import ldv.shuuen.core.music.NoteRange
 import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.ScaleType
 import ldv.shuuen.core.result.ResponseState
+import ldv.shuuen.core.sync.DataSyncResult
+import ldv.shuuen.core.sync.DataSyncStatus
 import ldv.shuuen.core.sync.LevelSyncRepository
 import ldv.shuuen.core.sync.LevelSyncResult
-import ldv.shuuen.core.sync.LevelSyncStatus
+import ldv.shuuen.core.sync.TrainingSessionSyncRepository
+import ldv.shuuen.core.sync.TrainingSessionSyncResult
 import ldv.shuuen.features.training.common.LevelAccuracyStats
 import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.course.domain.CourseLevelItem
@@ -66,7 +69,13 @@ class MainMenuViewModelTest {
   fun localLevelCanBeContinuedWithoutCoursePercentage() = runTest(dispatcher) {
     val sessions = FakeTrainingSessionRepository(localSession())
     val courses = FakeCourseRepository()
-    val viewModel = MainMenuViewModel(sessions, courses, FakeLevelSyncRepository())
+    val viewModel =
+      MainMenuViewModel(
+        sessions,
+        courses,
+        FakeLevelSyncRepository(),
+        FakeTrainingSessionSyncRepository(),
+      )
 
     advanceUntilIdle()
 
@@ -87,7 +96,13 @@ class MainMenuViewModelTest {
         session(levelId = latestReference, levelName = "Level A"),
         completed = setOf(latestReference, courses.reference("c"), courses.reference("d")),
       )
-    val viewModel = MainMenuViewModel(sessions, courses, FakeLevelSyncRepository())
+    val viewModel =
+      MainMenuViewModel(
+        sessions,
+        courses,
+        FakeLevelSyncRepository(),
+        FakeTrainingSessionSyncRepository(),
+      )
 
     advanceUntilIdle()
 
@@ -117,7 +132,13 @@ class MainMenuViewModelTest {
         session(levelId = latestReference, levelName = "Level A", finishedEarly = true),
         completed = setOf(courses.reference("c"), courses.reference("d")),
       )
-    val viewModel = MainMenuViewModel(sessions, courses, FakeLevelSyncRepository())
+    val viewModel =
+      MainMenuViewModel(
+        sessions,
+        courses,
+        FakeLevelSyncRepository(),
+        FakeTrainingSessionSyncRepository(),
+      )
 
     advanceUntilIdle()
 
@@ -130,18 +151,24 @@ class MainMenuViewModelTest {
   }
 
   @Test
-  fun manualLevelSyncPublishesItsResultWithoutLosingContinueState() = runTest(dispatcher) {
+  fun manualDataSyncPublishesBothResultsWithoutLosingContinueState() = runTest(dispatcher) {
     val sessions = FakeTrainingSessionRepository(localSession())
-    val result = LevelSyncResult(pushed = 2, received = 3, conflicts = 1)
-    val sync = FakeLevelSyncRepository(result)
-    val viewModel = MainMenuViewModel(sessions, FakeCourseRepository(), sync)
+    val levelResult = LevelSyncResult(pushed = 2, received = 3, conflicts = 1)
+    val sessionResult = TrainingSessionSyncResult(pushed = 4, received = 5, conflicts = 2)
+    val levelSync = FakeLevelSyncRepository(levelResult)
+    val sessionSync = FakeTrainingSessionSyncRepository(sessionResult)
+    val viewModel = MainMenuViewModel(sessions, FakeCourseRepository(), levelSync, sessionSync)
     advanceUntilIdle()
 
-    viewModel.syncLevels()
+    viewModel.syncData()
     advanceUntilIdle()
 
-    assertEquals(1, sync.calls)
-    assertEquals(LevelSyncStatus.Complete(result), viewModel.state.value.levelSyncStatus)
+    assertEquals(1, levelSync.calls)
+    assertEquals(1, sessionSync.calls)
+    assertEquals(
+      DataSyncStatus.Complete(DataSyncResult(levelResult, sessionResult)),
+      viewModel.state.value.dataSyncStatus,
+    )
     assertNotNull(viewModel.state.value.continueCard)
   }
 }
@@ -152,6 +179,18 @@ private class FakeLevelSyncRepository(
   var calls = 0
 
   override suspend fun sync(): LevelSyncResult {
+    calls++
+    return result
+  }
+}
+
+private class FakeTrainingSessionSyncRepository(
+  private val result: TrainingSessionSyncResult =
+    TrainingSessionSyncResult(pushed = 0, received = 0, conflicts = 0),
+) : TrainingSessionSyncRepository {
+  var calls = 0
+
+  override suspend fun sync(): TrainingSessionSyncResult {
     calls++
     return result
   }

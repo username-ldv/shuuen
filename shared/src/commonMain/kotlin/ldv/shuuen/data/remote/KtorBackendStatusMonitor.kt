@@ -3,7 +3,6 @@ package ldv.shuuen.data.remote
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.url
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.appendPathSegments
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -45,7 +44,7 @@ internal class KtorBackendStatusMonitor(
             parameters.append("limit", "1")
             parameters.append("offset", "0")
           }
-        }.bodyAsText()
+        }.bodyAsTextAndClose()
       }
       BackendStatus.Available
     } catch (_: TimeoutCancellationException) {

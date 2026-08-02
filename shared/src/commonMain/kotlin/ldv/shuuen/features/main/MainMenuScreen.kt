@@ -67,7 +67,7 @@ import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.SurfaceCard
 import ldv.shuuen.core.auth.AuthRepository
-import ldv.shuuen.core.sync.LevelSyncStatus
+import ldv.shuuen.core.sync.DataSyncStatus
 import ldv.shuuen.features.training.common.TrainingFlow
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.koinInject
@@ -98,7 +98,7 @@ fun MainMenuScreen(
         statusContent = {
           BackendStatusBadge(onClick = onRefreshBackend)
           AccountBadge(onClick = onOpenAccount)
-          LevelSyncButton(status = state.levelSyncStatus, onClick = viewModel::syncLevels)
+          DataSyncButton(status = state.dataSyncStatus, onClick = viewModel::syncData)
           MidiKeyboardBadge()
         },
         type = ShuuenTopAppBarType.Simple
@@ -158,8 +158,8 @@ fun MainMenuScreen(
 }
 
 @Composable
-private fun LevelSyncButton(
-  status: LevelSyncStatus,
+private fun DataSyncButton(
+  status: DataSyncStatus,
   onClick: () -> Unit,
 ) {
   val authRepository = koinInject<AuthRepository>()
@@ -168,20 +168,20 @@ private fun LevelSyncButton(
 
   val description =
     when (status) {
-      LevelSyncStatus.Idle -> "Sync levels"
-      LevelSyncStatus.Syncing -> "Syncing levels"
-      is LevelSyncStatus.Complete ->
+      DataSyncStatus.Idle -> "Sync levels and training history"
+      DataSyncStatus.Syncing -> "Syncing levels and training history"
+      is DataSyncStatus.Complete ->
         buildString {
-          append("Levels synced: ${status.result.pushed} sent, ${status.result.received} received")
+          append("Data synced: ${status.result.pushed} sent, ${status.result.received} received")
           if (status.result.conflicts > 0) append(", ${status.result.conflicts} conflicts resolved")
         }
-      is LevelSyncStatus.Failed -> "Level sync failed: ${status.message}. Tap to retry"
+      is DataSyncStatus.Failed -> "Data sync failed: ${status.message}. Tap to retry"
     }
   androidx.compose.material3.IconButton(
     onClick = onClick,
-    enabled = status != LevelSyncStatus.Syncing,
+    enabled = status != DataSyncStatus.Syncing,
   ) {
-    if (status == LevelSyncStatus.Syncing) {
+    if (status == DataSyncStatus.Syncing) {
       CircularProgressIndicator(
         modifier = Modifier.size(18.dp).semantics { contentDescription = description },
         color = ShuuenUi.Muted,
@@ -190,7 +190,7 @@ private fun LevelSyncButton(
     } else {
       Icon(
         imageVector =
-          if (status is LevelSyncStatus.Failed) Icons.Rounded.SyncProblem else Icons.Rounded.Sync,
+          if (status is DataSyncStatus.Failed) Icons.Rounded.SyncProblem else Icons.Rounded.Sync,
         contentDescription = description,
         tint = ShuuenUi.Muted,
         modifier = Modifier.size(20.dp),

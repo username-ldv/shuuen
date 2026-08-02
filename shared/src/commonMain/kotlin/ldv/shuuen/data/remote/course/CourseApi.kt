@@ -1,7 +1,6 @@
 package ldv.shuuen.data.remote.course
 
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -10,6 +9,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.appendPathSegments
 import ldv.shuuen.data.remote.ApiConfig
+import ldv.shuuen.data.remote.bodyAndClose
 import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.course.domain.apiName
 
@@ -25,19 +25,19 @@ internal class CourseApi(
         parameters.append("limit", limit.toString())
         parameters.append("offset", offset.toString())
       }
-    }.body()
+    }.bodyAndClose()
 
   suspend fun getCourse(courseId: Long): DataEnvelopeDto<CourseDto> =
     client.get {
       url(config.currentBaseUrl())
       url { appendPathSegments("api", "v1", "courses", courseId.toString()) }
-    }.body()
+    }.bodyAndClose()
 
   suspend fun getCourseMode(courseId: Long, mode: TrainingFlow): DataEnvelopeDto<CourseModeDto> =
     client.get {
       url(config.currentBaseUrl())
       url { appendPathSegments("api", "v1", "courses", courseId.toString(), mode.apiName) }
-    }.body()
+    }.bodyAndClose()
 
   suspend fun getLevels(
     courseId: Long,
@@ -54,7 +54,7 @@ internal class CourseApi(
         parameters.append("limit", limit.toString())
         parameters.append("offset", offset.toString())
       }
-    }.body()
+    }.bodyAndClose()
 
   suspend fun getLevel(
     courseId: Long,
@@ -74,7 +74,7 @@ internal class CourseApi(
           levelId,
         )
       }
-    }.body()
+    }.bodyAndClose()
 
   suspend fun queryLevels(
     courseId: Long,
@@ -96,8 +96,8 @@ internal class CourseApi(
       }
       contentType(ContentType.Application.Json)
       setBody(QueryCourseLevelsRequestDto(levelIds))
-    }.body()
+    }.bodyAndClose()
 
   suspend fun downloadBytes(pathOrUrl: String): ByteArray =
-    client.get(config.resolve(pathOrUrl)).body()
+    client.get(config.resolve(pathOrUrl)).bodyAndClose()
 }
