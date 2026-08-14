@@ -287,7 +287,10 @@ func testRequest(t *testing.T, app *fiber.App, method string, target string, bod
 	if token != "" {
 		request.Header.Set("Authorization", "Bearer "+token)
 	}
-	response, err := app.Test(request)
+	response, err := app.Test(request, fiber.TestConfig{
+		Timeout:       5 * time.Second,
+		FailOnTimeout: true,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
