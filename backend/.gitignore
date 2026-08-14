@@ -1,7 +1,7 @@
 .env
 .env.local
 data/
-storage/
+/storage/
 tmp/
 dist/
 coverage.out
