@@ -31,15 +31,15 @@ func main() {
 	if err := database.Migrate(ctx, db); err != nil {
 		log.Fatal().Err(err).Msg("failed to run migrations")
 	}
-	result, err := seed.SeedCTonic(ctx, db, cfg.Catalog)
+	result, err := seed.SeedAllFixedKeys(ctx, db, cfg.Catalog)
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to seed C tonic course")
+		log.Fatal().Err(err).Msg("failed to seed fixed-key courses")
 	}
 	log.Info().
-		Uint("course_id", result.CourseID).
+		Int("courses", result.Courses).
 		Int("groups", result.Groups).
 		Int("levels", result.Levels).
-		Msg("C tonic course seeded")
+		Msg("fixed-key courses seeded")
 
 	randomResult, err := seed.SeedRandomTonic(ctx, db, cfg.Catalog)
 	if err != nil {

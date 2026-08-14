@@ -264,22 +264,30 @@ a course-level record does not delete or move the referenced MIDI file.
 
 ### Generated test courses
 
-Seed the configured database and catalog root with the public `C tonic` and
-`Random tonic` test courses:
+Seed the configured database and catalog root with the complete public
+fixed-key collection and the `Random tonic` test course:
 
 ```bash
 go run ./cmd/seed-c-tonic
 ```
 
-`Random tonic` mirrors the six C-tonic tempo progressions using relative Major
-degree states. Its tonic rotates every five questions, its questions contain
-five-note sequences, and the groups cumulatively add ♯4, ♭2, ♭6, ♭3, and ♭7.
+The fixed-key collection contains Major and Natural Minor courses through six
+sharps/flats, with separate F♯ Major and G♭ Major courses. Major and relative
+Natural Minor are intertwined in increasing accidental count, beginning with
+`C tonic`, A Natural Minor, G Major, E Natural Minor, F Major, and D Natural
+Minor. Each course uses the original C-tonic absolute-scale parameters: scale
+rotation is off, questions contain eight-note sequences, and its six tabs
+cumulatively complete the chromatic pitch set.
 
-The command is idempotent. It creates one `melodies` mode containing six
+`Random tonic` follows the fixed-key courses and uses relative Major degree
+states. Its tonic rotates every five questions, its questions contain five-note
+sequences, and the groups cumulatively add ♯4, ♭2, ♭6, ♭3, and ♭7.
+
+The command is idempotent. Each course has one `melodies` mode containing six
 progression tabs and 66 generated-melody levels (60–160 BPM in 10 BPM steps).
-The tabs cumulatively add F♯, C♯, G♯, D♯, and A♯ to C major. Running the command
-again resets the seed-owned rows to their canonical definitions without
-removing unrelated modes or progression groups added by an administrator.
+Running the command again resets the seed-owned rows to their canonical
+definitions without removing unrelated modes or progression groups added by an
+administrator.
 
 Administrator-only catalog endpoints:
 

@@ -37,7 +37,7 @@ func TestSeedRandomTonicCreatesCompleteIdempotentCourse(t *testing.T) {
 	if err := db.Where("id = ?", result.CourseID).First(&courseRecord).Error; err != nil {
 		t.Fatal(err)
 	}
-	if courseRecord.Name != "Random tonic" || !courseRecord.IsPublic || courseRecord.SortOrder != 1 || courseRecord.StructureSource != model.CourseStructureManaged {
+	if courseRecord.Name != "Random tonic" || !courseRecord.IsPublic || courseRecord.SortOrder != randomTonicSortOrder || courseRecord.StructureSource != model.CourseStructureManaged {
 		t.Fatalf("unexpected course metadata: %+v", courseRecord)
 	}
 	var mode model.CourseMode

@@ -227,7 +227,7 @@ func createRandomTonicFolders(catalogConfig config.CatalogConfig) error {
 	}{
 		{
 			Path: randomTonicCoursePath, Name: "Random tonic",
-			Description: "Progressive melody training over rotating random Major tonics.", SortOrder: 1,
+			Description: "Progressive melody training over rotating random Major tonics.", SortOrder: randomTonicSortOrder,
 		},
 		{
 			Path: randomTonicModePath, Name: "Melodies",
@@ -268,7 +268,7 @@ func upsertRandomTonicCourse(db *gorm.DB, libraryGroup model.LibraryGroup) error
 	values := map[string]any{
 		"deleted_at": nil, "name": "Random tonic",
 		"description": "Progressive melody training over rotating random Major tonics.", "author": "LdV",
-		"is_public": true, "sort_order": 1, "structure_source": model.CourseStructureManaged,
+		"is_public": true, "sort_order": randomTonicSortOrder, "structure_source": model.CourseStructureManaged,
 	}
 	var existing model.Course
 	err := db.Unscoped().Where("id = ?", libraryGroup.ID).First(&existing).Error
@@ -276,7 +276,7 @@ func upsertRandomTonicCourse(db *gorm.DB, libraryGroup model.LibraryGroup) error
 		course := model.Course{
 			ID: libraryGroup.ID, Name: "Random tonic",
 			Description: "Progressive melody training over rotating random Major tonics.",
-			Author:      "LdV", IsPublic: true, SortOrder: 1, StructureSource: model.CourseStructureManaged,
+			Author:      "LdV", IsPublic: true, SortOrder: randomTonicSortOrder, StructureSource: model.CourseStructureManaged,
 		}
 		return db.Omit("Modes").Create(&course).Error
 	}

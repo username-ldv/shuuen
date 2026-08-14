@@ -101,66 +101,69 @@ func SeedCTonic(ctx context.Context, db *gorm.DB, catalogConfig config.CatalogCo
 
 	var result CTonicResult
 	err = db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		courseGroup, err := findSeedLibraryGroup(tx, cTonicCoursePath)
-		if err != nil {
-			return err
-		}
-		modeGroup, err := findSeedLibraryGroup(tx, cTonicModePath)
-		if err != nil {
-			return err
-		}
-
-		if err := upsertCTonicCourse(tx, courseGroup); err != nil {
-			return err
-		}
-		mode, err := upsertCTonicMode(tx, courseGroup.ID, modeGroup.ID)
-		if err != nil {
-			return err
-		}
-
-		activePitches := cMajorPitchSet()
-		for groupIndex, spec := range cTonicGroupSpecs {
-			if spec.AddedPitch != nil {
-				activePitches[*spec.AddedPitch] = true
-			}
-			libraryGroup, err := findSeedLibraryGroup(tx, filepath.ToSlash(filepath.Join(cTonicModePath, spec.Slug)))
-			if err != nil {
-				return err
-			}
-			progression, err := upsertCTonicProgressionGroup(tx, mode.ID, libraryGroup.ID, spec, groupIndex)
-			if err != nil {
-				return err
-			}
-			for levelIndex, tempo := 0, 60; tempo <= 160; levelIndex, tempo = levelIndex+1, tempo+10 {
-				definition, err := cTonicDefinition(activePitches, groupIndex != 0, tempo)
-				if err != nil {
-					return err
-				}
-				level := model.CourseLevel{
-					ID:                 fmt.Sprintf("seed-c-tonic-%s-%03d-bpm", spec.Slug, tempo),
-					ProgressionGroupID: progression.ID,
-					Name:               fmt.Sprintf("%s — %d BPM", spec.Name, tempo),
-					Source:             "built_in",
-					Definition:         model.JSONDocument(definition),
-					SortOrder:          levelIndex,
-					IsPublic:           true,
-					SectionLibraryGroupID: func() *uint {
-						id := libraryGroup.ID
-						return &id
-					}(),
-				}
-				if err := upsertSeededLevel(tx, level); err != nil {
-					return err
-				}
-				result.Levels++
-			}
-			result.Groups++
-		}
-		result.CourseID = courseGroup.ID
-		return nil
+		seeded, err := seedCTonicCourse(tx)
+		result = seeded
+		return err
 	})
 	if err != nil {
 		return CTonicResult{}, err
+	}
+	return result, nil
+}
+
+func seedCTonicCourse(db *gorm.DB) (CTonicResult, error) {
+	courseGroup, err := findSeedLibraryGroup(db, cTonicCoursePath)
+	if err != nil {
+		return CTonicResult{}, err
+	}
+	modeGroup, err := findSeedLibraryGroup(db, cTonicModePath)
+	if err != nil {
+		return CTonicResult{}, err
+	}
+	if err := upsertCTonicCourse(db, courseGroup); err != nil {
+		return CTonicResult{}, err
+	}
+	mode, err := upsertCTonicMode(db, courseGroup.ID, modeGroup.ID)
+	if err != nil {
+		return CTonicResult{}, err
+	}
+
+	result := CTonicResult{CourseID: courseGroup.ID}
+	activePitches := cMajorPitchSet()
+	for groupIndex, spec := range cTonicGroupSpecs {
+		if spec.AddedPitch != nil {
+			activePitches[*spec.AddedPitch] = true
+		}
+		libraryGroup, err := findSeedLibraryGroup(db, filepath.ToSlash(filepath.Join(cTonicModePath, spec.Slug)))
+		if err != nil {
+			return CTonicResult{}, err
+		}
+		progression, err := upsertCTonicProgressionGroup(db, mode.ID, libraryGroup.ID, spec, groupIndex)
+		if err != nil {
+			return CTonicResult{}, err
+		}
+		for levelIndex, tempo := 0, 60; tempo <= 160; levelIndex, tempo = levelIndex+1, tempo+10 {
+			definition, err := cTonicDefinition(activePitches, groupIndex != 0, tempo)
+			if err != nil {
+				return CTonicResult{}, err
+			}
+			sectionID := libraryGroup.ID
+			level := model.CourseLevel{
+				ID:                    fmt.Sprintf("seed-c-tonic-%s-%03d-bpm", spec.Slug, tempo),
+				ProgressionGroupID:    progression.ID,
+				Name:                  fmt.Sprintf("%s — %d BPM", spec.Name, tempo),
+				Source:                "built_in",
+				Definition:            model.JSONDocument(definition),
+				SortOrder:             levelIndex,
+				IsPublic:              true,
+				SectionLibraryGroupID: &sectionID,
+			}
+			if err := upsertSeededLevel(db, level); err != nil {
+				return CTonicResult{}, err
+			}
+			result.Levels++
+		}
+		result.Groups++
 	}
 	return result, nil
 }
