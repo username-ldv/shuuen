@@ -4,7 +4,7 @@ Go backend for a Fiber v3 API with GORM, role-aware JWT authentication, recursiv
 
 ## Stack
 
-- Go 1.26.5 and Fiber v3.
+- Go 1.26.6 and Fiber v3.
 - GORM's Generics API with CLI-generated, type-safe field and association helpers; SQLite for fast local development and Postgres for production.
 - OpenAPI 3.2 contract linted in CI with Redocly.
 - JWT bearer auth with bcrypt password hashing.
