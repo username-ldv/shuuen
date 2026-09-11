@@ -1,5 +1,7 @@
 name: Android Release APK
 
+# App releases keep the plain `v*` tags (v0.3.0, …). Other parts of the monorepo tag
+# with a prefix such as `backend-v0.1.0`, which never matches this trigger.
 on:
   workflow_dispatch:
     inputs:
@@ -21,6 +23,10 @@ env:
 concurrency:
   group: android-release-apk-${{ github.ref }}
   cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: app
 
 jobs:
   build:
@@ -109,7 +115,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: shuuen-release-apk
-          path: artifacts/shuuen-release.apk
+          # Actions `with:` paths are relative to the repository root, not `working-directory`.
+          path: app/artifacts/shuuen-release.apk
           if-no-files-found: error
 
       - name: Publish GitHub Release

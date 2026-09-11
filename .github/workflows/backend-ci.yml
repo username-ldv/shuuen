@@ -1,11 +1,23 @@
-name: ci
+name: backend-ci
 
 on:
   push:
+    # Listing branches keeps tag pushes (app releases) from triggering this workflow.
+    branches: ["**"]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
   pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
 
 permissions:
   contents: read
+
+defaults:
+  run:
+    working-directory: backend
 
 jobs:
   test:
@@ -30,7 +42,8 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
           cache: true
       - run: go generate ./internal/model && git diff --exit-code -- internal/query/models.go
       - run: go test -race -count=1 ./...
