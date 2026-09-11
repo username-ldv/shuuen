@@ -1,0 +1,9 @@
+# Each project keeps its own .gitignore (app/, backend/, web/).
+
+# OS and editor files at the repository root
+.DS_Store
+Thumbs.db
+/.idea/
+
+# Claude Code personal settings
+.claude/settings.local.json

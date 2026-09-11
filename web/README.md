@@ -1,8 +1,8 @@
 # 終焉 · Shuuen — Web Frontend
 
 Web frontend for **Shuuen**, a next-generation ear-training app for musicians
-(Windows · Linux · Android). It pairs with the native app and (in time) a
-separate Go backend API. The current codebase includes the **marketing landing
+(Windows · Linux · Android). It lives in the Shuuen monorepo next to the native
+app ([`app/`](../app)) and the Go backend API ([`backend/`](../backend)). The current codebase includes the **marketing landing
 page** plus a small optional-auth surface (login, sign-up, and profile) built
 to grow into the interactive site (personal pages, news blog, a global
 repository of melodies/levels/contexts, and music-API integrations).
@@ -26,7 +26,7 @@ repository of melodies/levels/contexts, and music-API integrations).
 | Font           | Inter (variable, self-hosted via `@fontsource-variable/inter`)         |
 | Runtime / PM   | [Bun](https://bun.sh)                                                   |
 | Rendering      | SSR via `@sveltejs/adapter-node` with same-origin backend proxying |
-| Backend        | Separate **Go** API (not in this repo), reached at `/api` (see [ARCHITECTURE](docs/ARCHITECTURE.md)) |
+| Backend        | **Go** API in [`backend/`](../backend), reached at `/api` (see [ARCHITECTURE](docs/ARCHITECTURE.md)) |
 
 The visual design was imported from a
 [Claude Design](https://claude.ai/design) project and adapted to the default

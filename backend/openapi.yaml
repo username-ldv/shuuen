@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   license:
     name: The Supreme Mandate of the Void 1.2
-    url: https://github.com/username-ldv/shuuen-backend/blob/main/LICENSE
+    url: https://github.com/username-ldv/shuuen/blob/main/LICENSE
   description: >-
     Public catalog reads, role-aware account access, and revision-based user-level
     sync. Catalog mutations require an administrator bearer token. Private reads

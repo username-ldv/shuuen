@@ -1,6 +1,7 @@
 # Architecture
 
-How the Shuuen web frontend fits together with the (future) Go backend, and how
+How the Shuuen web frontend fits together with the Go backend
+([`backend/`](../../backend) in this monorepo), and how
 requests are routed. This is the target design; today only the marketing page
 exists, but the wiring below is already in place so the rest drops in cleanly.
 
@@ -8,8 +9,8 @@ exists, but the wiring below is already in place so the rest drops in cleanly.
 
 | Piece | What it is | Where it listens |
 | --- | --- | --- |
-| **Web frontend** | This repo — SvelteKit, `adapter-node` | Node server, internal `:3000` |
-| **Backend API** | Separate **Go** service (not in this repo) | internal `:9999` |
+| **Web frontend** | [`web/`](..) — SvelteKit, `adapter-node` | Node server, internal `:3000` |
+| **Backend API** | **Go** service in [`backend/`](../../backend) | internal `:9999` |
 | **Reverse proxy** | Caddy/Nginx — TLS + routing | public `:443` (prod only) |
 
 Both apps are self-hosted on one machine. Only the reverse proxy is exposed to
@@ -92,7 +93,7 @@ code. Copy `.env.example` → `.env` to start.
 |  | Development | Production |
 | --- | --- | --- |
 | Frontend | `bun run dev` (Vite, `:5173`) | `node build` (`:3000`) behind the proxy |
-| Backend | `go run ...` (`:9999`) | Go binary (`:9999`) behind the proxy |
+| Backend | `go run ./cmd/api` in `backend/` (`:9999`) | Go binary (`:9999`) behind the proxy |
 | `/api` routing | **Vite dev proxy** (`vite.config.ts`) → `:9999` | **Reverse proxy** → `:9999` |
 | TLS | none (plain http) | terminated at the proxy |
 
