@@ -19,7 +19,14 @@ builds on its own, so run commands from the project's folder, not the repo root.
   `config.type`), never Kotlin class names. See "Courses and Level Progressions"
   in `backend/README.md`.
 - Ports: backend `:9999`; web dev `:5173`, whose Vite proxy forwards `/api` to
-  `:9999`; web production `:3000`.
+  `SHUUEN_BACKEND_URL` (`:9999`); web production `:3000`.
+- `docker compose up --watch` at the repo root runs Postgres, the API, and the
+  web dev server together (`compose.yaml` + `compose.override.yaml`). Production
+  uses `compose.prod.yaml`, the root `Caddyfile`, and a git-ignored root `.env`
+  (see `.env.example`).
+- The backend runs only on Postgres; for `go run`, start the dev database with
+  `docker compose up -d postgres`. SQLite remains only in the in-memory test
+  suite. The dev API container mounts `backend/data` as its catalog.
 - After changing a GORM model, run `go generate ./internal/model` in `backend/`.
   CI fails when `internal/query/models.go` is stale.
 

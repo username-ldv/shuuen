@@ -5,7 +5,7 @@ Go backend for a Fiber v3 API with GORM, role-aware JWT authentication, recursiv
 ## Stack
 
 - Go 1.26.6 and Fiber v3.
-- GORM's Generics API with CLI-generated, type-safe field and association helpers; SQLite for fast local development and Postgres for production.
+- GORM's Generics API with CLI-generated, type-safe field and association helpers; Postgres in every environment (the test suite uses in-memory SQLite).
 - OpenAPI 3.2 contract linted in CI with Redocly.
 - JWT bearer auth with bcrypt password hashing.
 - Filesystem catalog under `DATA_ROOT`, indexed into the database on startup and on demand.
@@ -35,7 +35,8 @@ Copy the environment template:
 cp .env.example .env
 ```
 
-Run locally:
+Start the development Postgres from the repository root with
+`docker compose up -d postgres`, then run the API:
 
 ```sh
 go mod tidy
@@ -48,10 +49,11 @@ After changing a model, regenerate the typed GORM helpers:
 go generate ./internal/model
 ```
 
-Or run with Postgres through Docker Compose:
+Or run the API in Docker as well, together with the website, from the
+repository root:
 
 ```sh
-docker compose up --build
+docker compose up --watch
 ```
 
 The API listens on `http://localhost:9999` by default.
@@ -271,6 +273,9 @@ fixed-key collection and the `Random tonic` test course:
 go run ./cmd/seed-c-tonic
 ```
 
+Under Docker Compose, run the copy built into the API image instead:
+`docker compose exec api ./seed-c-tonic`.
+
 The fixed-key collection contains Major and Natural Minor courses through six
 sharps/flats, with separate F♯ Major and G♭ Major courses. Major and relative
 Natural Minor are intertwined in increasing accidental count, beginning with
@@ -336,9 +341,18 @@ Allowed formats:
 
 The startup scan is enabled by default and can be disabled with `CATALOG_SCAN_ON_STARTUP=false` once the database is already indexed. An administrator can run reconciliation with `POST /api/v1/library/rescan`.
 
-Reconciliation is serialized within the process, loads existing catalog identities in batches, hashes only new or changed files using size and modification time, and updates scan markers in batches. This keeps repeat scans practical for libraries with tens of thousands of files. The database remains the fast read index; the filesystem remains the current source of catalog file content.
+Scans are incremental. Every indexed folder stores the modification time of the folder and of its `.shuuen.json`, and a scan reads only the folders whose timestamps moved. Its cost therefore follows the number of folders, not the number of files, which matters on slow filesystems such as a Docker bind mount of a Windows folder. Adding, removing or renaming a file changes its folder's modification time and is picked up. Editing a file in place does not, so content edits — including per-melody `<stem>.shuuen.json` files — need a full scan:
 
-SQLite connections use WAL mode, foreign keys, a busy timeout, and a small read-capable pool by default. Postgres and SQLite pool sizes/lifetimes are configurable. Recursive API responses are bounded and default list ordering is backed by composite indexes.
+```sh
+curl -X POST "http://localhost:9999/api/v1/library/rescan?full=true" \
+  -H "Authorization: Bearer <access_token>"
+```
+
+A folder whose modification time is less than two seconds old is always read again, because filesystem clocks are coarse (about 16 ms on Windows) and a file added within the same tick would otherwise stay invisible.
+
+Reconciliation is serialized within the process, hashes only new or changed files using size and modification time, and updates scan markers in batches. A scan that finds nothing changed writes nothing. The database remains the fast read index; the filesystem remains the current source of catalog file content.
+
+Postgres pool sizes and connection lifetimes are configurable. Recursive API responses are bounded and default list ordering is backed by composite indexes.
 
 For a future multi-machine deployment, replace local file storage with shared/object storage and run reconciliation in a separately leased worker. That distributed coordination is intentionally not implemented yet.
 
@@ -354,7 +368,7 @@ Before production:
 - Back up both the database and `DATA_ROOT` together.
 - Run the application behind TLS and monitor `/healthz`.
 
-The Docker image runs as a non-root user, excludes local data/secrets from its build context, and includes a health check. Docker Compose values are development-only and must not be reused as production secrets.
+The Docker image runs as a non-root user, excludes local data/secrets from its build context, and includes a health check. The values in the root `compose.override.yaml` are development-only and must not be reused as production secrets. Production reads its secrets from the root `.env`; see `.env.example` and the root README.
 
 ## User Data Sync
 
@@ -380,7 +394,7 @@ skipped and the current server row is returned to the device.
 
 `user_levels` keeps `kind`, `level_id`, `name`, `source`, ownership, revision,
 and deletion state in ordinary indexed columns. The mode-specific `definition`
-is native JSON on SQLite and JSONB on Postgres and uses the same stable schema as
+is JSONB and uses the same stable schema as
 course level definitions. It is therefore available for future web views and
 statistics queries without decoding an app-specific binary/blob format.
 
@@ -397,7 +411,7 @@ syncing redundant aggregates that could disagree.
 `user_training_sessions` stores flow, level identity/name snapshot, completion
 time, finished-early state, accuracy counters, timing statistics, streak,
 replays, and keys practiced in ordinary queryable columns. Per-question results
-are native JSON on SQLite and JSONB on Postgres. The history and level-statistics
+are JSONB. The history and level-statistics
 indexes are intended to support later web statistics endpoints without changing
 the sync representation.
 

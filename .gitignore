@@ -5,5 +5,8 @@
 Thumbs.db
 /.idea/
 
+# Production secrets for the Docker stack (see .env.example)
+/.env
+
 # Claude Code personal settings
 .claude/settings.local.json

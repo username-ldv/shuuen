@@ -305,6 +305,194 @@ func TestUnchangedScanDoesNotRewriteCatalogTimestamps(t *testing.T) {
 	}
 }
 
+func newScannerForTest(t *testing.T, root string) (*Scanner, *gorm.DB) {
+	t.Helper()
+	db, err := gorm.Open(gormlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("gorm.Open returned error: %v", err)
+	}
+	if err := db.AutoMigrate(&model.User{}, &model.LibraryGroup{}, &model.Tag{}, &model.Melody{}, &model.FileVariant{}); err != nil {
+		t.Fatalf("AutoMigrate returned error: %v", err)
+	}
+	scanner, err := NewScanner(db, config.CatalogConfig{
+		Root: root, FolderMetadataFile: ".shuuen.json", MelodyMetadataSuffix: ".shuuen.json", MaxUploadBytes: 1024,
+	})
+	if err != nil {
+		t.Fatalf("NewScanner returned error: %v", err)
+	}
+	// These tests change files right after scanning them, and the guard that keeps
+	// freshly changed folders out of the fast path would hide those changes.
+	scanner.recentChangeSkew = 0
+	return scanner, db
+}
+
+func TestIncrementalScanReadsOnlyChangedFolders(t *testing.T) {
+	root := t.TempDir()
+	groupDir := filepath.Join(root, "group")
+	if err := os.MkdirAll(groupDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(groupDir, "song.mid"), "midi")
+	scanner, _ := newScannerForTest(t, root)
+
+	first, err := scanner.Scan(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.GroupsScanned != 2 {
+		t.Fatalf("first scan read %d folders, want 2", first.GroupsScanned)
+	}
+
+	unchanged, err := scanner.Scan(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if unchanged.GroupsScanned != 0 {
+		t.Fatalf("unchanged scan read %d folders, want 0", unchanged.GroupsScanned)
+	}
+	if unchanged.MelodiesFound != 1 || unchanged.VariantsFound != 1 {
+		t.Fatalf("unchanged scan reported %d melodies and %d variants, want 1 and 1", unchanged.MelodiesFound, unchanged.VariantsFound)
+	}
+
+	time.Sleep(50 * time.Millisecond)
+	writeFile(t, filepath.Join(groupDir, "another.mid"), "midi")
+	added, err := scanner.Scan(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if added.GroupsScanned != 1 {
+		t.Fatalf("scan after adding a file read %d folders, want only the changed one", added.GroupsScanned)
+	}
+	if added.MelodiesFound != 2 {
+		t.Fatalf("MelodiesFound = %d, want 2", added.MelodiesFound)
+	}
+}
+
+func TestIncrementalScanLeavesInPlaceEditsToFullScan(t *testing.T) {
+	root := t.TempDir()
+	groupDir := filepath.Join(root, "group")
+	if err := os.MkdirAll(groupDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	songPath := filepath.Join(groupDir, "song.mid")
+	writeFile(t, songPath, "midi")
+	scanner, db := newScannerForTest(t, root)
+	if _, err := scanner.Scan(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	before, err := gorm.G[model.FileVariant](db).
+		Where(dbquery.FileVariant.StoragePath.Eq("group/song.mid")).
+		First(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(50 * time.Millisecond)
+	writeFile(t, songPath, "a longer midi body")
+
+	incremental, err := scanner.Scan(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if incremental.GroupsScanned != 0 {
+		t.Fatalf("editing a file in place read %d folders, want 0", incremental.GroupsScanned)
+	}
+	stale, err := gorm.G[model.FileVariant](db).Where(dbquery.FileVariant.ID.Eq(before.ID)).First(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stale.ChecksumSHA != before.ChecksumSHA {
+		t.Fatal("incremental scan unexpectedly re-read a file edited in place")
+	}
+
+	full, err := scanner.ScanFull(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if full.GroupsScanned != 2 {
+		t.Fatalf("full scan read %d folders, want 2", full.GroupsScanned)
+	}
+	updated, err := gorm.G[model.FileVariant](db).Where(dbquery.FileVariant.ID.Eq(before.ID)).First(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.ChecksumSHA == before.ChecksumSHA || updated.SizeBytes != int64(len("a longer midi body")) {
+		t.Fatalf("full scan did not pick up the edit: %#v", updated)
+	}
+}
+
+func TestIncrementalScanDetectsFolderMetadataEdits(t *testing.T) {
+	root := t.TempDir()
+	groupDir := filepath.Join(root, "group")
+	if err := os.MkdirAll(groupDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	metadataPath := filepath.Join(groupDir, ".shuuen.json")
+	writeFile(t, metadataPath, `{"is_public":true}`)
+	writeFile(t, filepath.Join(groupDir, "song.mid"), "midi")
+	scanner, db := newScannerForTest(t, root)
+	if _, err := scanner.Scan(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(50 * time.Millisecond)
+	writeFile(t, metadataPath, `{"is_public":false}`)
+	if _, err := scanner.Scan(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+
+	group, err := gorm.G[model.LibraryGroup](db).Where(dbquery.LibraryGroup.Path.Eq("group")).First(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if group.IsPublic {
+		t.Fatal("editing folder metadata should have made the group private")
+	}
+	melody, err := gorm.G[model.Melody](db).Where(dbquery.Melody.SourcePath.Eq("group/song")).First(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if melody.IsPublic {
+		t.Fatal("melody in a private group should be private")
+	}
+}
+
+func TestIncrementalScanRemovesDeletedFolders(t *testing.T) {
+	root := t.TempDir()
+	keptDir := filepath.Join(root, "kept")
+	goneDir := filepath.Join(root, "gone")
+	if err := os.MkdirAll(keptDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(goneDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(keptDir, "kept.mid"), "midi")
+	writeFile(t, filepath.Join(goneDir, "gone.mid"), "midi")
+	scanner, db := newScannerForTest(t, root)
+	if _, err := scanner.Scan(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(50 * time.Millisecond)
+	if err := os.RemoveAll(goneDir); err != nil {
+		t.Fatal(err)
+	}
+	result, err := scanner.Scan(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.MelodiesFound != 1 || result.GroupsIndexed != 2 {
+		t.Fatalf("after removing a folder: %d melodies and %d groups, want 1 and 2", result.MelodiesFound, result.GroupsIndexed)
+	}
+	if _, err := gorm.G[model.LibraryGroup](db).Where(dbquery.LibraryGroup.Path.Eq("gone")).First(t.Context()); !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("expected the removed folder to be deleted, got %v", err)
+	}
+	if _, err := gorm.G[model.Melody](db).Where(dbquery.Melody.SourcePath.Eq("kept/kept")).First(t.Context()); err != nil {
+		t.Fatalf("melody in the untouched folder should have survived: %v", err)
+	}
+}
+
 func writeFile(t *testing.T, path string, body string) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {

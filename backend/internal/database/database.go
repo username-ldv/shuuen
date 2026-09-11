@@ -70,6 +70,7 @@ var migrations = []migration{
 	{version: 7, apply: addVariantLookupIndex},
 	{version: 8, apply: addUserLevelSyncSchema},
 	{version: 9, apply: addTrainingSessionSyncSchema},
+	{version: 10, apply: addGroupDirectoryScanColumns},
 }
 
 func Migrate(ctx context.Context, db *gorm.DB) error {
@@ -207,6 +208,21 @@ func addTrainingSessionSyncSchema(ctx context.Context, db *gorm.DB) error {
 	}
 	for _, statement := range statements {
 		if err := gorm.G[any](db).Exec(ctx, statement); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// addGroupDirectoryScanColumns records folder modification times so catalog scans
+// can skip folders that have not changed. Existing rows start at zero, which makes
+// the first scan after this migration read the whole catalog once.
+func addGroupDirectoryScanColumns(_ context.Context, db *gorm.DB) error {
+	for _, column := range []string{"DirModTime", "MetaModTime"} {
+		if db.Migrator().HasColumn(&model.LibraryGroup{}, column) {
+			continue
+		}
+		if err := db.Migrator().AddColumn(&model.LibraryGroup{}, column); err != nil {
 			return err
 		}
 	}

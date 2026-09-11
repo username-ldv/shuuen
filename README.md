@@ -9,7 +9,7 @@ Shuuen is an ear-training app for musicians. This monorepo holds every part of i
 | Folder | What it is | Stack |
 | --- | --- | --- |
 | [`app/`](app) | The ear-training app for Android and desktop (Windows · Linux) | Kotlin Multiplatform, Compose Multiplatform, Koin, Ktor |
-| [`backend/`](backend) | API for accounts, the melody catalog, courses, and sync | Go, Fiber v3, GORM, JWT; SQLite locally, Postgres in production |
+| [`backend/`](backend) | API for accounts, the melody catalog, courses, and sync | Go, Fiber v3, GORM, JWT, Postgres |
 | [`web/`](web) | Website: landing page and account pages | SvelteKit (Svelte 5), shadcn-svelte, Tailwind CSS v4, Bun |
 
 ## How the parts connect
@@ -25,10 +25,26 @@ Shuuen is an ear-training app for musicians. This monorepo holds every part of i
 
 ## Running locally
 
-Each project builds on its own. Run commands from its folder:
+To run the backend and website together, start Docker Desktop (or another Docker
+engine) and run this from the repository root:
 
 ```sh
-# Backend (http://localhost:9999)
+docker compose up --watch
+```
+
+It starts Postgres, the API at http://localhost:9999, and the website at
+http://localhost:5173. Saving a Go file rebuilds the API container, and changes
+under `web/src` hot-reload in the browser. The development settings are in
+[`compose.override.yaml`](compose.override.yaml), including the bootstrap
+administrator (`admin` / `change-this-development-password`). Load the test
+courses with `docker compose exec api ./seed-c-tonic`. The API reads the melody
+catalog from `backend/data/`, the same folder `go run` uses. Stop with Ctrl+C or
+`docker compose down`; add `-v` to also delete the database.
+
+Each project also runs with its own toolchain. Run commands from its folder:
+
+```sh
+# Backend (http://localhost:9999); needs the database from `docker compose up -d postgres`
 cd backend && cp .env.example .env && go run ./cmd/api
 
 # Website (http://localhost:5173)
@@ -39,6 +55,22 @@ cd app && ./gradlew :desktopApp:run
 ```
 
 Each folder's README has the details.
+
+## Production
+
+[`compose.prod.yaml`](compose.prod.yaml) runs the same services behind
+[Caddy](https://caddyserver.com), which obtains the TLS certificate and routes
+`/api` and `/link` to the API and everything else to the website (see the
+[`Caddyfile`](Caddyfile)). Only ports 80 and 443 are published. On the server:
+
+```sh
+cp .env.example .env    # set the domain and secrets
+docker compose up -d --build
+```
+
+`.env` sets `COMPOSE_FILE`, so every `docker compose` command on the server uses
+the production files. Back up the `postgres-data` and `api-data` volumes
+together.
 
 ## CI and releases
 

@@ -70,13 +70,7 @@ func Load() (Config, error) {
 	loader := envLoader{}
 	appEnv := strings.ToLower(getEnv("APP_ENV", "development"))
 	productionLike := appEnv != "development" && appEnv != "test"
-	driver := strings.ToLower(getEnv("DATABASE_DRIVER", "sqlite"))
-	maxOpenConns := 20
-	maxIdleConns := 10
-	if driver == "sqlite" {
-		maxOpenConns = 4
-		maxIdleConns = 4
-	}
+	driver := strings.ToLower(getEnv("DATABASE_DRIVER", "postgres"))
 	corsFallback := "*"
 	if productionLike {
 		corsFallback = ""
@@ -104,10 +98,10 @@ func Load() (Config, error) {
 		},
 		Database: DatabaseConfig{
 			Driver:          driver,
-			DSN:             getEnv("DATABASE_DSN", "data/shuuen.db"),
+			DSN:             getEnv("DATABASE_DSN", ""),
 			AutoMigrate:     loader.boolean("AUTO_MIGRATE", true),
-			MaxOpenConns:    loader.integer("DATABASE_MAX_OPEN_CONNS", maxOpenConns),
-			MaxIdleConns:    loader.integer("DATABASE_MAX_IDLE_CONNS", maxIdleConns),
+			MaxOpenConns:    loader.integer("DATABASE_MAX_OPEN_CONNS", 20),
+			MaxIdleConns:    loader.integer("DATABASE_MAX_IDLE_CONNS", 10),
 			ConnMaxLifetime: loader.duration("DATABASE_CONN_MAX_LIFETIME", 30*time.Minute),
 			ConnMaxIdleTime: loader.duration("DATABASE_CONN_MAX_IDLE_TIME", 5*time.Minute),
 		},
@@ -139,11 +133,12 @@ func Load() (Config, error) {
 }
 
 func (c Config) validate() error {
-	if c.Database.Driver != "sqlite" && c.Database.Driver != "postgres" {
-		return fmt.Errorf("unsupported DATABASE_DRIVER %q", c.Database.Driver)
+	// The database package still opens SQLite, but only for in-memory tests.
+	if c.Database.Driver != "postgres" {
+		return fmt.Errorf("unsupported DATABASE_DRIVER %q: only postgres is supported", c.Database.Driver)
 	}
 	if c.Database.DSN == "" {
-		return errors.New("DATABASE_DSN is required")
+		return errors.New("DATABASE_DSN is required; .env.example has the development Postgres DSN")
 	}
 	if c.Catalog.Root == "" {
 		return errors.New("DATA_ROOT is required")

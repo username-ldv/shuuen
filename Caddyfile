@@ -1,0 +1,15 @@
+# Production reverse proxy for compose.prod.yaml. SITE_DOMAIN comes from .env;
+# Caddy obtains and renews the TLS certificate for it automatically.
+{$SITE_DOMAIN} {
+	handle /api/* {
+		reverse_proxy api:9999
+	}
+	# Short pairing URL for the native app; the backend serves it at /api/link.
+	handle /link {
+		rewrite * /api/link
+		reverse_proxy api:9999
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+}

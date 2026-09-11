@@ -73,6 +73,7 @@ func main() {
 		log.Info().
 			Str("scan_id", scanResult.ScanID).
 			Int("groups", scanResult.GroupsIndexed).
+			Int("groups_read", scanResult.GroupsScanned).
 			Int("melodies", scanResult.MelodiesFound).
 			Int("variants", scanResult.VariantsFound).
 			Msg("catalog scan complete")

@@ -1487,8 +1487,18 @@ paths:
   /api/v1/library/rescan:
     post:
       summary: Reconcile the filesystem catalog
+      description: >-
+        Incremental by default: folders whose modification time still matches the
+        indexed one are not read at all. Added, removed and renamed files are
+        picked up; a file edited in place is only noticed by a full scan.
       operationId: rescanCatalog
       security: [{ bearerAuth: [] }]
+      parameters:
+        - name: full
+          in: query
+          required: false
+          description: Read every folder instead of only the changed ones.
+          schema: { type: boolean, default: false }
       responses:
         '200': { description: Scan result }
         '403': { $ref: '#/components/responses/Forbidden' }

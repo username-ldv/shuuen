@@ -14,8 +14,19 @@ func TestLoadRejectsMalformedEnvironmentValues(t *testing.T) {
 	}
 }
 
+func TestLoadRejectsSQLite(t *testing.T) {
+	t.Setenv("APP_ENV", "development")
+	t.Setenv("DATABASE_DRIVER", "sqlite")
+	t.Setenv("DATABASE_DSN", "data/shuuen.db")
+	_, err := Load()
+	if err == nil || !strings.Contains(err.Error(), "DATABASE_DRIVER") {
+		t.Fatalf("Load() error = %v, want unsupported DATABASE_DRIVER", err)
+	}
+}
+
 func TestProductionDefaultsDisableRegistrationAndCORS(t *testing.T) {
 	t.Setenv("APP_ENV", "production")
+	t.Setenv("DATABASE_DSN", "host=localhost dbname=shuuen")
 	t.Setenv("JWT_SECRET", "a-production-secret-that-is-at-least-32-bytes")
 	t.Setenv("CORS_ALLOWED_ORIGINS", "")
 	t.Setenv("REGISTRATION_ENABLED", "")

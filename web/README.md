@@ -47,9 +47,11 @@ bun run dev            # start the dev server at http://localhost:5173
 
 Open [http://localhost:5173](http://localhost:5173). Hot-module reload is on.
 
-> In dev, requests to `/api` are proxied to a local Go backend at
-> `http://localhost:9999` (configured in [`vite.config.ts`](vite.config.ts)).
-> The backend isn't required to view the marketing page.
+> In dev, requests to `/api` are proxied to the Go backend at
+> `SHUUEN_BACKEND_URL` from `.env` (configured in [`vite.config.ts`](vite.config.ts)).
+> The backend isn't required to view the marketing page. To run the site
+> together with the backend and Postgres, use `docker compose up --watch` from
+> the repository root instead (see the root [README](../README.md)).
 
 ---
 
@@ -115,7 +117,11 @@ PORT=3000 node build
 TLS on `:443` and routes by path — `/` and app routes to this Node server,
 `/api` (and the `/link` alias) to the Go backend on an internal port. The proxy
 is a **production-only** concern; locally, Vite's dev proxy fills that role.
-Full details, including the URL scheme, in
+With Docker, the root [`compose.prod.yaml`](../compose.prod.yaml) runs this
+setup behind Caddy, using the `prod` stage of [`Dockerfile`](Dockerfile).
+Behind a proxy, set `ORIGIN` to the public URL (for example
+`https://shuuen.xyz`), or SvelteKit rejects form posts as cross-site. Full
+details, including the URL scheme, in
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---

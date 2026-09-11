@@ -32,3 +32,4 @@ jobs:
       - run: cp .env.example .env
       - run: bun run check
       - run: bun run build
+      - run: docker build --target prod -t shuuen-web:ci .

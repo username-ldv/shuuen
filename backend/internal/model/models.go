@@ -34,6 +34,11 @@ type LibraryGroup struct {
 	SortOrder   int            `gorm:"not null;default:0" json:"sort_order"`
 	IsPublic    bool           `gorm:"not null" json:"is_public"`
 	ScanID      string         `gorm:"size:64;index" json:"-"`
+	// Modification times of the folder and of its metadata file, which let an
+	// incremental scan skip folders whose contents cannot have changed. Zero
+	// means "read this folder again".
+	DirModTime  int64          `gorm:"not null;default:0" json:"-"`
+	MetaModTime int64          `gorm:"not null;default:0" json:"-"`
 	Tags        []Tag          `gorm:"many2many:group_tags;" json:"tags,omitempty"`
 	Children    []LibraryGroup `gorm:"foreignKey:ParentID" json:"children,omitempty"`
 	Melodies    []Melody       `gorm:"foreignKey:GroupID" json:"melodies,omitempty"`

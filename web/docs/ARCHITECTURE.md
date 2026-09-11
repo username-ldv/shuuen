@@ -11,20 +11,22 @@ exists, but the wiring below is already in place so the rest drops in cleanly.
 | --- | --- | --- |
 | **Web frontend** | [`web/`](..) — SvelteKit, `adapter-node` | Node server, internal `:3000` |
 | **Backend API** | **Go** service in [`backend/`](../../backend) | internal `:9999` |
-| **Reverse proxy** | Caddy/Nginx — TLS + routing | public `:443` (prod only) |
+| **Reverse proxy** | Caddy ([`Caddyfile`](../../Caddyfile)) — TLS + routing | public `:443` (prod only) |
 
-Both apps are self-hosted on one machine. Only the reverse proxy is exposed to
-the internet; the Node server and Go API bind to localhost.
+Both apps are self-hosted on one machine with Docker Compose
+([`compose.prod.yaml`](../../compose.prod.yaml)). Only the reverse proxy is
+exposed to the internet; the Node server and Go API are reachable only on the
+Compose network, as `web:3000` and `api:9999`.
 
 ```
                        ┌──────────────────────────────────────┐
-  https://shuuen.xyz   │  Reverse proxy (Caddy/Nginx)  :443    │
+  https://shuuen.xyz   │  Reverse proxy (Caddy)        :443    │
   ─────────────────────▶  terminates TLS, owns the domain      │
                        │                                        │
-                       │   /            → web frontend  ──────────▶  127.0.0.1:3000  (node build)
-                       │   /app/*, …    → web frontend  ──────────▶  127.0.0.1:3000
-                       │   /api/*       → Go backend    ──────────▶  127.0.0.1:9999
-                       │   /link        → Go /api/link  ──────────▶  127.0.0.1:9999  (alias)
+                       │   /            → web frontend  ──────────▶  web:3000  (node build)
+                       │   /app/*, …    → web frontend  ──────────▶  web:3000
+                       │   /api/*       → Go backend    ──────────▶  api:9999
+                       │   /link        → Go /api/link  ──────────▶  api:9999  (alias)
                        └──────────────────────────────────────┘
 ```
 
@@ -82,7 +84,8 @@ browser):
 | Variable | Example | Used for |
 | --- | --- | --- |
 | `PUBLIC_SITE_URL` | `https://shuuen.xyz` | Building the `/link` pairing URL shown on the landing page |
-| `SHUUEN_BACKEND_URL` | `http://127.0.0.1:9999` | Server-side auth calls from SvelteKit to the Go backend |
+| `SHUUEN_BACKEND_URL` | `http://127.0.0.1:9999` | Server-side auth calls from SvelteKit to the Go backend, and the target of Vite's dev `/api` proxy |
+| `ORIGIN` | `https://shuuen.xyz` | Production only: the public origin. Behind the proxy, adapter-node needs it, or SvelteKit rejects form posts as cross-site |
 
 Server-only secrets (DB URL, session keys, upstream music-API keys) are added
 **without** the `PUBLIC_` prefix and read via `$env/dynamic/private` in server
@@ -99,20 +102,17 @@ code. Copy `.env.example` → `.env` to start.
 
 So the **reverse proxy only runs in production** — its job (TLS + same-origin
 routing between the two apps) is handled locally by Vite's dev proxy. You do not
-need Caddy/Nginx to develop.
+need Caddy to develop.
 
-### Example production proxy (Caddy)
+`docker compose up --watch` at the repository root runs the development column
+in containers, with Postgres. `compose.prod.yaml` runs the production column
+behind Caddy.
 
-Illustrative — not committed or required to run the frontend:
+### Production proxy (Caddy)
 
-```
-shuuen.xyz {
-    handle /api/*  { reverse_proxy 127.0.0.1:9999 }
-    handle /link   { rewrite * /api/link
-                     reverse_proxy 127.0.0.1:9999 }
-    handle         { reverse_proxy 127.0.0.1:3000 }
-}
-```
+The root [`Caddyfile`](../../Caddyfile) sends `/api/*` to `api:9999`, rewrites
+`/link` to `/api/link` on the same backend, and sends everything else to
+`web:3000`. Caddy obtains the TLS certificate for `SITE_DOMAIN` automatically.
 
 ## Backend follow-up checklist
 
@@ -120,4 +120,6 @@ shuuen.xyz {
 2. Expand the `(app)/` route group with public repository/news routes and their `load`s.
 3. Add stronger production session management if the frontend needs refresh tokens or
    long-lived sessions.
-4. Configure the production reverse proxy per the topology above.
+4. Make the API trust `X-Forwarded-For` from Caddy (and from the web server's
+   auth calls), so per-IP rate limits see client addresses instead of the
+   proxy's.

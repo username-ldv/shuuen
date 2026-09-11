@@ -59,6 +59,8 @@ var LibraryGroup = struct {
 	SortOrder   field.Number[int]
 	IsPublic    field.Bool
 	ScanID      field.String
+	DirModTime  field.Number[int64]
+	MetaModTime field.Number[int64]
 	Tags        field.Slice[model.Tag]
 	Children    field.Slice[model.LibraryGroup]
 	Melodies    field.Slice[model.Melody]
@@ -76,6 +78,8 @@ var LibraryGroup = struct {
 	SortOrder:   field.Number[int]{}.WithColumn("sort_order"),
 	IsPublic:    field.Bool{}.WithColumn("is_public"),
 	ScanID:      field.String{}.WithColumn("scan_id"),
+	DirModTime:  field.Number[int64]{}.WithColumn("dir_mod_time"),
+	MetaModTime: field.Number[int64]{}.WithColumn("meta_mod_time"),
 	Tags:        field.Slice[model.Tag]{}.WithName("Tags"),
 	Children:    field.Slice[model.LibraryGroup]{}.WithName("Children"),
 	Melodies:    field.Slice[model.Melody]{}.WithName("Melodies"),

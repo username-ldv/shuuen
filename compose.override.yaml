@@ -1,0 +1,73 @@
+# Development settings. `docker compose` loads this file automatically unless
+# other files are given with -f or COMPOSE_FILE. Start with
+# `docker compose up --watch` so code changes reach the running containers.
+# Every credential here is for local use only.
+services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: shuuen-dev-password
+    ports:
+      - "5432:5432"
+
+  api:
+    # Rebuild on every `up` so the container never runs stale code; the build
+    # cache makes this take seconds when nothing changed.
+    pull_policy: build
+    environment:
+      APP_ENV: development
+      DATABASE_DSN: host=postgres user=shuuen password=shuuen-dev-password dbname=shuuen port=5432 sslmode=disable TimeZone=UTC
+      JWT_SECRET: dev-secret-change-me
+      CORS_ALLOWED_ORIGINS: "*"
+      AUTH_RATE_LIMIT_MAX: 20
+      ADMIN_RATE_LIMIT_MAX: 5
+      BOOTSTRAP_ADMIN_USERNAME: admin
+      BOOTSTRAP_ADMIN_PASSWORD: change-this-development-password
+    ports:
+      - "9999:9999"
+    volumes:
+      # The same catalog folder that `go run` uses (DATA_ROOT=data in backend/).
+      - ./backend/data:/app/data
+    develop:
+      watch:
+        # Rebuilds the image; the build cache keeps this to changed packages.
+        - action: rebuild
+          path: ./backend
+          ignore:
+            # Mounted rather than built in, and the API writes to it.
+            - data/
+
+  web:
+    pull_policy: build
+    build:
+      target: dev
+    depends_on:
+      # The site renders without the API, so don't wait for its catalog scan.
+      api:
+        condition: service_started
+    environment:
+      PUBLIC_SITE_URL: http://localhost:5173
+    ports:
+      - "5173:5173"
+    volumes:
+      # Vite re-optimizes every dependency when this cache is empty, which a
+      # fresh container otherwise is.
+      - web-vite-cache:/app/node_modules/.vite
+    develop:
+      watch:
+        # Synced files land inside the container, where Vite hot-reloads them.
+        - action: sync
+          path: ./web/src
+          target: /app/src
+        - action: sync
+          path: ./web/static
+          target: /app/static
+        - action: sync
+          path: ./web/vite.config.ts
+          target: /app/vite.config.ts
+        - action: rebuild
+          path: ./web/package.json
+        - action: rebuild
+          path: ./web/bun.lock
+
+volumes:
+  web-vite-cache:

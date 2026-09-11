@@ -1,0 +1,61 @@
+# Production settings, used with compose.yaml instead of compose.override.yaml.
+# Values come from `.env` next to this file; copy .env.example to start.
+# Only Caddy publishes ports. It terminates TLS and routes requests to the api
+# and web containers (see Caddyfile).
+name: shuuen-prod
+
+x-service: &service
+  restart: unless-stopped
+  logging:
+    # Rotates logs, unlike the default json-file driver.
+    driver: local
+
+services:
+  postgres:
+    <<: *service
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+
+  api:
+    <<: *service
+    environment:
+      APP_ENV: production
+      DATABASE_DSN: host=postgres user=shuuen password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env} dbname=shuuen port=5432 sslmode=disable TimeZone=UTC
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      CORS_ALLOWED_ORIGINS: https://${SITE_DOMAIN:?set SITE_DOMAIN in .env}
+      REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+
+  web:
+    <<: *service
+    build:
+      target: prod
+      args:
+        PUBLIC_SITE_URL: https://${SITE_DOMAIN:?set SITE_DOMAIN in .env}
+    environment:
+      # The Node server sits behind Caddy. Without ORIGIN, SvelteKit sees an
+      # http:// origin and rejects form posts (login, sign-up) as cross-site.
+      ORIGIN: https://${SITE_DOMAIN:?set SITE_DOMAIN in .env}
+
+  caddy:
+    <<: *service
+    image: caddy:2.10-alpine
+    depends_on:
+      - api
+      - web
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?set SITE_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  # Caddy's certificates and ACME account.
+  caddy-data:
+  caddy-config:

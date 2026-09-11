@@ -258,7 +258,12 @@ func (h *Handler) DeleteVariant(c fiber.Ctx) error {
 }
 
 func (h *Handler) RescanCatalog(c fiber.Ctx) error {
-	result, err := h.catalog.Scan(c.Context())
+	scan := h.catalog.Scan
+	if parseBoolQuery(c, "full", false) {
+		// Reads every folder, which is what picks up files edited in place.
+		scan = h.catalog.ScanFull
+	}
+	result, err := scan(c.Context())
 	if err != nil {
 		if errors.Is(err, catalog.ErrScanInProgress) {
 			return sendError(c, fiber.StatusConflict, err.Error())

@@ -1,17 +1,19 @@
 import tailwindcss from '@tailwindcss/vite';
 import adapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
 	server: {
 		// Bind on all interfaces so both IPv4 (127.0.0.1) and IPv6 (::1) localhost resolve.
 		host: true,
-		// Dev-only: forward API calls to the local Go backend so browser client code
+		// Dev-only: forward API calls to the Go backend so browser client code
 		// hits a same-origin `/api` (no CORS) during development. In production the
 		// reverse proxy plays this role — this proxy block does nothing in the build.
+		// The target is SHUUEN_BACKEND_URL, which the server-side auth helpers also
+		// read: from `.env` locally, `http://api:9999` under Docker Compose.
 		proxy: {
-			'/api': 'http://localhost:9999'
+			'/api': loadEnv(mode, '.', '').SHUUEN_BACKEND_URL || 'http://localhost:9999'
 		}
 	},
 	plugins: [
@@ -34,4 +36,4 @@ export default defineConfig({
 			}
 		})
 	]
-});
+}));

@@ -1,0 +1,48 @@
+# Services shared by development and production.
+#   Development: `docker compose up --watch` (adds compose.override.yaml)
+#   Production:  compose.yaml + compose.prod.yaml, see .env.example
+name: shuuen
+
+services:
+  postgres:
+    image: postgres:16.14-alpine3.24
+    environment:
+      POSTGRES_DB: shuuen
+      POSTGRES_USER: shuuen
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shuuen -d shuuen"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+      start_interval: 1s
+
+  api:
+    build: ./backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      HTTP_HOST: 0.0.0.0
+      HTTP_PORT: 9999
+      AUTO_MIGRATE: "true"
+      DATA_ROOT: /app/data
+    volumes:
+      - api-data:/app/data
+    stop_grace_period: 15s
+
+  web:
+    build: ./web
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      # Server-side auth calls, and Vite's /api proxy in development.
+      SHUUEN_BACKEND_URL: http://api:9999
+
+volumes:
+  postgres-data:
+  # The catalog (DATA_ROOT). Back it up together with postgres-data.
+  api-data:
