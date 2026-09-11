@@ -1,0 +1,12 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+/data
+/storage
+/tmp
+coverage.out
+*.exe
+*.test
+README.md

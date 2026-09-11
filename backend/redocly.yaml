@@ -1,0 +1,6 @@
+extends:
+  - recommended
+
+rules:
+  # Read-only endpoints can legitimately have no 4xx response.
+  operation-4xx-response: off
