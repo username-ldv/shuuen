@@ -175,6 +175,13 @@ private fun LeadingSections(
       SourceModeSection("1 · SOURCE MODE", state, viewModel)
       Hairline()
       ContextSection("2 · CONTEXT", state.context, onOpenContext)
+      Text(
+        text =
+          "A context needs the melody's tonic, so it plays only for files with a labelled key. " +
+            "The shared context from level select applies to those files too.",
+        color = ShuuenUi.Dim,
+        style = MaterialTheme.typography.bodySmall,
+      )
     }
   }
 }

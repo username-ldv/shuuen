@@ -13,6 +13,7 @@ import ldv.shuuen.app.navigation.LocalAppNavigator
 import ldv.shuuen.app.navigation.result.ContextRecipient
 import ldv.shuuen.app.navigation.result.LocalNavResultStore
 import ldv.shuuen.app.navigation.result.NavResultKeys.MelodiesContextResult
+import ldv.shuuen.app.navigation.result.NavResultKeys.MelodiesLevelOptionsContextResult
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.annotation.KoinExperimentalAPI
 import org.koin.core.parameter.parametersOf
@@ -28,14 +29,26 @@ val melodiesTrainingNavigationModule = module {
 
   navigation<AppRoute.MelodiesLevelSelect> {
     val navigator = LocalAppNavigator.current
+    val viewModel = koinViewModel<MelodiesLevelSelectScreenViewModel>()
+    // The context picked for MIDI levels is a shared setting, so the pick lands in settings
+    // rather than in any one level.
+    val resultStore = LocalNavResultStore.current
+    val result = resultStore.peek(MelodiesLevelOptionsContextResult)
+    LaunchedEffect(result) {
+      result?.let {
+        viewModel.setMidiContext(it.context)
+        resultStore.clear(MelodiesLevelOptionsContextResult)
+      }
+    }
     MelodiesLevelSelectScreen(
       onNavigateBack = { navigator.goBack() },
-      onStartLevel = { levelId, transposition ->
-        navigator.add(AppRoute.MelodiesPlay(levelId, transposition))
-      },
+      onStartLevel = { levelId -> navigator.add(AppRoute.MelodiesPlay(levelId)) },
       onCreateNewLevel = { navigator.add(AppRoute.MelodiesSetup()) },
       onEditLevel = { levelId -> navigator.add(AppRoute.MelodiesSetup(levelId)) },
-      viewModel = koinViewModel(),
+      onOpenMidiContext = { contextId ->
+        navigator.add(AppRoute.Context(ContextRecipient.MelodiesLevelOptions, contextId))
+      },
+      viewModel = viewModel,
     )
   }
 
@@ -67,11 +80,9 @@ val melodiesTrainingNavigationModule = module {
     MelodiesPlayScreen(
       onNavigateBack = { navigator.goBack() },
       onLevelEnd = { sessionId ->
-        navigator.replaceLastWith(
-          AppRoute.MelodiesLevelComplete(route.levelId, sessionId, route.transposition)
-        )
+        navigator.replaceLastWith(AppRoute.MelodiesLevelComplete(route.levelId, sessionId))
       },
-      viewModel = koinViewModel { parametersOf(route.levelId, route.transposition) },
+      viewModel = koinViewModel { parametersOf(route.levelId) },
     )
   }
 
@@ -79,12 +90,9 @@ val melodiesTrainingNavigationModule = module {
     val navigator = LocalAppNavigator.current
     LevelCompleteScreen(
       onNavigateBack = { navigator.goBack() },
-      onRetryLevel = {
-        navigator.replaceLastWith(AppRoute.MelodiesPlay(route.levelId, route.transposition))
-      },
-      onNextLevel = { nextLevelId ->
-        navigator.replaceLastWith(AppRoute.MelodiesPlay(nextLevelId, route.transposition))
-      },
+      // MIDI transposition and context are shared settings, so retry and next reuse them.
+      onRetryLevel = { navigator.replaceLastWith(AppRoute.MelodiesPlay(route.levelId)) },
+      onNextLevel = { nextLevelId -> navigator.replaceLastWith(AppRoute.MelodiesPlay(nextLevelId)) },
       // The level select this play session started from is right below on the back stack.
       onLevelSelect = { navigator.goBack() },
       viewModel = koinViewModel { parametersOf(route.sessionId) },

@@ -23,6 +23,7 @@ import ldv.shuuen.core.audio.midi.PresetCutoffScope
 import ldv.shuuen.core.settings.AppSettings
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.PresetShuffleMode
+import ldv.shuuen.core.settings.MidiLevelOptions
 import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.core.settings.ThemeSettings
 import ldv.shuuen.core.music.Chord
@@ -140,6 +141,8 @@ private class FakeSettingsRepository : SettingsRepository {
   override suspend fun setBackingTrackVolume(value: Int) = Unit
 
   override suspend fun setBackingTrackMutesMelody(value: Boolean) = Unit
+
+  override suspend fun setMidiLevelOptions(options: MidiLevelOptions) = Unit
 
   override suspend fun setInputMethod(inputMethod: InputMethod) = Unit
 

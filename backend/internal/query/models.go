@@ -123,6 +123,7 @@ var Melody = struct {
 	Difficulty  field.String
 	SortOrder   field.Number[int]
 	IsPublic    field.Bool
+	Key         field.Field[model.JSONDocument]
 	ScanID      field.String
 	Tags        field.Slice[model.Tag]
 	Variants    field.Slice[model.FileVariant]
@@ -142,6 +143,7 @@ var Melody = struct {
 	Difficulty:  field.String{}.WithColumn("difficulty"),
 	SortOrder:   field.Number[int]{}.WithColumn("sort_order"),
 	IsPublic:    field.Bool{}.WithColumn("is_public"),
+	Key:         field.Field[model.JSONDocument]{}.WithColumn("music_key"),
 	ScanID:      field.String{}.WithColumn("scan_id"),
 	Tags:        field.Slice[model.Tag]{}.WithName("Tags"),
 	Variants:    field.Slice[model.FileVariant]{}.WithName("Variants"),

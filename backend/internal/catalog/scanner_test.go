@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -24,7 +25,7 @@ func TestScannerIndexesRecursiveFoldersAndVariants(t *testing.T) {
 
 	writeFile(t, filepath.Join(root, "my_textbook", ".shuuen.json"), `{"name":"My Textbook","tags":["book"]}`)
 	writeFile(t, filepath.Join(groupDir, ".shuuen.json"), `{"name":"Grade 1","tags":["grade"]}`)
-	writeFile(t, filepath.Join(groupDir, "warmup.shuuen.json"), `{"title":"Warmup","tags":["easy"],"primary_format":"musicxml"}`)
+	writeFile(t, filepath.Join(groupDir, "warmup.shuuen.json"), `{"title":"Warmup","tags":["easy"],"primary_format":"musicxml","key":{"tonic":"D","spelling":"sharps","degrees":["D5","D1","D3","D2","D4","D6","D7"]}}`)
 	writeFile(t, filepath.Join(groupDir, "warmup.mid"), "midi")
 	writeFile(t, filepath.Join(groupDir, "warmup.musicxml"), "<score-partwise />")
 
@@ -81,6 +82,17 @@ func TestScannerIndexesRecursiveFoldersAndVariants(t *testing.T) {
 	}
 	if melody.Title != "Warmup" || len(melody.Tags) != 1 || len(melody.Variants) != 2 {
 		t.Fatalf("unexpected melody metadata: %#v", melody)
+	}
+	var key struct {
+		Tonic     string   `json:"tonic"`
+		Degrees   []string `json:"degrees"`
+		ScaleType string   `json:"scale_type"`
+	}
+	if err := json.Unmarshal(melody.Key, &key); err != nil {
+		t.Fatalf("melody key = %s: %v", melody.Key, err)
+	}
+	if key.Tonic != "D" || key.ScaleType != "Major" || len(key.Degrees) != 7 || key.Degrees[1] != "D2" {
+		t.Fatalf("melody key was not normalized: %#v", key)
 	}
 
 	primary, err := gorm.G[model.FileVariant](db).

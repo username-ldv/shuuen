@@ -180,11 +180,23 @@ internal data class MidiFileReferenceDto(
   val downloadUrl: String? = null,
 )
 
+/** Backend-owned key label of a MIDI melody; `scaleType` is derived server-side. */
+@Serializable
+internal data class MidiKeyDto(
+  val tonic: String,
+  val spelling: String,
+  val degrees: List<String>,
+  val scaleType: String? = null,
+  val scaleName: String? = null,
+)
+
 @Serializable
 internal data class MidiMelodyConfigDto(
   val type: String,
   val file: MidiFileReferenceDto,
   val useOriginalVelocities: Boolean = false,
+  /** Present for catalog melodies that were labelled on the website. */
+  val key: MidiKeyDto? = null,
   /** Local backing-audio references are metadata only; sync never uploads the audio bytes. */
   val backingFilePath: String? = null,
   val backingFileName: String? = null,

@@ -66,6 +66,9 @@ type Melody struct {
 	Difficulty  string        `gorm:"size:80" json:"difficulty"`
 	SortOrder   int           `gorm:"not null;default:0" json:"sort_order"`
 	IsPublic    bool          `gorm:"not null" json:"is_public"`
+	// Key is the hand-labelled tonic/degree set of a MIDI melody as a stored
+	// course.MelodyKey document, or null while the melody is unlabelled.
+	Key         JSONDocument  `gorm:"column:music_key" json:"key"`
 	ScanID      string        `gorm:"size:64;index" json:"-"`
 	Tags        []Tag         `gorm:"many2many:melody_tags;" json:"tags,omitempty"`
 	Variants    []FileVariant `gorm:"foreignKey:MelodyID" json:"variants,omitempty"`

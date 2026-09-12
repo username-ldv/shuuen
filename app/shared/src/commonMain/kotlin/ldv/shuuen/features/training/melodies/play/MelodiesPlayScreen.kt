@@ -229,6 +229,7 @@ fun MelodiesPlayScreen(
                   onRewind = viewModel::seekBackward,
                   onTogglePlay = viewModel::togglePlayPause,
                   onForward = viewModel::seekForward,
+                  onRepeatMelody = if (state.hasContext) viewModel::playSetupMelody else null,
                 )
               }
 
@@ -304,7 +305,17 @@ private fun TrainingStatus(state: MelodiesPlayState, modifier: Modifier = Modifi
         counter,
         color = ShuuenUi.Muted,
         style = MaterialTheme.typography.titleSmall,
-        modifier = Modifier.weight(1f),
+      )
+      // A labelled MIDI melody shows its key next to the counter; random levels show the tonic on
+      // the input component itself.
+      Text(
+        text = state.keyLabel ?: "",
+        color = ShuuenUi.Text,
+        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+        textAlign = TextAlign.Center,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
       )
 
       Row(
@@ -494,21 +505,33 @@ private fun SeekBar(
   }
 }
 
+/** File transport; [onRepeatMelody] adds the context's setup-melody button when a context plays. */
 @Composable
 private fun TransportBar(
   isPlaying: Boolean,
   onRewind: () -> Unit,
   onTogglePlay: () -> Unit,
   onForward: () -> Unit,
+  onRepeatMelody: (() -> Unit)? = null,
 ) {
-  Row(
-    modifier = Modifier.fillMaxWidth(),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
-  ) {
-    TransportIcon(Icons.Rounded.FastRewind, "Rewind", size = TransportIconSize, onClick = onRewind)
-    PlayPauseButton(isPlaying = isPlaying, onClick = onTogglePlay)
-    TransportIcon(Icons.Rounded.FastForward, "Forward", size = TransportIconSize, onClick = onForward)
+  Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+    Row(
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
+    ) {
+      TransportIcon(Icons.Rounded.FastRewind, "Rewind", size = TransportIconSize, onClick = onRewind)
+      PlayPauseButton(isPlaying = isPlaying, onClick = onTogglePlay)
+      TransportIcon(Icons.Rounded.FastForward, "Forward", size = TransportIconSize, onClick = onForward)
+    }
+    if (onRepeatMelody != null) {
+      TransportIcon(
+        icon = Icons.Rounded.MusicNote,
+        contentDescription = "Repeat setup melody",
+        size = TransportIconSize,
+        modifier = Modifier.align(Alignment.CenterEnd).alpha(0.6f),
+        onClick = onRepeatMelody,
+      )
+    }
   }
 }
 
@@ -591,6 +614,14 @@ private fun CircleCenterControls(
           color = ShuuenUi.Muted,
           style = MaterialTheme.typography.bodySmall,
         )
+        if (state.hasContext) {
+          CircleCenterIconButton(
+            icon = Icons.Rounded.MusicNote,
+            contentDescription = "Repeat setup melody",
+            tint = ShuuenUi.Muted,
+            onClick = viewModel::playSetupMelody,
+          )
+        }
       }
 
     // The endless stream has no destination to seek toward: just pause and rewind.

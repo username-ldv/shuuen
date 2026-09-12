@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -21,6 +22,7 @@ import (
 	"gorm.io/gorm"
 
 	"shuuen-backend/internal/config"
+	coursedomain "shuuen-backend/internal/course"
 	"shuuen-backend/internal/model"
 	dbquery "shuuen-backend/internal/query"
 	"shuuen-backend/internal/storage"
@@ -85,6 +87,9 @@ type MelodyMetadata struct {
 	IsPublic      *bool    `json:"is_public"`
 	IsPublished   *bool    `json:"is_published,omitempty"`
 	PrimaryFormat string   `json:"primary_format"`
+	// Key is the labelled key of the melody. The sidecar is the durable copy;
+	// the indexed row mirrors it so course reads never touch the filesystem.
+	Key *coursedomain.MelodyKey `json:"key,omitempty"`
 }
 
 func NewScanner(db *gorm.DB, cfg config.CatalogConfig) (*Scanner, error) {
@@ -459,6 +464,18 @@ func (s *Scanner) indexMelody(ctx context.Context, tx *gorm.DB, groupPath string
 		melody.SortOrder = *meta.SortOrder
 	}
 	melody.IsPublic = isPublic
+	melody.Key = nil
+	if meta.Key != nil {
+		key, err := coursedomain.ParseMelodyKey(*meta.Key, "key")
+		if err != nil {
+			return model.Melody{}, fmt.Errorf("melody metadata %s: %w", sourcePath, err)
+		}
+		document, err := model.NewJSONDocument(key)
+		if err != nil {
+			return model.Melody{}, err
+		}
+		melody.Key = document
+	}
 	melody.ScanID = scanID
 	melody.DeletedAt = gorm.DeletedAt{}
 	if err := validateLengths(
@@ -737,7 +754,7 @@ func sameMelody(left model.Melody, right model.Melody) bool {
 	return left.GroupID == right.GroupID && left.SourcePath == right.SourcePath && left.FileStem == right.FileStem &&
 		left.Title == right.Title && left.Slug == right.Slug && left.Description == right.Description &&
 		left.Composer == right.Composer && left.Difficulty == right.Difficulty && left.SortOrder == right.SortOrder &&
-		left.IsPublic == right.IsPublic
+		left.IsPublic == right.IsPublic && bytes.Equal(left.Key, right.Key)
 }
 
 func sameVariant(left model.FileVariant, right model.FileVariant) bool {

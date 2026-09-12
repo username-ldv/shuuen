@@ -49,6 +49,7 @@ import ldv.shuuen.core.music.withTiming
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.InputMode
 import ldv.shuuen.core.settings.MusicLabelSettings
+import ldv.shuuen.core.settings.MidiLevelOptions
 import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
@@ -65,7 +66,6 @@ import ldv.shuuen.features.training.level_end.domain.longestCleanRun
 import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
 import ldv.shuuen.features.training.course.domain.TrainingLevelResolver
 import ldv.shuuen.features.training.melodies.domain.MidiContentResolver
-import ldv.shuuen.features.training.melodies.domain.MidiTransposition
 
 enum class MelodiesPlayMode {
   Midi,
@@ -98,10 +98,14 @@ data class MelodiesPlayState(
   val correctAnswers: Int = 0,
   val incorrectAnswers: List<IncorrectMelodyAnswer> = emptyList(),
 
-  /** Tonic of the random level (null for a MIDI melody, which has no tracked key). */
+  /** Tonic of the random level, or of a labelled MIDI melody (null when the file has no key). */
   val root: Pitch? = null,
   /** Sharp/flat orientation for [root]; re-decided whenever the root rotates. */
   val accidentalType: ScaleAccidentalType? = null,
+  /** "E♭ major" for a labelled MIDI melody; null for random levels and unlabelled files. */
+  val keyLabel: String? = null,
+  /** Whether a harmonic context frames this level, so the setup melody can be replayed. */
+  val hasContext: Boolean = false,
 
   // Random-mode session; a Midi level is a single question spanning the whole file.
   val questionNumber: Int = 1,
@@ -177,7 +181,6 @@ private data class ActivePlaybackNote(val runId: Int, val note: Note)
 
 class MelodiesPlayScreenViewModel(
   private val levelId: String,
-  private val midiTransposition: MidiTransposition,
   levelResolver: TrainingLevelResolver,
   private val midiEngine: MidiEngine,
   private val player: MidiFilePlayer,
@@ -311,8 +314,11 @@ class MelodiesPlayScreenViewModel(
           }
 
       when (val config = level.config) {
-        is LevelConfig.Melodies.Midi ->
-          startMidiMode(level, config, midiTransposition.resolve())
+        is LevelConfig.Melodies.Midi -> {
+          // Shared across MIDI levels, so "next" and "retry" keep playing the same way.
+          val options = settingsRepository.settings.first().midiLevelOptions
+          startMidiMode(level, config, options)
+        }
         is LevelConfig.Melodies.Random -> startRandomMode(level, config)
       }
     }
@@ -323,8 +329,9 @@ class MelodiesPlayScreenViewModel(
   private suspend fun startMidiMode(
     level: MelodiesLevel,
     config: LevelConfig.Melodies.Midi,
-    transpositionSemitones: Int,
+    options: MidiLevelOptions,
   ) {
+    val transpositionSemitones = options.transposition.resolve()
     val bytes = runCatching { midiContentResolver.resolve(config.midiSource) }.getOrElse { error ->
       _state.update {
         it.copy(
@@ -390,6 +397,11 @@ class MelodiesPlayScreenViewModel(
       }
       return
     }
+    // A labelled catalog melody has a known tonic; it follows the file's transposition.
+    val key = config.key?.transposed(transpositionSemitones)
+    // Only a labelled key gives the context a tonic to build its chords on. The level's own
+    // context (local levels) wins over the shared one from level select.
+    val context = if (key != null) level.context ?: options.context else null
     _state.update {
       it.copy(
         title = level.name,
@@ -398,12 +410,34 @@ class MelodiesPlayScreenViewModel(
         notes = loaded.notes,
         lengthTicks = loaded.lengthTicks,
         lengthSeconds = loaded.lengthSeconds,
+        root = key?.tonic,
+        accidentalType = key?.accidentalType,
+        keyLabel = key?.displayName(),
+        hasContext = context != null,
       )
     }
     // An imported melody sounds on the file player's own stream, not on the live engine's Notes
     // channel — and it only follows the notes as closely as the position poll does.
     presets.notesSink = { player.setPreset(it) }
     presets.begin { it.perNoteOnImportedMelodies }
+    if (context != null && key != null) {
+      // The whole file is one question: the first node frames it and never advances.
+      val contextPlayer = DegreeContextPlayer(midiEngine, context, key.tonic)
+      this.contextPlayer = contextPlayer
+      contextJob = viewModelScope.launch { contextPlayer.start() }
+      setupMelodyIndicationJob =
+        viewModelScope.launch {
+          contextPlayer.setupMelodyNotes.collect { note ->
+            if (note != null) {
+              _setupMelodyFlashes.emit(
+                KeyFlashRequest(note.pitch, PianoKeyboardDefaults.MonochromePressedColor)
+              )
+            }
+          }
+        }
+      // The drone and setup melody set the tonal ground before the melody starts.
+      contextPlayer.ready.first { it }
+    }
     // Play through at natural tempo by default.
     sessionStartMark = TimeSource.Monotonic.markNow()
     player.play()

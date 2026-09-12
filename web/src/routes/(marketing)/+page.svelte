@@ -63,10 +63,10 @@
     </a>
     <nav class="flex items-center gap-6">
       <a
-        href="#repository"
+        href="/library"
         class="hidden text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground sm:inline"
       >
-        Repository
+        Library
       </a>
       <a
         href="#news"
@@ -139,8 +139,8 @@
       </div>
     </section>
 
-    <!-- Repository -->
-    <section id="repository" class="pt-2 pb-3">
+    <!-- Link -->
+    <section id="link" class="pt-2 pb-3">
       <div class="mb-5 flex flex-col gap-1.5">
         <span class="text-xs font-semibold uppercase tracking-[0.2em]"
           >Link This Site To The App</span
@@ -250,10 +250,10 @@
       </span>
       <div class="flex items-center gap-6">
         <a
-          href="#repository"
+          href="/library"
           class="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/70 transition-colors hover:text-muted-foreground"
         >
-          Repository
+          Library
         </a>
         <a
           href="#news"

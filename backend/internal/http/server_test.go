@@ -214,6 +214,14 @@ func TestVariantUploadIndexesDirectlyWithoutFullRescan(t *testing.T) {
 
 func newTestServer(t *testing.T) (*fiber.App, *gorm.DB) {
 	t.Helper()
+	app, db, _ := newTestServerWithStorage(t)
+	return app, db
+}
+
+// newTestServerWithStorage also returns the catalog root so tests can place
+// files where sidecar-writing handlers expect them.
+func newTestServerWithStorage(t *testing.T) (*fiber.App, *gorm.DB, string) {
+	t.Helper()
 	db, err := gorm.Open(gormlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -221,8 +229,9 @@ func newTestServer(t *testing.T) (*fiber.App, *gorm.DB) {
 	if err := database.Migrate(t.Context(), db); err != nil {
 		t.Fatal(err)
 	}
+	root := t.TempDir()
 	catalogConfig := config.CatalogConfig{
-		Root: t.TempDir(), FolderMetadataFile: ".shuuen.json", MelodyMetadataSuffix: ".shuuen.json", MaxUploadBytes: 1024 * 1024,
+		Root: root, FolderMetadataFile: ".shuuen.json", MelodyMetadataSuffix: ".shuuen.json", MaxUploadBytes: 1024 * 1024,
 	}
 	store, err := storage.NewFileStore(catalogConfig)
 	if err != nil {
@@ -243,7 +252,7 @@ func newTestServer(t *testing.T) (*fiber.App, *gorm.DB) {
 	}
 	app := NewServer(ServerDeps{Config: cfg, DB: db, Auth: auth.NewService(authConfig), Storage: store, Catalog: scanner})
 	t.Cleanup(func() { _ = app.Shutdown() })
-	return app, db
+	return app, db, root
 }
 
 func registerTestUser(t *testing.T, app *fiber.App, username string, password string) string {

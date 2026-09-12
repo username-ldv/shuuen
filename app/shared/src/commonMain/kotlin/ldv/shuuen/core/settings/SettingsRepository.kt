@@ -42,6 +42,9 @@ interface SettingsRepository {
 
   suspend fun setBackingTrackMutesMelody(value: Boolean)
 
+  /** Transposition and shared harmonic context for imported MIDI levels. */
+  suspend fun setMidiLevelOptions(options: MidiLevelOptions)
+
   suspend fun setInputMethod(inputMethod: InputMethod)
 
   suspend fun setTheme(theme: ThemeSettings)
@@ -114,4 +117,6 @@ data class AppSettings(
    * stream is silenced (the quiz still follows the MIDI notes). When false both sound together.
    */
   val backingTrackMutesMelody: Boolean = false,
+  /** How MIDI melody levels play; chosen on level select and shared by every MIDI level. */
+  val midiLevelOptions: MidiLevelOptions = MidiLevelOptions(),
 )

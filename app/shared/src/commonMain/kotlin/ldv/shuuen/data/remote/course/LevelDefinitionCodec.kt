@@ -12,6 +12,7 @@ import ldv.shuuen.core.music.DegreeContextNode
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.NoteRange
 import ldv.shuuen.core.music.RelativeMelody
+import ldv.shuuen.core.music.ScaleAccidentalType
 import ldv.shuuen.core.music.SetupMelody
 import ldv.shuuen.core.music.Sustain
 import ldv.shuuen.core.music.generator.ChordFigure
@@ -215,6 +216,17 @@ internal class LevelDefinitionCodec(
             backingFilePath = config.backingFile?.let(::platformFilePath),
             backingFileName = config.backingFileName,
             backingOffsetMs = config.backingOffsetMs,
+            key =
+              config.key?.let { key ->
+                MidiKeyDto(
+                  tonic = key.tonic.name,
+                  spelling =
+                    if (key.accidentalType == ScaleAccidentalType.Flats) "flats" else "sharps",
+                  degrees = key.degrees.map { it.name },
+                  scaleType = key.scaleType.name,
+                  scaleName = key.scaleName,
+                )
+              },
           )
         )
       }

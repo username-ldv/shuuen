@@ -264,6 +264,37 @@ may instead use `{"type":"local","path":"...","file_name":"..."}`. Local
 paths are therefore never returned by anonymous course reads. Deleting or moving
 a course-level record does not delete or move the referenced MIDI file.
 
+### Melody keys
+
+A MIDI melody can carry a hand-labelled key: its tonic, whether the key is
+spelled with sharps or flats, the scale degrees the melody uses, and an optional
+scale name. The label belongs to the melody, not to a level, so blueprint
+courses (which have no level rows) and managed levels that reference the same
+file share it. It lives in the melody's `<stem>.shuuen.json` sidecar and is
+mirrored into the `melodies.music_key` column:
+
+```json
+{
+  "title": "Warmup",
+  "key": {
+    "tonic": "DSharp",
+    "spelling": "flats",
+    "degrees": ["D1", "D2", "D3", "D4", "D5", "D6", "D7"],
+    "scale_name": "Ionian"
+  }
+}
+```
+
+The server derives `scale_type` from the degree set (`Major`, `NaturalMinor`,
+`Chromatic`, otherwise `Custom`) and returns it with the key; a value supplied
+on input is ignored. Degrees are stored in rising chromatic order. Administrators
+label melodies with `PATCH /api/v1/library/melodies/:id` (`title` and/or `key`,
+`null` clears) or many at once with `PUT /api/v1/library/melodies/keys`. Course
+level reads overlay the catalog key into `definition.config.key` for every MIDI
+level whose stored definition has none, so the app receives the key without a
+separate lookup. `PATCH /api/v1/library/groups/:id` renames a folder's display
+name through its `.shuuen.json` without materializing a blueprint course.
+
 ### Generated test courses
 
 Seed the configured database and catalog root with the complete public
@@ -297,6 +328,9 @@ administrator.
 Administrator-only catalog endpoints:
 
 - `POST /api/v1/library/rescan`
+- `PATCH /api/v1/library/groups/:id`
+- `PATCH /api/v1/library/melodies/:id`
+- `PUT /api/v1/library/melodies/keys`
 - `POST /api/v1/library/melodies/:id/variants`
 - `DELETE /api/v1/library/melodies/:id`
 - `PATCH /api/v1/library/variants/:id`

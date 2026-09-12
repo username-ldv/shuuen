@@ -19,6 +19,7 @@ import ldv.shuuen.core.music.NoteRange
 import ldv.shuuen.core.music.NoteValue
 import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.RelativeMelody
+import ldv.shuuen.core.music.ScaleAccidentalType
 import ldv.shuuen.core.music.ScaleType
 import ldv.shuuen.core.music.SetupMelody
 import ldv.shuuen.core.music.SetupMelodyRepeat
@@ -49,6 +50,7 @@ import ldv.shuuen.features.training.domain.LevelSource
 import ldv.shuuen.features.training.domain.ScaleConfig
 import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
 import ldv.shuuen.features.training.melodies.domain.MidiFileSource
+import ldv.shuuen.features.training.melodies.domain.MidiKey
 import ldv.shuuen.features.training.single.domain.SinglesLevel
 import ldv.shuuen.data.remote.ApiJsonQualifier
 import org.koin.core.annotation.Named
@@ -224,6 +226,7 @@ internal class CourseDefinitionMapper(
             backingFile = value.backingFilePath?.let(::PlatformFile),
             backingFileName = value.backingFileName,
             backingOffsetMs = value.backingOffsetMs,
+            key = value.key?.let { context.midiKey(it, "definition.config.key") },
           )
         }
         else -> context.fail("definition.config.type", "expected random or midi, was '$configType'")
@@ -397,6 +400,27 @@ internal class CourseDefinitionMapper(
         "relative" -> relativeScale(decode(value, field), field)
         else -> fail("$field.type", "expected absolute or relative, was '$type'")
       }
+
+    fun midiKey(value: MidiKeyDto, field: String): MidiKey {
+      require(value.degrees.isNotEmpty(), "$field.degrees", "must not be empty")
+      val degrees = value.degrees.mapIndexed { index, name -> degree(name, "$field.degrees[$index]") }
+      require(degrees.distinct().size == degrees.size, "$field.degrees", "contains duplicate degrees")
+      val accidentalType =
+        when (value.spelling) {
+          "sharps" -> ScaleAccidentalType.Sharps
+          "flats" -> ScaleAccidentalType.Flats
+          else -> fail("$field.spelling", "expected sharps or flats, was '${value.spelling}'")
+        }
+      // The server derives the scale type from the degrees; classify locally so an older
+      // backend (or a hand-written definition) cannot disagree with the degree set.
+      return MidiKey(
+        tonic = pitch(value.tonic, "$field.tonic"),
+        degrees = degrees,
+        scaleType = MidiKey.scaleTypeFor(degrees),
+        accidentalType = accidentalType,
+        scaleName = value.scaleName?.takeIf { it.isNotBlank() },
+      )
+    }
 
     fun degreeWithOctave(value: DegreeWithOctaveDto, field: String): DegreeWithOctave =
       at(field) { DegreeWithOctave(degree(value.degree, "$field.degree"), value.octave) }

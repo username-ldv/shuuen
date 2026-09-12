@@ -2,6 +2,7 @@
 	import { Button } from "$lib/components/ui/button";
 	import CircleUserRound from "@lucide/svelte/icons/circle-user-round";
 	import Home from "@lucide/svelte/icons/home";
+	import LibraryBig from "@lucide/svelte/icons/library-big";
 	import LogIn from "@lucide/svelte/icons/log-in";
 	import UserPlus from "@lucide/svelte/icons/user-plus";
 	import type { LayoutData } from "./$types";
@@ -22,6 +23,10 @@
 				<Home data-icon="inline-start" />
 				Home
 			</Button>
+			<Button href="/library" variant="ghost" size="sm">
+				<LibraryBig data-icon="inline-start" />
+				Library
+			</Button>
 			{#if data.user}
 				<Button href="/me" size="sm">
 					<CircleUserRound data-icon="inline-start" />
@@ -40,7 +45,7 @@
 		</nav>
 	</header>
 
-	<main class="mx-auto flex w-full max-w-180 flex-1 px-6 py-16">
+	<main class="mx-auto flex w-full max-w-5xl flex-1 px-6 py-16">
 		{@render children()}
 	</main>
 </div>

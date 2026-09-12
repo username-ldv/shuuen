@@ -38,7 +38,7 @@ browser client never hits CORS.
 | Path | Served by | Purpose |
 | --- | --- | --- |
 | `/` | frontend (SSR) | Marketing landing page with account-aware header |
-| `/app/*`, `/me`, `/news`, … | frontend (SSR, later) | Personal pages, blog, melody/level repository |
+| `/library/*`, `/me`, `/news`, … | frontend (SSR) | Library (courses, levels, key labeling), personal pages, blog |
 | `/api/*` | Go backend | All API endpoints — repositories, melodies, contexts, music-API integrations, auth |
 | `/link` | Go backend (`/api/link`) | **Cosmetic alias.** The URL the native app pastes to pair with the site. The proxy rewrites `/link` → `/api/link`; the short form just reads nicely for users. |
 
@@ -57,8 +57,12 @@ request so it can show the current account state in the header.
 - **App** — dynamic routes live in the sibling `(app)/` group without
   `prerender` (SSR is the default). Route groups don't affect URLs, so `/`
   stays `/`.
-  - Public, SEO-relevant pages (news blog, melody repository) → `+page.ts`
-    universal `load` that fetches from the API.
+  - Public, SEO-relevant pages (news blog) → `+page.ts` universal `load` that
+    fetches from the API.
+  - The Library (`/library`) is public to read but admin-aware, so it uses
+    `+page.server.ts` loads and form actions; the labeling screen talks to
+    same-origin `/library/api/*` bridge routes that forward the session's
+    bearer token to Go.
   - Authenticated pages (personal pages) → `+page.server.ts` `load` +
     `hooks.server.ts` for session handling; server-only so secrets stay server-side.
   - Current account routes: `/login`, `/sign-up`, and `/me`. The frontend keeps
@@ -117,7 +121,7 @@ The root [`Caddyfile`](../../Caddyfile) sends `/api/*` to `api:9999`, rewrites
 ## Backend follow-up checklist
 
 1. Add the `/api/link` endpoint for the native app pairing alias.
-2. Expand the `(app)/` route group with public repository/news routes and their `load`s.
+2. Expand the `(app)/` route group with the news routes and their `load`s.
 3. Add stronger production session management if the frontend needs refresh tokens or
    long-lived sessions.
 4. Make the API trust `X-Forwarded-For` from Caddy (and from the web server's

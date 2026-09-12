@@ -34,8 +34,9 @@ type Handler struct {
 	storage             *storage.FileStore
 	catalog             *catalog.Scanner
 	validate            *validator.Validate
-	registrationEnabled bool
-	folderMetadataFile  string
+	registrationEnabled  bool
+	folderMetadataFile   string
+	melodyMetadataSuffix string
 }
 
 func NewServer(deps ServerDeps) *fiber.App {
@@ -73,11 +74,15 @@ func NewServer(deps ServerDeps) *fiber.App {
 		storage:             deps.Storage,
 		catalog:             deps.Catalog,
 		validate:            validator.New(),
-		registrationEnabled: deps.Config.Auth.RegistrationEnabled,
-		folderMetadataFile:  deps.Config.Catalog.FolderMetadataFile,
+		registrationEnabled:  deps.Config.Auth.RegistrationEnabled,
+		folderMetadataFile:   deps.Config.Catalog.FolderMetadataFile,
+		melodyMetadataSuffix: deps.Config.Catalog.MelodyMetadataSuffix,
 	}
 	if h.folderMetadataFile == "" {
 		h.folderMetadataFile = ".shuuen.json"
+	}
+	if h.melodyMetadataSuffix == "" {
+		h.melodyMetadataSuffix = ".shuuen.json"
 	}
 
 	app.Get("/healthz", h.Health)
@@ -123,8 +128,11 @@ func NewServer(deps ServerDeps) *fiber.App {
 		},
 	})
 	protected.Post("/rescan", adminLimiter, h.RescanCatalog)
+	protected.Put("/melodies/keys", h.UpdateMelodyKeys)
 	protected.Post("/melodies/:id/variants", h.UploadVariant)
+	protected.Patch("/melodies/:id", h.UpdateMelody)
 	protected.Delete("/melodies/:id", h.DeleteMelody)
+	protected.Patch("/groups/:id", h.UpdateLibraryGroup)
 	protected.Patch("/variants/:id", h.UpdateVariant)
 	protected.Delete("/variants/:id", h.DeleteVariant)
 	protected.Post("/tags", h.CreateTag)

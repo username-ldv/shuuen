@@ -3,7 +3,6 @@ package ldv.shuuen.app.navigation
 import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 import ldv.shuuen.app.navigation.result.ContextRecipient
-import ldv.shuuen.features.training.melodies.domain.MidiTransposition
 
 @Serializable
 sealed interface AppRoute : NavKey {
@@ -32,11 +31,7 @@ sealed interface AppRoute : NavKey {
   @Serializable data class SinglesLevelComplete(val levelId: String, val sessionId: String) : AppRoute
 
   @Serializable
-  data class MelodiesLevelComplete(
-    val levelId: String,
-    val sessionId: String,
-    val transposition: MidiTransposition = MidiTransposition(),
-  ) : AppRoute
+  data class MelodiesLevelComplete(val levelId: String, val sessionId: String) : AppRoute
 
   @Serializable data class ChordsLevelComplete(val levelId: String, val sessionId: String) : AppRoute
 
@@ -46,11 +41,8 @@ sealed interface AppRoute : NavKey {
 
   @Serializable data class MelodiesSetup(val levelId: String? = null) : AppRoute
 
-  @Serializable
-  data class MelodiesPlay(
-    val levelId: String,
-    val transposition: MidiTransposition = MidiTransposition(),
-  ) : AppRoute
+  /** MIDI transposition and context come from the shared MidiLevelOptions setting. */
+  @Serializable data class MelodiesPlay(val levelId: String) : AppRoute
 
   @Serializable data class ChordsSetup(val levelId: String? = null) : AppRoute
 

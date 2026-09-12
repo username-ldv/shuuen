@@ -14,6 +14,7 @@ import ldv.shuuen.core.music.generator.MelodyStyle
 import ldv.shuuen.core.music.generator.MelodyStyles
 import ldv.shuuen.features.training.melodies.domain.MidiFileSource
 import ldv.shuuen.features.training.melodies.domain.MidiFileSourceSerializer
+import ldv.shuuen.features.training.melodies.domain.MidiKey
 
 @Serializable
 sealed interface LevelConfig {
@@ -113,6 +114,8 @@ sealed interface LevelConfig {
       @Serializable(with = PlatformFileSerializer::class) val backingFile: PlatformFile? = null,
       val backingFileName: String? = null,
       val backingOffsetMs: Long = 0,
+      /** Labelled key of a catalog melody; null for unlabelled or locally imported files. */
+      val key: MidiKey? = null,
     ) : Melodies {
       /** Source-compatible constructor for locally created levels. */
       constructor(

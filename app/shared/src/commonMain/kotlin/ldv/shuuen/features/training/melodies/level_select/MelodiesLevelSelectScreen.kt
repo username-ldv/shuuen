@@ -77,7 +77,7 @@ import ldv.shuuen.features.training.common.toBoxedItems
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.ScaleConfig
 import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
-import ldv.shuuen.features.training.melodies.domain.MidiTransposition
+import androidx.compose.runtime.saveable.listSaver
 import ldv.shuuen.features.training.course.presentation.CourseDiscoveryMessage
 import ldv.shuuen.features.training.course.presentation.CourseLevelItemKeyPrefix
 import ldv.shuuen.features.training.course.presentation.CourseLevelsMessage
@@ -91,12 +91,14 @@ import ldv.shuuen.features.training.course.presentation.progressionGroupSwipeNav
 @Composable
 fun MelodiesLevelSelectScreen(
   onNavigateBack: () -> Unit,
-  onStartLevel: (levelId: String, transposition: MidiTransposition) -> Unit,
+  onStartLevel: (levelId: String) -> Unit,
   onCreateNewLevel: () -> Unit,
   onEditLevel: (levelId: String) -> Unit,
+  onOpenMidiContext: (contextId: String?) -> Unit,
   viewModel: MelodiesLevelSelectScreenViewModel,
 ) {
   val levels by viewModel.levels.collectAsStateWithLifecycle(ResponseState.Loading)
+  val midiLevelOptions by viewModel.midiLevelOptions.collectAsStateWithLifecycle()
   val courseState by viewModel.courseState.collectAsStateWithLifecycle()
   val attemptedLevelIds by viewModel.attemptedLevelIds.collectAsStateWithLifecycle()
   val listState = rememberLazyListState()
@@ -125,7 +127,11 @@ fun MelodiesLevelSelectScreen(
   val totalLevelCount =
     if (showingLocal) orderedLevelIds.size.toLong() else courseState.total
   var levelPendingDelete by remember { mutableStateOf<MelodiesLevel?>(null) }
-  var levelPendingSettings by remember { mutableStateOf<LevelSettingsTarget?>(null) }
+  // Saveable so the sheet is still open after picking a context on the context screen.
+  var levelPendingSettings by
+    rememberSaveable(stateSaver = LevelSettingsTarget.Saver) {
+      mutableStateOf<LevelSettingsTarget?>(null)
+    }
   var courseSettingsOpen by remember { mutableStateOf(false) }
   StaticScreenFrame(
     topBar = {
@@ -209,15 +215,8 @@ fun MelodiesLevelSelectScreen(
                 LevelCard(
                   level,
                   stats = stats,
-                  onLevelChosen = { onStartLevel(it.id, MidiTransposition()) },
-                  onOpenSettings = {
-                    levelPendingSettings =
-                      LevelSettingsTarget(
-                        reference = level.id,
-                        name = level.name,
-                        hasMidiOptions = level.config is LevelConfig.Melodies.Midi,
-                      )
-                  },
+                  onLevelChosen = { onStartLevel(it.id) },
+                  onOpenSettings = { levelPendingSettings = LevelSettingsTarget.of(level.id, level) },
                   onEditLevel = { onEditLevel(it.id) },
                   onDeleteLevel = { levelPendingDelete = it },
                 )
@@ -247,14 +246,9 @@ fun MelodiesLevelSelectScreen(
             LevelCard(
               level = item.playableLevel,
               stats = stats,
-              onLevelChosen = { onStartLevel(item.reference, MidiTransposition()) },
+              onLevelChosen = { onStartLevel(item.reference) },
               onOpenSettings = {
-                levelPendingSettings =
-                  LevelSettingsTarget(
-                    reference = item.reference,
-                    name = item.playableLevel.name,
-                    hasMidiOptions = item.playableLevel.config is LevelConfig.Melodies.Midi,
-                  )
+                levelPendingSettings = LevelSettingsTarget.of(item.reference, item.playableLevel)
               },
               onEditLevel = null,
               onDeleteLevel = null,
@@ -312,10 +306,15 @@ fun MelodiesLevelSelectScreen(
       MidiLevelOptionsSheet(
         levelName = level.name,
         levelReference = level.reference,
+        hasKey = level.hasKey,
+        options = midiLevelOptions,
         stats = stats,
-        onStart = { transposition ->
+        onOpenContext = { onOpenMidiContext(midiLevelOptions.context?.id) },
+        onClearContext = { viewModel.setMidiContext(null) },
+        onStart = { options ->
+          viewModel.saveMidiLevelOptions(options)
           levelPendingSettings = null
-          onStartLevel(level.reference, transposition)
+          onStartLevel(level.reference)
         },
         onDeleteLastPlayStatistics = {
           viewModel.deleteLastPlayStatistics(level.reference)
@@ -348,7 +347,38 @@ private data class LevelSettingsTarget(
   val reference: String,
   val name: String,
   val hasMidiOptions: Boolean,
-)
+  /** A labelled key is what lets a MIDI level carry a harmonic context. */
+  val hasKey: Boolean,
+) {
+  companion object {
+    fun of(reference: String, level: MelodiesLevel): LevelSettingsTarget {
+      val midi = level.config as? LevelConfig.Melodies.Midi
+      return LevelSettingsTarget(
+        reference = reference,
+        name = level.name,
+        hasMidiOptions = midi != null,
+        hasKey = midi?.key != null,
+      )
+    }
+
+    val Saver =
+      listSaver<LevelSettingsTarget?, Any>(
+        save = { target ->
+          target?.let { listOf(it.reference, it.name, it.hasMidiOptions, it.hasKey) } ?: emptyList()
+        },
+        restore = { saved ->
+          if (saved.size < 4) null
+          else
+            LevelSettingsTarget(
+              reference = saved[0] as String,
+              name = saved[1] as String,
+              hasMidiOptions = saved[2] as Boolean,
+              hasKey = saved[3] as Boolean,
+            )
+        },
+      )
+  }
+}
 
 @Composable
 private fun EmptyState() {
@@ -495,7 +525,10 @@ private fun LevelParameterRow(
         }
 
       is LevelConfig.Melodies.Midi ->
-        listOf(config.fileName to Icons.Rounded.FolderOpen)
+        buildList {
+          add(config.fileName to Icons.Rounded.FolderOpen)
+          config.key?.let { add(it.displayName() to Icons.Rounded.MusicNote) }
+        }
     }
 
   LevelParametersFlow(items, modifier = modifier)
@@ -523,6 +556,7 @@ private fun LevelDetails(level: MelodiesLevel) {
 
       is LevelConfig.Melodies.Midi -> {
         DetailRow("FILE", config.fileName)
+        DetailRow("KEY", config.key?.displayName() ?: "Not labelled")
         DetailRow(
           "NOTE VELOCITIES",
           if (config.useOriginalVelocities) "Original file values" else "Full velocity (127)",

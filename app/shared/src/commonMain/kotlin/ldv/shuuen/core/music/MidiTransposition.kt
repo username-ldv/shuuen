@@ -1,4 +1,4 @@
-package ldv.shuuen.features.training.melodies.domain
+package ldv.shuuen.core.music
 
 import kotlin.random.Random
 import kotlinx.serialization.Serializable

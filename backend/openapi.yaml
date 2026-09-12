@@ -109,6 +109,11 @@ components:
         difficulty: { type: string }
         sort_order: { type: integer }
         is_public: { type: boolean }
+        key:
+          description: Labelled key, or null while the melody is unlabelled.
+          oneOf:
+            - { $ref: '#/components/schemas/MelodyKey' }
+            - { type: 'null' }
         tags:
           type: array
           items: { $ref: '#/components/schemas/Tag' }
@@ -226,6 +231,29 @@ components:
     Degree:
       type: string
       enum: [D1, D5, D2, D6, D3, D7, DS4, DF2, DF6, DF3, DF7, D4]
+    MelodyKey:
+      type: object
+      description: >-
+        Hand-labelled key of a MIDI melody. `tonic` is one of the twelve sharp-named
+        pitches and `spelling` says whether it is displayed with sharps or flats
+        (DSharp + flats is E♭). `degrees` are the scale degrees the melody uses, stored
+        in rising chromatic order. `scale_type` is derived by the server from the degree
+        set (Major, NaturalMinor, Chromatic, otherwise Custom) and is ignored on input.
+        `scale_name` is an optional free-text name such as "Lydian" or "Harmonic minor".
+      required: [tonic, spelling, degrees]
+      properties:
+        tonic: { $ref: '#/components/schemas/Pitch' }
+        spelling: { type: string, enum: [sharps, flats] }
+        degrees:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/Degree' }
+        scale_type:
+          type: string
+          enum: [Major, NaturalMinor, Chromatic, Custom]
+          readOnly: true
+        scale_name: { type: string, maxLength: 120 }
     Note:
       type: object
       required: [midi_index]
@@ -365,6 +393,13 @@ components:
               oneOf:
                 - { $ref: '#/components/schemas/BackendMIDIFile' }
                 - { $ref: '#/components/schemas/LocalMIDIFile' }
+            key:
+              description: >-
+                Key of a MIDI melody. Optional on write. Course reads overlay the
+                referenced catalog melody's key when the stored definition has none.
+              oneOf:
+                - { $ref: '#/components/schemas/MelodyKey' }
+                - { type: 'null' }
     CourseMIDIResource:
       type: object
       required: [melody_id, variant_id, download_url]
@@ -1224,6 +1259,41 @@ paths:
       responses:
         '200': { description: Group tree response }
         '404': { description: Group not found or private }
+    patch:
+      summary: Rename a catalog folder without materializing its course
+      description: >-
+        Updates the folder's `.shuuen.json` and indexed row. Managed course and
+        progression-group rows that mirror the folder are kept in sync. The library
+        root cannot be renamed.
+      operationId: updateGroup
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 180 }
+                description: { type: string }
+      responses:
+        '200':
+          description: Updated group
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/LibraryGroup' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Group not found }
   /api/v1/library/path/{groupPath}:
     get:
       summary: Get a group by filesystem-relative path
@@ -1361,6 +1431,50 @@ paths:
       responses:
         '204': { description: Deleted }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /api/v1/library/melodies/keys:
+    put:
+      summary: Label many melodies with one key
+      description: >-
+        Applies `key` (or clears it with null) to every listed melody, writing each
+        `<stem>.shuuen.json` sidecar and indexed row in request order. The first
+        failure stops the batch; the response reports how many were written.
+      operationId: updateMelodyKeys
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [melody_ids, key]
+              properties:
+                melody_ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 500
+                  uniqueItems: true
+                  items: { type: integer }
+                key:
+                  oneOf:
+                    - { $ref: '#/components/schemas/MelodyKey' }
+                    - { type: 'null' }
+      responses:
+        '200':
+          description: Number of melodies written
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [updated]
+                    properties:
+                      updated: { type: integer }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: One or more melodies were not found }
   /api/v1/library/melodies/{id}:
     get:
       summary: Get a melody
@@ -1375,6 +1489,43 @@ paths:
       responses:
         '200': { description: Melody }
         '404': { description: Melody not found or private }
+    patch:
+      summary: Edit a melody's title and labelled key
+      description: >-
+        Writes the `<stem>.shuuen.json` sidecar next to the files and the indexed
+        row. Omitted fields are unchanged; `"key": null` clears the label.
+      operationId: updateMelody
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string, maxLength: 220 }
+                key:
+                  oneOf:
+                    - { $ref: '#/components/schemas/MelodyKey' }
+                    - { type: 'null' }
+      responses:
+        '200':
+          description: Updated melody
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Melody' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Melody not found }
     delete:
       summary: Delete a melody and its files
       operationId: deleteMelody

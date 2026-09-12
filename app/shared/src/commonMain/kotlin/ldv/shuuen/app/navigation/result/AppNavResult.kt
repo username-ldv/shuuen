@@ -18,6 +18,10 @@ object NavResultKeys {
     id = "melodies-context",
     serializer = AppNavResult.ContextPickedResult.serializer(),
   )
+  val MelodiesLevelOptionsContextResult = NavResultKey(
+    id = "melodies-level-options-context",
+    serializer = AppNavResult.ContextPickedResult.serializer(),
+  )
   val ChordsContextResult = NavResultKey(
     id = "chords-context",
     serializer = AppNavResult.ContextPickedResult.serializer(),

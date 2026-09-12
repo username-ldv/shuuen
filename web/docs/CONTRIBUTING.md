@@ -70,7 +70,7 @@ Rendering is **hybrid** (`@sveltejs/adapter-node`) and decided per route — see
 
 - **Marketing** pages live in the [`(marketing)`](../src/routes) route group.
   The landing page is SSR because it shows current account state in the header.
-- **Dynamic** app pages (personal pages, blog, repository) go in the sibling
+- **Dynamic** app pages (personal pages, blog, library) go in the sibling
   `(app)/` group — don't set `prerender` there (SSR is the default). Fetch data
   in a `load` function: `+page.ts` for public/universal, `+page.server.ts` for
   authenticated or secret-bearing loads.

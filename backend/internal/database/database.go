@@ -71,6 +71,7 @@ var migrations = []migration{
 	{version: 8, apply: addUserLevelSyncSchema},
 	{version: 9, apply: addTrainingSessionSyncSchema},
 	{version: 10, apply: addGroupDirectoryScanColumns},
+	{version: 11, apply: addMelodyKeyColumn},
 }
 
 func Migrate(ctx context.Context, db *gorm.DB) error {
@@ -227,6 +228,15 @@ func addGroupDirectoryScanColumns(_ context.Context, db *gorm.DB) error {
 		}
 	}
 	return nil
+}
+
+// addMelodyKeyColumn stores the labelled key of a melody next to its catalog
+// row. Existing melodies start unlabelled (NULL).
+func addMelodyKeyColumn(_ context.Context, db *gorm.DB) error {
+	if db.Migrator().HasColumn(&model.Melody{}, "Key") {
+		return nil
+	}
+	return db.Migrator().AddColumn(&model.Melody{}, "Key")
 }
 
 func enforcePrimaryVariantInvariant(ctx context.Context, db *gorm.DB) error {

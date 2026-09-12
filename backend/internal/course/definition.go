@@ -511,6 +511,9 @@ type melodyMIDIConfig struct {
 	Type                  string            `json:"type"`
 	File                  MIDIFileReference `json:"file"`
 	UseOriginalVelocities bool              `json:"use_original_velocities"`
+	// Key is optional on write. Course reads overlay the referenced melody's
+	// catalog key when the stored definition has none.
+	Key *MelodyKey `json:"key,omitempty"`
 }
 
 type scaleType struct {
@@ -713,6 +716,11 @@ func validateMelodyConfig(raw json.RawMessage, public bool) (MIDIReferences, err
 		var config melodyMIDIConfig
 		if err := json.Unmarshal(raw, &config); err != nil {
 			return MIDIReferences{}, errors.New("invalid MIDI melody config")
+		}
+		if config.Key != nil {
+			if err := config.Key.Validate("definition.config.key"); err != nil {
+				return MIDIReferences{}, err
+			}
 		}
 		file := config.File
 		if strings.TrimSpace(file.FileName) == "" {

@@ -398,6 +398,9 @@ func (h *Handler) listBlueprintLevels(c fiber.Ctx, courseGroup model.LibraryGrou
 			Sections: sectionTrail(root, &section, pathMap),
 		})
 	}
+	if err := h.attachMelodyKeys(c, responses); err != nil {
+		return nil, 0, err
+	}
 	return responses, total, nil
 }
 
@@ -494,6 +497,9 @@ func (h *Handler) listManagedLevels(c fiber.Ctx, courseGroup model.LibraryGroup,
 			response.MIDI = midiResource(*level.LibraryMelodyID, *level.LibraryVariantID)
 		}
 		responses = append(responses, response)
+	}
+	if err := h.attachMelodyKeys(c, responses); err != nil {
+		return nil, 0, err
 	}
 	return responses, total, nil
 }

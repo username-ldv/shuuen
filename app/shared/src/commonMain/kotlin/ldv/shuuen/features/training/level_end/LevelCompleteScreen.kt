@@ -244,7 +244,7 @@ private fun sessionSubtitle(session: TrainingSession, level: CompletedLevel?): S
               is ScaleConfig.RelativeScaleConfig -> "Random keys (${scale.scaleType})"
             }
 
-          is LevelConfig.Melodies.Midi -> "MIDI melody"
+          is LevelConfig.Melodies.Midi -> config.key?.displayName() ?: "MIDI melody"
         }
 
       is CompletedLevel.Chords ->
@@ -674,6 +674,7 @@ private fun parameterChips(level: CompletedLevel): List<Pair<ImageVector, String
         is LevelConfig.Melodies.Midi ->
           buildList {
             add(Icons.Rounded.FolderOpen to config.fileName)
+            config.key?.let { add(Icons.Rounded.MusicNote to it.displayName()) }
             add(
               Icons.Rounded.Tune to
                 if (config.useOriginalVelocities) "Original velocities" else "Full velocity"

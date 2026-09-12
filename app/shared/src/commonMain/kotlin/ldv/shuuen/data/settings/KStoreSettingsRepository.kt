@@ -9,6 +9,7 @@ import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.audio.midi.PresetCutoffScope
 import ldv.shuuen.core.settings.AppSettings
 import ldv.shuuen.core.settings.InputMethod
+import ldv.shuuen.core.settings.MidiLevelOptions
 import ldv.shuuen.core.settings.PresetShuffleMode
 import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.core.settings.ThemeSettings
@@ -82,6 +83,10 @@ class KStoreSettingsRepository(
 
   override suspend fun setTheme(theme: ThemeSettings) {
     store.update { it?.copy(theme = theme) }
+  }
+
+  override suspend fun setMidiLevelOptions(options: MidiLevelOptions) {
+    store.update { it?.copy(midiLevelOptions = options) }
   }
 
   override suspend fun setMidiRespectOctaves(value: Boolean) {

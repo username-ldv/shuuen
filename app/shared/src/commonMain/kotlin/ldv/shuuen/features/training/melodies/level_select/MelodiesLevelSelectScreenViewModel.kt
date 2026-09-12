@@ -13,6 +13,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ldv.shuuen.core.settings.DefaultLevelStatsWindow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import ldv.shuuen.core.music.DegreeContext
+import ldv.shuuen.core.settings.MidiLevelOptions
 import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.features.training.common.LevelAccuracyStats
 import ldv.shuuen.features.training.common.TrainingFlow
@@ -25,7 +29,7 @@ import ldv.shuuen.features.training.course.presentation.CourseLevelBrowser
 
 class MelodiesLevelSelectScreenViewModel(
   private val levelRepository: MelodiesLocalLevelRepository,
-  settingsRepository: SettingsRepository,
+  private val settingsRepository: SettingsRepository,
   private val trainingSessionRepository: TrainingSessionRepository,
   courseRepository: CourseRepository,
 ) : ViewModel() {
@@ -52,6 +56,24 @@ class MelodiesLevelSelectScreenViewModel(
       .map { coerceLevelStatsWindow(it.levelStatsWindow) }
       .distinctUntilChanged()
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DefaultLevelStatsWindow)
+
+  /** Shared MIDI playback options; the options sheet edits them and every MIDI level reads them. */
+  val midiLevelOptions: StateFlow<MidiLevelOptions> =
+    settingsRepository.settings
+      .map { it.midiLevelOptions }
+      .distinctUntilChanged()
+      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MidiLevelOptions())
+
+  fun saveMidiLevelOptions(options: MidiLevelOptions) {
+    viewModelScope.launch { settingsRepository.setMidiLevelOptions(options) }
+  }
+
+  fun setMidiContext(context: DegreeContext?) {
+    viewModelScope.launch {
+      val current = settingsRepository.settings.first().midiLevelOptions
+      settingsRepository.setMidiLevelOptions(current.copy(context = context))
+    }
+  }
 
   val attemptedLevelIds =
     trainingSessionRepository.observeAttemptedLevelIds(TrainingFlow.Melodies)

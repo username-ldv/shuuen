@@ -4,12 +4,13 @@ Web frontend for **Shuuen**, a next-generation ear-training app for musicians
 (Windows · Linux · Android). It lives in the Shuuen monorepo next to the native
 app ([`app/`](../app)) and the Go backend API ([`backend/`](../backend)). The current codebase includes the **marketing landing
 page** plus a small optional-auth surface (login, sign-up, and profile) built
-to grow into the interactive site (personal pages, news blog, a global
-repository of melodies/levels/contexts, and music-API integrations).
+to grow into the interactive site (personal pages, news blog, the Library of
+courses/melodies/levels, and music-API integrations).
 
-> **Current scope:** marketing UI plus optional account flow. Download and
-> repository actions are still presentational; auth routes call the Go backend
-> and store its JWT in an HTTP-only frontend session cookie. The rendering setup
+> **Current scope:** marketing UI, optional account flow, and the Library
+> (`/library`): course listing, level parameters, admin renames, and a
+> keyboard-driven screen for labelling the key of MIDI melodies. Auth routes
+> call the Go backend and store its JWT in an HTTP-only frontend session cookie. The rendering setup
 > and URL scheme are arranged for more dynamic features — see
 > [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
