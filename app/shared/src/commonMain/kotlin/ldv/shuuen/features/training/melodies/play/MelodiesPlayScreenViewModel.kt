@@ -465,6 +465,8 @@ class MelodiesPlayScreenViewModel(
           val length = _state.value.lengthTicks
           // If playback finished, restart from the top.
           if (length > 0 && player.positionTicks() >= length) player.seekToTick(0)
+          // The file sounds on its own stream, so there is no note-off to wait for.
+          cancelSetupMelody()
           player.play()
         }
         refreshTransportState()
@@ -672,6 +674,7 @@ class MelodiesPlayScreenViewModel(
   private fun playSequence(startIndex: Int = 0) {
     val tempo = randomConfig?.tempo ?: return
     cancelSequencePlayback(updateState = false)
+    val setupMelody = cancelSetupMelody()
     val runId = ++playbackRunId
     sequenceJob =
       viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -681,6 +684,7 @@ class MelodiesPlayScreenViewModel(
         sequenceIndex = firstIndex
         _state.update { it.copy(isPlayingSequence = true) }
         try {
+          setupMelody?.join()
           withTiming(tempo) {
             for (index in firstIndex..notes.lastIndex) {
               val melodyNote = notes[index]
@@ -736,14 +740,34 @@ class MelodiesPlayScreenViewModel(
   /** Rolls every channel onto another of its chosen instruments, on demand. */
   fun shufflePresets() = presets.shuffleNow()
 
-  /** Replays the context's setup melody on demand; a no-op when the context has none. */
+  /**
+   * Replays the context's setup melody on demand; a no-op when the context has none. Exclusive
+   * with the melody's own playback: the sequence stops (or the file pauses) before it starts.
+   */
   fun playSetupMelody() {
+    val contextPlayer = contextPlayer?.takeIf { it.hasSetupMelody } ?: return
+    when (_state.value.mode) {
+      MelodiesPlayMode.Midi ->
+        if (player.isPlaying()) {
+          player.pause()
+          refreshTransportState()
+        }
+
+      MelodiesPlayMode.Random -> cancelSequencePlayback()
+    }
     val previous = playMelodyJob
     playMelodyJob = viewModelScope.launch {
       previous?.cancelAndJoin()
-      contextPlayer?.playSetupMelody(true)
+      contextPlayer.playSetupMelody(true)
     }
   }
+
+  /**
+   * Stops a replayed setup melody, so the melody's own playback never sounds over it. Returns its
+   * job: both sound on the Notes channel, so generated playback joins it before its first note-on,
+   * or the setup melody's late note-off could cut a note of the same pitch.
+   */
+  private fun cancelSetupMelody(): Job? = playMelodyJob?.apply { cancel() }
 
   private fun advanceToNextQuestion() {
     val previous = advanceJob
@@ -831,11 +855,13 @@ class MelodiesPlayScreenViewModel(
   private fun startStream() {
     val tempo = randomConfig?.tempo ?: return
     cancelSequencePlayback(updateState = false)
+    val setupMelody = cancelSetupMelody()
     val runId = ++playbackRunId
     sequenceJob =
       viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
         _state.update { it.copy(isPlayingSequence = true) }
         try {
+          setupMelody?.join()
           withTiming(tempo) {
             while (isActive && playbackRunId == runId) {
               val index = streamIndex

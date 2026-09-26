@@ -60,6 +60,10 @@ class DegreeContextPlayer(
   private val _currentChord = MutableStateFlow<Chord?>(null)
   val currentChord = _currentChord.asStateFlow()
   private var setupMelody: SetupMelody? = null
+
+  /** Whether a node has set a setup melody, i.e. whether a manual [playSetupMelody] would sound. */
+  val hasSetupMelody: Boolean
+    get() = setupMelody != null
   private var playedSetupMelody: Boolean = false
   private var currentlyPlaying: CurrentlyPlayingNode? = null
   var currentNodeCount: Int = 0
