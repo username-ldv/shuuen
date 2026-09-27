@@ -275,7 +275,9 @@ func TestAuthRateLimitKeysOnForwardedClientBehindTrustedProxy(t *testing.T) {
 		}
 		request.Header.Set("Content-Type", "application/json")
 		request.Header.Set("X-Forwarded-For", clientIP)
-		response, err := app.Test(request)
+		// Unknown usernames still cost a bcrypt check, which the race detector
+		// slows past app.Test's one-second default.
+		response, err := app.Test(request, fiber.TestConfig{Timeout: 5 * time.Second, FailOnTimeout: true})
 		if err != nil {
 			t.Fatal(err)
 		}
