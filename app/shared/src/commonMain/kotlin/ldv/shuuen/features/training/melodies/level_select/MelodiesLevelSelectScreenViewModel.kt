@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import ldv.shuuen.core.settings.CourseOverrides
 import ldv.shuuen.core.settings.DefaultLevelStatsWindow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -20,6 +21,7 @@ import ldv.shuuen.core.settings.MidiLevelOptions
 import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.features.training.common.LevelAccuracyStats
 import ldv.shuuen.features.training.common.TrainingFlow
+import ldv.shuuen.features.training.common.components.TuneInconsistencyRange
 import ldv.shuuen.core.settings.coerceLevelStatsWindow
 import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
 import ldv.shuuen.features.training.melodies.domain.MelodiesLocalLevelRepository
@@ -72,6 +74,19 @@ class MelodiesLevelSelectScreenViewModel(
     viewModelScope.launch {
       val current = settingsRepository.settings.first().midiLevelOptions
       settingsRepository.setMidiLevelOptions(current.copy(context = context))
+    }
+  }
+
+  /** Local per-course level overrides, applied to course level cards and edited in the course sheet. */
+  val courseOverrides: StateFlow<Map<Long, CourseOverrides>> =
+    settingsRepository.settings
+      .map { it.courseOverrides }
+      .distinctUntilChanged()
+      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+  fun setCourseTuneInconsistency(courseId: Long, cents: Int?) {
+    viewModelScope.launch {
+      settingsRepository.setCourseTuneInconsistency(courseId, cents?.coerceIn(TuneInconsistencyRange))
     }
   }
 

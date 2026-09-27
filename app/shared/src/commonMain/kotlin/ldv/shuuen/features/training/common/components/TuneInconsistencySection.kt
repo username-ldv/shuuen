@@ -1,6 +1,7 @@
 package ldv.shuuen.features.training.common.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
@@ -51,9 +52,25 @@ fun TuneInconsistencySection(
       )
     },
   ) {
+    TuneInconsistencySlider(cents = cents, onChange = onChange)
+  }
+}
+
+/**
+ * The tune inconsistency slider over [TuneInconsistencyRange] with its "Off" and maximum labels.
+ * [onChangeFinished] fires when a drag ends, for callers that save only the released value.
+ */
+@Composable
+fun TuneInconsistencySlider(
+  cents: Int,
+  onChange: (Int) -> Unit,
+  onChangeFinished: (() -> Unit)? = null,
+) {
+  Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
     Slider(
       value = cents.toFloat(),
       onValueChange = { onChange(it.roundToInt()) },
+      onValueChangeFinished = onChangeFinished,
       valueRange =
         TuneInconsistencyRange.first.toFloat()..TuneInconsistencyRange.last.toFloat(),
       colors =

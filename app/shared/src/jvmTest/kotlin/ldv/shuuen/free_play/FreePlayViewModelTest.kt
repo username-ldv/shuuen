@@ -144,6 +144,8 @@ private class FakeSettingsRepository : SettingsRepository {
 
   override suspend fun setMidiLevelOptions(options: MidiLevelOptions) = Unit
 
+  override suspend fun setCourseTuneInconsistency(courseId: Long, cents: Int?) = Unit
+
   override suspend fun setInputMethod(inputMethod: InputMethod) = Unit
 
   override suspend fun setTheme(theme: ThemeSettings) = Unit

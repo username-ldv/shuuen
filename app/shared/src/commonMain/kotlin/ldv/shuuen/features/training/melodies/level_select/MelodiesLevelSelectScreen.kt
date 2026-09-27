@@ -78,6 +78,7 @@ import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.ScaleConfig
 import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
 import androidx.compose.runtime.saveable.listSaver
+import ldv.shuuen.features.training.course.domain.withCourseOverrides
 import ldv.shuuen.features.training.course.presentation.CourseDiscoveryMessage
 import ldv.shuuen.features.training.course.presentation.CourseLevelItemKeyPrefix
 import ldv.shuuen.features.training.course.presentation.CourseLevelsMessage
@@ -101,6 +102,7 @@ fun MelodiesLevelSelectScreen(
   val midiLevelOptions by viewModel.midiLevelOptions.collectAsStateWithLifecycle()
   val courseState by viewModel.courseState.collectAsStateWithLifecycle()
   val attemptedLevelIds by viewModel.attemptedLevelIds.collectAsStateWithLifecycle()
+  val courseOverrides by viewModel.courseOverrides.collectAsStateWithLifecycle()
   val listState = rememberLazyListState()
   val showingLocal = courseState.selection == CourseSourceSelection.MyLevels
   val selectedCourse =
@@ -244,7 +246,7 @@ fun MelodiesLevelSelectScreen(
             val statsFlow = remember(viewModel, item.reference) { viewModel.levelStats(item.reference) }
             val stats by statsFlow.collectAsStateWithLifecycle(LevelAccuracyStats())
             LevelCard(
-              level = item.playableLevel,
+              level = item.playableLevel.withCourseOverrides(courseOverrides[item.courseId]),
               stats = stats,
               onLevelChosen = { onStartLevel(item.reference) },
               onOpenSettings = {
@@ -339,6 +341,8 @@ fun MelodiesLevelSelectScreen(
       courseName = selectedCourse.name,
       onDeleteAllStatistics = { viewModel.deleteAllCourseStatistics(selectedCourse.id) },
       onDismiss = { courseSettingsOpen = false },
+      tuneInconsistencyCents = courseOverrides[selectedCourse.id]?.tuneInconsistencyCents,
+      onTuneInconsistencyChange = { viewModel.setCourseTuneInconsistency(selectedCourse.id, it) },
     )
   }
 }

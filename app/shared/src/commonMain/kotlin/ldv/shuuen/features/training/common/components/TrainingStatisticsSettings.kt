@@ -22,6 +22,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -32,6 +33,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ldv.shuuen.core.ui.components.CircleIconButton
+import ldv.shuuen.core.ui.components.ShuuenSwitch
 import ldv.shuuen.core.ui.components.ShuuenUi
 
 private enum class StatisticsDeletion {
@@ -99,11 +101,18 @@ fun LevelSettingsSheet(
   }
 }
 
+/**
+ * Settings for a whole course. The tune inconsistency section shows only when
+ * [onTuneInconsistencyChange] is given; [tuneInconsistencyCents] is the course's local override,
+ * null while every level keeps its own value.
+ */
 @Composable
 fun CourseSettingsSheet(
   courseName: String,
   onDeleteAllStatistics: () -> Unit,
   onDismiss: () -> Unit,
+  tuneInconsistencyCents: Int? = null,
+  onTuneInconsistencyChange: ((Int?) -> Unit)? = null,
 ) {
   var confirmDeletion by remember(courseName) { mutableStateOf(false) }
 
@@ -112,6 +121,12 @@ fun CourseSettingsSheet(
     subjectName = courseName,
     onDismiss = onDismiss,
   ) {
+    if (onTuneInconsistencyChange != null) {
+      CourseTuneInconsistencySection(
+        cents = tuneInconsistencyCents,
+        onChange = onTuneInconsistencyChange,
+      )
+    }
     SettingsSectionLabel("STATISTICS")
     DestructiveSettingsAction(
       label = "Delete all statistics",
@@ -173,6 +188,69 @@ private fun SettingsSheetScaffold(
         )
       }
       content()
+    }
+  }
+}
+
+/**
+ * Switch plus slider for a course-wide tune inconsistency. Slider drags stay local and are saved on
+ * release, so a drag doesn't rewrite the settings file on every frame.
+ */
+@Composable
+private fun CourseTuneInconsistencySection(
+  cents: Int?,
+  onChange: (Int?) -> Unit,
+) {
+  var draft by remember(cents) { mutableIntStateOf(cents ?: 0) }
+
+  Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    SettingsSectionLabel("TUNE INCONSISTENCY")
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text("Replace level settings", color = ShuuenUi.Text, style = MaterialTheme.typography.titleSmall)
+        Text(
+          if (cents == null) "Each level plays with its own tune inconsistency."
+          else "Every level in this course uses this value instead of its own, on this device only.",
+          color = ShuuenUi.Dim,
+          style = MaterialTheme.typography.bodySmall,
+        )
+      }
+      ShuuenSwitch(
+        checked = cents != null,
+        onCheckedChange = { enabled -> onChange(if (enabled) draft else null) },
+      )
+    }
+    if (cents != null) {
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+      ) {
+        Text(
+          "Each note plays randomly out of tune by up to ± this many cents.",
+          color = ShuuenUi.Dim,
+          style = MaterialTheme.typography.bodySmall,
+          modifier = Modifier.weight(1f),
+        )
+        NumberInputBox(
+          value = draft,
+          range = TuneInconsistencyRange,
+          suffix = "¢",
+          onChange = {
+            draft = it
+            onChange(it)
+          },
+        )
+      }
+      TuneInconsistencySlider(
+        cents = draft,
+        onChange = { draft = it },
+        onChangeFinished = { onChange(draft) },
+      )
     }
   }
 }

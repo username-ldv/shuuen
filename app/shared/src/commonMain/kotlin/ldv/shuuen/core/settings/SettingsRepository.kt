@@ -45,6 +45,9 @@ interface SettingsRepository {
   /** Transposition and shared harmonic context for imported MIDI levels. */
   suspend fun setMidiLevelOptions(options: MidiLevelOptions)
 
+  /** Replaces the tune inconsistency of every level in [courseId]; null restores each level's own. */
+  suspend fun setCourseTuneInconsistency(courseId: Long, cents: Int?)
+
   suspend fun setInputMethod(inputMethod: InputMethod)
 
   suspend fun setTheme(theme: ThemeSettings)
@@ -119,4 +122,6 @@ data class AppSettings(
   val backingTrackMutesMelody: Boolean = false,
   /** How MIDI melody levels play; chosen on level select and shared by every MIDI level. */
   val midiLevelOptions: MidiLevelOptions = MidiLevelOptions(),
+  /** Local per-course level overrides keyed by course ID; courses without any are absent. */
+  val courseOverrides: Map<Long, CourseOverrides> = emptyMap(),
 )

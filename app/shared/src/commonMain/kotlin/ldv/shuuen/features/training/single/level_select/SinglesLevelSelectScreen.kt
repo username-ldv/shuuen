@@ -70,6 +70,7 @@ import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.SurfaceCard
 import ldv.shuuen.core.ui.components.BoxedItemRow
+import ldv.shuuen.features.training.course.domain.withCourseOverrides
 import ldv.shuuen.features.training.course.presentation.CourseDiscoveryMessage
 import ldv.shuuen.features.training.course.presentation.CourseLevelItemKeyPrefix
 import ldv.shuuen.features.training.course.presentation.CourseLevelsMessage
@@ -91,6 +92,7 @@ fun SinglesLevelSelectScreen(
   val levels by viewModel.levels.collectAsStateWithLifecycle(ResponseState.Loading)
   val courseState by viewModel.courseState.collectAsStateWithLifecycle()
   val attemptedLevelIds by viewModel.attemptedLevelIds.collectAsStateWithLifecycle()
+  val courseOverrides by viewModel.courseOverrides.collectAsStateWithLifecycle()
   val listState = rememberLazyListState()
   val showingLocal = courseState.selection == CourseSourceSelection.MyLevels
   val selectedCourse =
@@ -226,7 +228,7 @@ fun SinglesLevelSelectScreen(
             val statsFlow = remember(viewModel, item.reference) { viewModel.levelStats(item.reference) }
             val stats by statsFlow.collectAsStateWithLifecycle(LevelAccuracyStats())
             LevelCard(
-                level = item.playableLevel,
+                level = item.playableLevel.withCourseOverrides(courseOverrides[item.courseId]),
                 stats = stats,
                 onLevelChosen = { onStartLevel(item.reference) },
                 onOpenSettings = {
@@ -299,6 +301,8 @@ fun SinglesLevelSelectScreen(
         courseName = selectedCourse.name,
         onDeleteAllStatistics = { viewModel.deleteAllCourseStatistics(selectedCourse.id) },
         onDismiss = { courseSettingsOpen = false },
+        tuneInconsistencyCents = courseOverrides[selectedCourse.id]?.tuneInconsistencyCents,
+        onTuneInconsistencyChange = { viewModel.setCourseTuneInconsistency(selectedCourse.id, it) },
     )
   }
 }

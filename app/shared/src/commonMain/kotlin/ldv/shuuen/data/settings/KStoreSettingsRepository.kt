@@ -8,6 +8,7 @@ import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.audio.midi.PresetCutoffScope
 import ldv.shuuen.core.settings.AppSettings
+import ldv.shuuen.core.settings.CourseOverrides
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.MidiLevelOptions
 import ldv.shuuen.core.settings.PresetShuffleMode
@@ -87,6 +88,19 @@ class KStoreSettingsRepository(
 
   override suspend fun setMidiLevelOptions(options: MidiLevelOptions) {
     store.update { it?.copy(midiLevelOptions = options) }
+  }
+
+  override suspend fun setCourseTuneInconsistency(courseId: Long, cents: Int?) {
+    store.update { settings ->
+      settings ?: return@update null
+      val overrides =
+        (settings.courseOverrides[courseId] ?: CourseOverrides()).copy(tuneInconsistencyCents = cents)
+      settings.copy(
+        courseOverrides =
+          if (overrides == CourseOverrides()) settings.courseOverrides - courseId
+          else settings.courseOverrides + (courseId to overrides)
+      )
+    }
   }
 
   override suspend fun setMidiRespectOctaves(value: Boolean) {

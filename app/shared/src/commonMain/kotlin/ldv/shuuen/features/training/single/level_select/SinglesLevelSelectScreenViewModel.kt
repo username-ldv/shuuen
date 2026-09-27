@@ -6,16 +6,19 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import ldv.shuuen.core.settings.CourseOverrides
 import ldv.shuuen.core.settings.DefaultLevelStatsWindow
 import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.features.training.common.LevelAccuracyStats
 import ldv.shuuen.features.training.common.TrainingFlow
+import ldv.shuuen.features.training.common.components.TuneInconsistencyRange
 import ldv.shuuen.core.settings.coerceLevelStatsWindow
 import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
 import ldv.shuuen.features.training.single.domain.SinglesLocalLevelRepository
@@ -25,7 +28,7 @@ import ldv.shuuen.features.training.course.presentation.CourseLevelBrowser
 
 class SinglesLevelSelectScreenViewModel(
   private val levelRepository: SinglesLocalLevelRepository,
-  settingsRepository: SettingsRepository,
+  private val settingsRepository: SettingsRepository,
   private val trainingSessionRepository: TrainingSessionRepository,
   courseRepository: CourseRepository,
 ) : ViewModel() {
@@ -52,6 +55,19 @@ class SinglesLevelSelectScreenViewModel(
       .map { coerceLevelStatsWindow(it.levelStatsWindow) }
       .distinctUntilChanged()
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DefaultLevelStatsWindow)
+
+  /** Local per-course level overrides, applied to course level cards and edited in the course sheet. */
+  val courseOverrides: StateFlow<Map<Long, CourseOverrides>> =
+    settingsRepository.settings
+      .map { it.courseOverrides }
+      .distinctUntilChanged()
+      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+  fun setCourseTuneInconsistency(courseId: Long, cents: Int?) {
+    viewModelScope.launch {
+      settingsRepository.setCourseTuneInconsistency(courseId, cents?.coerceIn(TuneInconsistencyRange))
+    }
+  }
 
   val attemptedLevelIds =
     trainingSessionRepository.observeAttemptedLevelIds(TrainingFlow.Singles)
