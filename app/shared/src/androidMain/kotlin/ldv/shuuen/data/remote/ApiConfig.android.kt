@@ -6,7 +6,7 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
-internal actual fun defaultApiBaseUrl(): String = "http://10.0.2.2:9999"
+internal actual fun defaultApiBaseUrl(): String = "https://shuuen.xyz"
 
 internal actual fun createPlatformApiHttpClient(json: Json): HttpClient =
   HttpClient(Android) {
