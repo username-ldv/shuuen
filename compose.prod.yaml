@@ -23,6 +23,10 @@ services:
       DATABASE_DSN: host=postgres user=shuuen password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env} dbname=shuuen port=5432 sslmode=disable TimeZone=UTC
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
       CORS_ALLOWED_ORIGINS: https://${SITE_DOMAIN:?set SITE_DOMAIN in .env}
+      # Caddy and the web server reach the API over the private Docker network
+      # and name the real client in X-Forwarded-For; the rate limits key on it.
+      # The API publishes no port, so nothing else can reach it to spoof that.
+      TRUSTED_PROXIES: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
       REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-}
       BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
@@ -37,6 +41,10 @@ services:
       # The Node server sits behind Caddy. Without ORIGIN, SvelteKit sees an
       # http:// origin and rejects form posts (login, sign-up) as cross-site.
       ORIGIN: https://${SITE_DOMAIN:?set SITE_DOMAIN in .env}
+      # Caddy replaces any client-sent X-Forwarded-For with the connecting
+      # address, so its last entry is the visitor. Sign-in forwards it to the API.
+      ADDRESS_HEADER: X-Forwarded-For
+      XFF_DEPTH: "1"
 
   caddy:
     <<: *service

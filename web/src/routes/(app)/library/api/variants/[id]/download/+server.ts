@@ -6,7 +6,8 @@ import { isAdmin } from "$lib/server/library";
 
 /**
  * Streams a catalog file to the browser. Public variants need no session;
- * administrators also receive private ones because their token is forwarded.
+ * administrators also receive private ones because their token is forwarded
+ * with `include_private=true`.
  */
 export const GET: RequestHandler = async ({ params, cookies, fetch, locals }) => {
 	const variantId = Number(params.id);
@@ -15,12 +16,14 @@ export const GET: RequestHandler = async ({ params, cookies, fetch, locals }) =>
 	}
 	const headers = new Headers();
 	const token = getAuthToken(cookies);
+	let path = `/api/v1/library/variants/${variantId}/download`;
 	if (token && isAdmin(locals.user)) {
 		headers.set("Authorization", `Bearer ${token}`);
+		path += "?include_private=true";
 	}
 	let response: Response;
 	try {
-		response = await fetch(backendUrl(`/api/v1/library/variants/${variantId}/download`), { headers });
+		response = await fetch(backendUrl(path), { headers });
 	} catch {
 		throw error(503, "The Shuuen backend is not reachable.");
 	}

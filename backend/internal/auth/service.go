@@ -3,6 +3,7 @@ package auth
 import (
 	"errors"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -44,6 +45,18 @@ func HashPassword(password string) (string, error) {
 
 func CheckPassword(hash string, password string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
+}
+
+var unusedPasswordHash = sync.OnceValue(func() []byte {
+	hash, _ := bcrypt.GenerateFromPassword([]byte("unused-password"), bcrypt.DefaultCost)
+	return hash
+})
+
+// SpendPasswordCheck does the work of CheckPassword against a throwaway hash, so
+// a login for an unknown username takes as long as one for a real account and
+// response times don't reveal which usernames exist.
+func SpendPasswordCheck(password string) {
+	_ = bcrypt.CompareHashAndPassword(unusedPasswordHash(), []byte(password))
 }
 
 func (s *Service) GenerateAccessToken(user model.User) (string, time.Time, error) {

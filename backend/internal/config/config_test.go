@@ -14,6 +14,25 @@ func TestLoadRejectsMalformedEnvironmentValues(t *testing.T) {
 	}
 }
 
+func TestLoadValidatesTrustedProxies(t *testing.T) {
+	t.Setenv("APP_ENV", "development")
+	t.Setenv("DATABASE_DSN", "host=localhost dbname=shuuen")
+	t.Setenv("TRUSTED_PROXIES", "10.0.0.0/8, 192.168.1.7")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.HTTP.TrustedProxies) != 2 || cfg.HTTP.TrustedProxies[1] != "192.168.1.7" {
+		t.Fatalf("TrustedProxies = %#v", cfg.HTTP.TrustedProxies)
+	}
+
+	t.Setenv("TRUSTED_PROXIES", "10.0.0.0/8,caddy")
+	_, err = Load()
+	if err == nil || !strings.Contains(err.Error(), "TRUSTED_PROXIES") {
+		t.Fatalf("Load() error = %v, want invalid TRUSTED_PROXIES", err)
+	}
+}
+
 func TestLoadRejectsSQLite(t *testing.T) {
 	t.Setenv("APP_ENV", "development")
 	t.Setenv("DATABASE_DRIVER", "sqlite")

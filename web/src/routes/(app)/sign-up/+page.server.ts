@@ -26,7 +26,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 };
 
 export const actions = {
-	default: async ({ request, cookies, fetch, url }) => {
+	default: async ({ request, cookies, fetch, url, getClientAddress }) => {
 		const formData = await request.formData();
 		const username = readString(formData, "username");
 		const password = readString(formData, "password");
@@ -64,10 +64,14 @@ export const actions = {
 			});
 		}
 
-		const result = await register(fetch, {
-			username,
-			password,
-		});
+		const result = await register(
+			fetch,
+			{
+				username,
+				password,
+			},
+			getClientAddress()
+		);
 		if (!result.ok) {
 			return fail(result.status >= 400 && result.status < 600 ? result.status : 400, {
 				values: { username },

@@ -7,6 +7,8 @@ import (
 	"io"
 	"mime/multipart"
 	nethttp "net/http"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -145,6 +147,112 @@ func TestPasswordChangeRevokesExistingTokens(t *testing.T) {
 	}
 }
 
+func TestPrivateVariantDownloadRequiresAdminIncludePrivateScope(t *testing.T) {
+	// Not t.TempDir: Fiber keeps served files open for a few seconds, and on
+	// Windows that makes the strict TempDir cleanup fail.
+	root, err := os.MkdirTemp("", "shuuen-download-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(root) })
+	app, db, _ := newConfiguredTestServer(t, func(cfg *config.Config) { cfg.Catalog.Root = root })
+	userToken := registerTestUser(t, app, "regular_user", "regular-password")
+	hash, err := auth.HashPassword("admin-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := gorm.G[model.User](db).Create(t.Context(), &model.User{Username: "Admin", UsernameKey: "admin", PasswordHash: hash, Role: "admin"}); err != nil {
+		t.Fatal(err)
+	}
+	adminToken := loginTestUser(t, app, "Admin", "admin-password")
+
+	variantIDs := map[bool]uint{}
+	for _, isPublic := range []bool{true, false} {
+		name := "private"
+		if isPublic {
+			name = "public"
+		}
+		group := model.LibraryGroup{Path: name, Name: name, Slug: name, IsPublic: isPublic}
+		if err := gorm.G[model.LibraryGroup](db).Create(t.Context(), &group); err != nil {
+			t.Fatal(err)
+		}
+		melody := model.Melody{GroupID: group.ID, SourcePath: name + "/song", FileStem: "song", Title: "Song", Slug: "song", IsPublic: isPublic}
+		if err := gorm.G[model.Melody](db).Create(t.Context(), &melody); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(root, name), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, name, "song.mid"), []byte("MThd-test"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		variant := model.FileVariant{
+			MelodyID: melody.ID, Format: "midi", OriginalName: "song.mid", StoredName: "song.mid",
+			StoragePath: name + "/song.mid", SizeBytes: 9, IsPrimary: true,
+		}
+		if err := gorm.G[model.FileVariant](db).Omit(dbquery.FileVariant.Melody.Name()).Create(t.Context(), &variant); err != nil {
+			t.Fatal(err)
+		}
+		variantIDs[isPublic] = variant.ID
+	}
+
+	for _, tc := range []struct {
+		name   string
+		public bool
+		query  string
+		token  string
+		want   int
+	}{
+		{"public anonymous", true, "", "", fiber.StatusOK},
+		{"private anonymous", false, "", "", fiber.StatusNotFound},
+		{"private regular user", false, "", userToken, fiber.StatusNotFound},
+		{"private admin without scope", false, "", adminToken, fiber.StatusNotFound},
+		{"private admin with scope", false, "?include_private=true", adminToken, fiber.StatusOK},
+	} {
+		target := fmt.Sprintf("/api/v1/library/variants/%d/download%s", variantIDs[tc.public], tc.query)
+		response := testRequest(t, app, nethttp.MethodGet, target, "", tc.token)
+		_ = response.Body.Close()
+		if response.StatusCode != tc.want {
+			t.Errorf("%s: download status = %d, want %d", tc.name, response.StatusCode, tc.want)
+		}
+	}
+}
+
+func TestAuthRateLimitKeysOnForwardedClientBehindTrustedProxy(t *testing.T) {
+	app, _, _ := newConfiguredTestServer(t, func(cfg *config.Config) {
+		cfg.HTTP.AuthRateLimit = config.RateLimitConfig{Max: 2, Window: time.Minute}
+		// app.Test connects from 0.0.0.0, which stands in for Caddy here.
+		cfg.HTTP.TrustedProxies = []string{"0.0.0.0"}
+	})
+	login := func(clientIP string) int {
+		request, err := nethttp.NewRequest(nethttp.MethodPost, "/api/v1/auth/login",
+			bytes.NewBufferString(`{"username":"nobody","password":"wrong-password"}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("X-Forwarded-For", clientIP)
+		response, err := app.Test(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = response.Body.Close()
+		return response.StatusCode
+	}
+
+	for attempt := range 2 {
+		if status := login("203.0.113.1"); status != fiber.StatusUnauthorized {
+			t.Fatalf("attempt %d status = %d, want 401", attempt+1, status)
+		}
+	}
+	if status := login("203.0.113.1"); status != fiber.StatusTooManyRequests {
+		t.Fatalf("third attempt from the same client status = %d, want 429", status)
+	}
+	if status := login("203.0.113.2"); status != fiber.StatusUnauthorized {
+		t.Fatalf("another client status = %d, want 401: clients share one rate-limit bucket", status)
+	}
+}
+
 func TestVariantUploadIndexesDirectlyWithoutFullRescan(t *testing.T) {
 	app, db := newTestServer(t)
 	hash, err := auth.HashPassword("admin-password")
@@ -222,6 +330,13 @@ func newTestServer(t *testing.T) (*fiber.App, *gorm.DB) {
 // files where sidecar-writing handlers expect them.
 func newTestServerWithStorage(t *testing.T) (*fiber.App, *gorm.DB, string) {
 	t.Helper()
+	return newConfiguredTestServer(t, nil)
+}
+
+// newConfiguredTestServer lets configure adjust the settings, such as rate
+// limits, trusted proxies, or the catalog root, before the server is built.
+func newConfiguredTestServer(t *testing.T, configure func(*config.Config)) (*fiber.App, *gorm.DB, string) {
+	t.Helper()
 	db, err := gorm.Open(gormlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -229,30 +344,34 @@ func newTestServerWithStorage(t *testing.T) (*fiber.App, *gorm.DB, string) {
 	if err := database.Migrate(t.Context(), db); err != nil {
 		t.Fatal(err)
 	}
-	root := t.TempDir()
-	catalogConfig := config.CatalogConfig{
-		Root: root, FolderMetadataFile: ".shuuen.json", MelodyMetadataSuffix: ".shuuen.json", MaxUploadBytes: 1024 * 1024,
-	}
-	store, err := storage.NewFileStore(catalogConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
-	scanner, err := catalog.NewScanner(db, catalogConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
-	authConfig := config.AuthConfig{JWTSecret: "test-secret-that-is-long-enough", JWTIssuer: "test", AccessTokenTTL: time.Hour, RegistrationEnabled: true}
 	cfg := config.Config{
-		Auth: authConfig,
+		Auth: config.AuthConfig{JWTSecret: "test-secret-that-is-long-enough", JWTIssuer: "test", AccessTokenTTL: time.Hour, RegistrationEnabled: true},
 		HTTP: config.HTTPConfig{
 			BodyLimitBytes: 2 * 1024 * 1024,
 			AuthRateLimit:  config.RateLimitConfig{Max: 100, Window: time.Minute},
 			AdminRateLimit: config.RateLimitConfig{Max: 100, Window: time.Minute},
 		},
+		Catalog: config.CatalogConfig{
+			FolderMetadataFile: ".shuuen.json", MelodyMetadataSuffix: ".shuuen.json", MaxUploadBytes: 1024 * 1024,
+		},
 	}
-	app := NewServer(ServerDeps{Config: cfg, DB: db, Auth: auth.NewService(authConfig), Storage: store, Catalog: scanner})
+	if configure != nil {
+		configure(&cfg)
+	}
+	if cfg.Catalog.Root == "" {
+		cfg.Catalog.Root = t.TempDir()
+	}
+	store, err := storage.NewFileStore(cfg.Catalog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	scanner, err := catalog.NewScanner(db, cfg.Catalog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := NewServer(ServerDeps{Config: cfg, DB: db, Auth: auth.NewService(cfg.Auth), Storage: store, Catalog: scanner})
 	t.Cleanup(func() { _ = app.Shutdown() })
-	return app, db, root
+	return app, db, cfg.Catalog.Root
 }
 
 func registerTestUser(t *testing.T, app *fiber.App, username string, password string) string {

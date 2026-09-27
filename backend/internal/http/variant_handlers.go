@@ -215,10 +215,14 @@ func (h *Handler) DownloadVariant(c fiber.Ctx) error {
 	}
 
 	variant, err := gorm.G[model.FileVariant](h.db).
+		Preload(dbquery.FileVariant.Melody.Name()+"."+dbquery.Melody.Group.Name(), nil).
 		Where(dbquery.FileVariant.ID.Eq(id)).
 		First(c.Context())
 	if err != nil {
 		return notFoundOrError(c, err, "variant not found")
+	}
+	if !canViewMelody(c, variant.Melody) {
+		return sendError(c, fiber.StatusNotFound, "variant not found")
 	}
 
 	path, err := h.storage.AbsolutePath(variant.StoragePath)

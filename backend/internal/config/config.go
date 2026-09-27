@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"slices"
 	"strconv"
@@ -29,8 +30,12 @@ type HTTPConfig struct {
 	ShutdownTimeout time.Duration
 	BodyLimitBytes  int
 	CORSOrigins     []string
-	AuthRateLimit   RateLimitConfig
-	AdminRateLimit  RateLimitConfig
+	// TrustedProxies lists the IPs or CIDR ranges of reverse proxies whose
+	// X-Forwarded-For header names the real client. Without it every request
+	// behind a proxy shares the proxy's address, and so one rate-limit bucket.
+	TrustedProxies []string
+	AuthRateLimit  RateLimitConfig
+	AdminRateLimit RateLimitConfig
 }
 
 type RateLimitConfig struct {
@@ -87,6 +92,7 @@ func Load() (Config, error) {
 			ShutdownTimeout: loader.duration("HTTP_SHUTDOWN_TIMEOUT", 10*time.Second),
 			BodyLimitBytes:  loader.integer("HTTP_BODY_LIMIT_BYTES", 64*1024*1024),
 			CORSOrigins:     splitCSV(getEnv("CORS_ALLOWED_ORIGINS", corsFallback)),
+			TrustedProxies:  splitCSV(getEnv("TRUSTED_PROXIES", "")),
 			AuthRateLimit: RateLimitConfig{
 				Max:    loader.integer("AUTH_RATE_LIMIT_MAX", 10),
 				Window: loader.duration("AUTH_RATE_LIMIT_WINDOW", time.Minute),
@@ -160,6 +166,11 @@ func (c Config) validate() error {
 	}
 	if c.HTTP.BodyLimitBytes <= 0 || int64(c.HTTP.BodyLimitBytes) <= c.Catalog.MaxUploadBytes {
 		return errors.New("HTTP_BODY_LIMIT_BYTES must be greater than MAX_UPLOAD_SIZE")
+	}
+	for _, proxy := range c.HTTP.TrustedProxies {
+		if _, _, err := net.ParseCIDR(proxy); err != nil && net.ParseIP(proxy) == nil {
+			return fmt.Errorf("TRUSTED_PROXIES entry %q is not an IP address or CIDR range", proxy)
+		}
 	}
 	if c.HTTP.AuthRateLimit.Max <= 0 || c.HTTP.AuthRateLimit.Window <= 0 || c.HTTP.AdminRateLimit.Max <= 0 || c.HTTP.AdminRateLimit.Window <= 0 {
 		return errors.New("rate limit maxima and windows must be greater than zero")

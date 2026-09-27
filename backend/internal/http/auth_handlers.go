@@ -94,6 +94,7 @@ func (h *Handler) Login(c fiber.Ctx) error {
 		First(c.Context())
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
+			auth.SpendPasswordCheck(req.Password)
 			return sendError(c, fiber.StatusUnauthorized, "invalid username or password")
 		}
 		return err

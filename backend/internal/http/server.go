@@ -40,14 +40,23 @@ type Handler struct {
 }
 
 func NewServer(deps ServerDeps) *fiber.App {
-	app := fiber.New(fiber.Config{
+	fiberConfig := fiber.Config{
 		AppName:      "shuuen-backend",
 		BodyLimit:    deps.Config.HTTP.BodyLimitBytes,
 		ReadTimeout:  deps.Config.HTTP.ReadTimeout,
 		WriteTimeout: deps.Config.HTTP.WriteTimeout,
 		IdleTimeout:  deps.Config.HTTP.IdleTimeout,
 		ErrorHandler: errorHandler,
-	})
+	}
+	if len(deps.Config.HTTP.TrustedProxies) > 0 {
+		// c.IP(), which keys the rate limiters and the access log, then takes the
+		// right-most X-Forwarded-For address that is not a trusted proxy.
+		fiberConfig.TrustProxy = true
+		fiberConfig.TrustProxyConfig = fiber.TrustProxyConfig{Proxies: deps.Config.HTTP.TrustedProxies}
+		fiberConfig.ProxyHeader = fiber.HeaderXForwardedFor
+		fiberConfig.EnableIPValidation = true
+	}
+	app := fiber.New(fiberConfig)
 
 	app.Use(recover.New())
 	app.Use(requestid.New())
