@@ -15,11 +15,9 @@
 
   let { data }: { data: PageData } = $props();
 
-  // Friendly alias the native app pastes to pair with the site. In production a
-  // reverse proxy forwards `${PUBLIC_SITE_URL}/link` to the backend's /api/link.
-  // Hidden until the backend serves /api/link.
-  const showAppLink = false;
-  const repoUrl = `${PUBLIC_SITE_URL}/link`;
+  // The server URL the native app pastes to sync with the site. The app appends
+  // /api/v1/... itself, and the reverse proxy routes /api to the backend.
+  const repoUrl = PUBLIC_SITE_URL;
   const appVersion = "0.0.4";
   const releasesUrl = "https://github.com/username-ldv/shuuen/releases/latest";
 
@@ -142,37 +140,34 @@
     </section>
 
     <!-- Link -->
-    {#if showAppLink}
-      <section id="link" class="pt-2 pb-3">
-        <div class="mb-5 flex flex-col gap-1.5">
-          <span class="text-xs font-semibold uppercase tracking-[0.2em]"
-            >Link This Site To The App</span
-          >
-          <span class="text-xs leading-relaxed text-muted-foreground">
-            Copy the URL and paste it into the app to sync with the server. No
-            login required.
-          </span>
-        </div>
-        <div
-          class="flex items-center gap-2 rounded-xl bg-card py-2 pr-2 pl-4 ring-1 ring-foreground/10"
+    <section id="link" class="pt-2 pb-3">
+      <div class="mb-5 flex flex-col gap-1.5">
+        <span class="text-xs font-semibold uppercase tracking-[0.2em]"
+          >Link This Site To The App</span
         >
-          <Link2 class="size-5 shrink-0 text-muted-foreground" />
-          <code
-            class="min-w-0 flex-1 truncate font-mono text-sm text-foreground"
-            >{repoUrl}</code
-          >
-          <Button size="sm" class="shrink-0" onclick={copyRepo}>
-            {#if copied}
-              <Check data-icon="inline-start" />
-              Copied
-            {:else}
-              <Copy data-icon="inline-start" />
-              Copy
-            {/if}
-          </Button>
-        </div>
-      </section>
-    {/if}
+        <span class="text-xs leading-relaxed text-muted-foreground">
+          Copy the URL and paste it into the app to sync with the server. No
+          login required.
+        </span>
+      </div>
+      <div
+        class="flex items-center gap-2 rounded-xl bg-card py-2 pr-2 pl-4 ring-1 ring-foreground/10"
+      >
+        <Link2 class="size-5 shrink-0 text-muted-foreground" />
+        <code class="min-w-0 flex-1 truncate font-mono text-sm text-foreground"
+          >{repoUrl}</code
+        >
+        <Button size="sm" class="shrink-0" onclick={copyRepo}>
+          {#if copied}
+            <Check data-icon="inline-start" />
+            Copied
+          {:else}
+            <Copy data-icon="inline-start" />
+            Copy
+          {/if}
+        </Button>
+      </div>
+    </section>
 
     <Separator class="my-16" />
 

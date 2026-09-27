@@ -40,13 +40,12 @@ browser client never hits CORS.
 | `/` | frontend (SSR) | Marketing landing page with account-aware header |
 | `/library/*`, `/me`, `/news`, … | frontend (SSR) | Library (courses, levels, key labeling), personal pages, blog |
 | `/api/*` | Go backend | All API endpoints — repositories, melodies, contexts, music-API integrations, auth |
-| `/link` | Go backend (`/api/link`) | **Cosmetic alias.** The URL the native app pastes to pair with the site. The proxy rewrites `/link` → `/api/link`; the short form just reads nicely for users. |
+| `/link` | Go backend (`/api/link`) | **Reserved alias.** The proxy rewrites `/link` → `/api/link`, which the backend doesn't serve yet. |
 
-The copyable link on the landing page is `${PUBLIC_SITE_URL}/link` (see
+The copyable link on the landing page is `${PUBLIC_SITE_URL}` itself (see
 [Configuration](#configuration)). It's consumed by the **native app**, not a
-browser — so it only needs to be a clean, stable HTTPS URL. The backend doesn't
-serve `/api/link` yet, so the landing page hides that section (`showAppLink`)
-until it does.
+browser: the app appends `/api/v1/…` to it, so it only needs to be a clean,
+stable HTTPS URL.
 
 ## Rendering model
 
@@ -89,7 +88,7 @@ browser):
 
 | Variable | Example | Used for |
 | --- | --- | --- |
-| `PUBLIC_SITE_URL` | `https://shuuen.xyz` | Building the `/link` pairing URL for the landing page (hidden for now) |
+| `PUBLIC_SITE_URL` | `https://shuuen.xyz` | The server URL the landing page offers to paste into the app |
 | `SHUUEN_BACKEND_URL` | `http://127.0.0.1:9999` | Server-side auth calls from SvelteKit to the Go backend, and the target of Vite's dev `/api` proxy |
 | `ORIGIN` | `https://shuuen.xyz` | Production only: the public origin. Behind the proxy, adapter-node needs it, or SvelteKit rejects form posts as cross-site |
 
