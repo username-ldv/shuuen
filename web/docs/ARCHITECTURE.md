@@ -44,7 +44,9 @@ browser client never hits CORS.
 
 The copyable link on the landing page is `${PUBLIC_SITE_URL}/link` (see
 [Configuration](#configuration)). It's consumed by the **native app**, not a
-browser — so it only needs to be a clean, stable HTTPS URL.
+browser — so it only needs to be a clean, stable HTTPS URL. The backend doesn't
+serve `/api/link` yet, so the landing page hides that section (`showAppLink`)
+until it does.
 
 ## Rendering model
 
@@ -87,7 +89,7 @@ browser):
 
 | Variable | Example | Used for |
 | --- | --- | --- |
-| `PUBLIC_SITE_URL` | `https://shuuen.xyz` | Building the `/link` pairing URL shown on the landing page |
+| `PUBLIC_SITE_URL` | `https://shuuen.xyz` | Building the `/link` pairing URL for the landing page (hidden for now) |
 | `SHUUEN_BACKEND_URL` | `http://127.0.0.1:9999` | Server-side auth calls from SvelteKit to the Go backend, and the target of Vite's dev `/api` proxy |
 | `ORIGIN` | `https://shuuen.xyz` | Production only: the public origin. Behind the proxy, adapter-node needs it, or SvelteKit rejects form posts as cross-site |
 
