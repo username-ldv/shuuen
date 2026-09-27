@@ -631,6 +631,25 @@ paths:
       responses:
         '200': { description: Current user }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/auth/refresh:
+    post:
+      summary: Trade a valid token for a fresh one
+      description: >-
+        Tokens expire ACCESS_TOKEN_TTL (30 days by default) after they are
+        issued. A client that refreshes whenever it starts stays signed in while
+        it is used. Refreshed tokens keep the account's token version, so a
+        password change still revokes them.
+      operationId: refreshToken
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Replacement token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { data: { $ref: '#/components/schemas/AuthResult' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
   /api/v1/auth/password:
     post:
       summary: Change password and revoke previously issued tokens

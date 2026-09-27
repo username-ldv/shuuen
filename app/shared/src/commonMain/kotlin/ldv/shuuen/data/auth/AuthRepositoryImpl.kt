@@ -60,7 +60,7 @@ internal class AuthRepositoryImpl(
   override val session = mutableSession.asStateFlow()
 
   init {
-    // The configured backend decides which session is valid, so restoring and re-checking hang off
+    // The configured backend decides which session is valid, so restoring and renewing hang off
     // that URL: the first emission restores at startup, later ones mean the user switched backends.
     scope.launch {
       config.baseUrl.collectLatest(::adoptStoredSessionFor)
@@ -102,19 +102,22 @@ internal class AuthRepositoryImpl(
       stored.backendUrl != baseUrl -> clear()
       else -> {
         mutableSession.value = stored.toSession()
-        verify(stored)
+        renew(stored)
       }
     }
   }
 
   /**
-   * Drops a session the backend no longer honours. Only an explicit rejection signs the user out —
-   * an unreachable backend leaves the session in place so restarting offline stays signed in.
+   * Swaps the stored token for a fresh one. Tokens expire a fixed time after they are issued, so
+   * renewing at every start keeps a regularly used session alive indefinitely.
+   *
+   * Only an explicit rejection signs the user out — an unreachable backend leaves the session in
+   * place so restarting offline stays signed in.
    */
-  private suspend fun verify(stored: StoredAuthSession) {
+  private suspend fun renew(stored: StoredAuthSession) {
     try {
-      val user = api.me(stored.backendUrl, stored.accessToken).data
-      persist(stored.copy(user = user.toStored()))
+      val result = api.refresh(stored.backendUrl, stored.accessToken).data
+      persist(stored.copy(accessToken = result.accessToken, user = result.user.toStored()))
     } catch (error: CancellationException) {
       throw error
     } catch (error: ResponseException) {
@@ -123,7 +126,7 @@ internal class AuthRepositoryImpl(
         clear()
       }
     } catch (error: Throwable) {
-      Napier.v(error) { "Couldn't verify the stored backend session." }
+      Napier.v(error) { "Couldn't renew the stored backend session." }
     }
   }
 

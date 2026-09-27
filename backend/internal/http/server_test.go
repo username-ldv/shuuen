@@ -117,6 +117,49 @@ func TestGroupTreePaginatesLargeMelodyCollections(t *testing.T) {
 	}
 }
 
+func TestRefreshIssuesAWorkingTokenThatAPasswordChangeRevokes(t *testing.T) {
+	app, _ := newTestServer(t)
+	token := registerTestUser(t, app, "refresh_user", "old-password")
+
+	refresh := func(token string) (int, string) {
+		response := testRequest(t, app, nethttp.MethodPost, "/api/v1/auth/refresh", "", token)
+		var payload struct {
+			Data struct {
+				AccessToken string `json:"access_token"`
+			} `json:"data"`
+		}
+		if response.StatusCode != fiber.StatusOK {
+			_ = response.Body.Close()
+			return response.StatusCode, ""
+		}
+		decodeResponse(t, response, &payload)
+		return response.StatusCode, payload.Data.AccessToken
+	}
+
+	status, refreshed := refresh(token)
+	if status != fiber.StatusOK || refreshed == "" {
+		t.Fatalf("refresh status = %d, token = %q", status, refreshed)
+	}
+	response := testRequest(t, app, nethttp.MethodGet, "/api/v1/auth/me", "", refreshed)
+	_ = response.Body.Close()
+	if response.StatusCode != fiber.StatusOK {
+		t.Fatalf("refreshed token status = %d, want 200", response.StatusCode)
+	}
+
+	body := `{"current_password":"old-password","new_password":"new-password"}`
+	response = testRequest(t, app, nethttp.MethodPost, "/api/v1/auth/password", body, refreshed)
+	_ = response.Body.Close()
+	if response.StatusCode != fiber.StatusOK {
+		t.Fatalf("password change status = %d, want 200", response.StatusCode)
+	}
+	if status, _ := refresh(refreshed); status != fiber.StatusUnauthorized {
+		t.Fatalf("refresh with a revoked token status = %d, want 401", status)
+	}
+	if status, _ := refresh(""); status != fiber.StatusUnauthorized {
+		t.Fatalf("refresh without a token status = %d, want 401", status)
+	}
+}
+
 func TestPasswordChangeRevokesExistingTokens(t *testing.T) {
 	app, _ := newTestServer(t)
 	oldToken := registerTestUser(t, app, "password_user", "old-password")

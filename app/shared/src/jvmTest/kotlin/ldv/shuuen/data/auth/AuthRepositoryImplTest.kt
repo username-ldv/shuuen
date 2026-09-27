@@ -138,7 +138,7 @@ class AuthRepositoryImplTest {
     repository(engine = authEngine()).signIn("Learner", "hunter2000")
 
     val restarted = repository(
-      engine = authEngine(me = { scope, _ ->
+      engine = authEngine(refresh = { scope, _ ->
         scope.jsonRespond("""{"error":"token has been revoked"}""", HttpStatusCode.Unauthorized)
       }),
     )
@@ -147,11 +147,31 @@ class AuthRepositoryImplTest {
   }
 
   @Test
+  fun startingUpSwapsTheStoredTokenForAFreshOne() = runBlocking {
+    repository(engine = authEngine()).signIn("Learner", "hunter2000")
+
+    var presented: String? = null
+    val restarted = repository(
+      engine = authEngine(refresh = { scope, request ->
+        presented = request.headers[HttpHeaders.Authorization]
+        scope.jsonRespond(RefreshResponse)
+      }),
+    )
+
+    val renewed = restarted.session.await { it?.accessToken == "renewed-token" }
+    assertEquals("Bearer issued-token", presented)
+    assertEquals("Ada Lovelace", assertNotNull(renewed).user.displayName)
+
+    val offline = repository(engine = authEngine(refresh = { _, _ -> throw IOException("offline") }))
+    assertEquals("renewed-token", offline.session.await { it != null }?.accessToken)
+  }
+
+  @Test
   fun anUnreachableBackendKeepsTheStoredSession() = runBlocking {
     repository(engine = authEngine()).signIn("Learner", "hunter2000")
 
     val restarted = repository(
-      engine = authEngine(me = { _, _ -> throw IOException("offline") }),
+      engine = authEngine(refresh = { _, _ -> throw IOException("offline") }),
     )
 
     val session = restarted.session.await { it != null }
@@ -206,8 +226,12 @@ class AuthRepositoryImplTest {
       "expires_at":"2026-08-03T10:00:00Z"}}
       """.trimIndent()
 
-    val MeResponse =
-      """{"data":{"id":7,"username":"Learner","display_name":"Ada","role":"user"}}"""
+    val RefreshResponse =
+      """
+      {"data":{"user":{"id":7,"username":"Learner","display_name":"Ada Lovelace","role":"user"},
+      "access_token":"renewed-token","token_type":"Bearer",
+      "expires_at":"2026-09-02T10:00:00Z"}}
+      """.trimIndent()
 
     fun MockRequestHandleScope.jsonRespond(
       body: String,
@@ -223,13 +247,13 @@ class AuthRepositoryImplTest {
       login: suspend (MockRequestHandleScope, HttpRequestData) -> HttpResponseData = { scope, _ ->
         scope.jsonRespond(LoginResponse)
       },
-      me: suspend (MockRequestHandleScope, HttpRequestData) -> HttpResponseData = { scope, _ ->
-        scope.jsonRespond(MeResponse)
+      refresh: suspend (MockRequestHandleScope, HttpRequestData) -> HttpResponseData = { scope, _ ->
+        scope.jsonRespond(RefreshResponse)
       },
     ) = MockEngine { request ->
       when (request.url.encodedPath) {
         "/api/v1/auth/login" -> login(this, request)
-        "/api/v1/auth/me" -> me(this, request)
+        "/api/v1/auth/refresh" -> refresh(this, request)
         else -> respondError(HttpStatusCode.NotFound)
       }
     }

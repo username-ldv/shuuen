@@ -116,6 +116,19 @@ func (h *Handler) Me(c fiber.Ctx) error {
 	return sendData(c, fiber.StatusOK, user)
 }
 
+// RefreshToken trades a valid token for a fresh one, so a client that keeps
+// using the account stays signed in. The token version is unchanged, so a
+// password change still revokes refreshed tokens.
+func (h *Handler) RefreshToken(c fiber.Ctx) error {
+	user, err := gorm.G[model.User](h.db).
+		Where(query.User.ID.Eq(currentUserID(c))).
+		First(c.Context())
+	if err != nil {
+		return notFoundOrError(c, err, "user not found")
+	}
+	return h.authResponse(c, fiber.StatusOK, user)
+}
+
 func (h *Handler) ChangePassword(c fiber.Ctx) error {
 	var req changePasswordRequest
 	if err := c.Bind().Body(&req); err != nil {

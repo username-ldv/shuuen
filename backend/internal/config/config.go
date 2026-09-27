@@ -114,7 +114,7 @@ func Load() (Config, error) {
 		Auth: AuthConfig{
 			JWTSecret:              getEnv("JWT_SECRET", developmentJWTSecret),
 			JWTIssuer:              getEnv("JWT_ISSUER", "shuuen-backend"),
-			AccessTokenTTL:         loader.duration("ACCESS_TOKEN_TTL", 24*time.Hour),
+			AccessTokenTTL:         loader.duration("ACCESS_TOKEN_TTL", 30*24*time.Hour),
 			RegistrationEnabled:    loader.boolean("REGISTRATION_ENABLED", !productionLike),
 			BootstrapAdminUsername: getEnv("BOOTSTRAP_ADMIN_USERNAME", ""),
 			BootstrapAdminPassword: getEnv("BOOTSTRAP_ADMIN_PASSWORD", ""),

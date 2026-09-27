@@ -110,6 +110,7 @@ func NewServer(deps ServerDeps) *fiber.App {
 	authRoutes.Post("/register", authLimiter, h.Register)
 	authRoutes.Post("/login", authLimiter, h.Login)
 	authRoutes.Get("/me", AuthRequired(deps.Auth, deps.DB), h.Me)
+	authRoutes.Post("/refresh", AuthRequired(deps.Auth, deps.DB), h.RefreshToken)
 	authRoutes.Post("/password", authLimiter, AuthRequired(deps.Auth, deps.DB), h.ChangePassword)
 
 	syncRoutes := api.Group("/sync", AuthRequired(deps.Auth, deps.DB))

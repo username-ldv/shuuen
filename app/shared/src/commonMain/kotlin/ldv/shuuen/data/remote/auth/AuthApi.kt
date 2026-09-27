@@ -2,7 +2,6 @@ package ldv.shuuen.data.remote.auth
 
 import io.ktor.client.HttpClient
 import io.ktor.client.request.bearerAuth
-import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.request.url
@@ -28,10 +27,11 @@ internal class AuthApi(private val client: HttpClient) {
       setBody(LoginRequestDto(username, password))
     }.bodyAndClose()
 
-  suspend fun me(baseUrl: String, accessToken: String): AuthEnvelopeDto<AuthUserDto> =
-    client.get {
+  /** Trades a still-valid token for a fresh one, which also re-reads the account. */
+  suspend fun refresh(baseUrl: String, accessToken: String): AuthEnvelopeDto<AuthResultDto> =
+    client.post {
       url(baseUrl)
-      url { appendPathSegments("api", "v1", "auth", "me") }
+      url { appendPathSegments("api", "v1", "auth", "refresh") }
       bearerAuth(accessToken)
     }.bodyAndClose()
 }
