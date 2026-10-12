@@ -104,7 +104,6 @@ fun MainMenuScreen(
         type = ShuuenTopAppBarType.Simple,
       )
     },
-    bottomPadding = 16.dp
   ) {
     Box(modifier = Modifier.fillMaxWidth()) {
       Column(
@@ -146,7 +145,7 @@ fun MainMenuScreen(
     )
 
     Row(
-      modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+      modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 16.dp),
       horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally),
     ) {
       FooterLink("LIBRARY", Icons.AutoMirrored.Rounded.LibraryBooks)

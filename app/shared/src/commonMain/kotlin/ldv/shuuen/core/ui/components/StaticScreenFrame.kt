@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun StaticScreenFrame(
-  modifier: Modifier = Modifier.Companion,
+  modifier: Modifier = Modifier,
   horizontalPadding: Dp = 20.dp,
   topPadding: Dp = 0.dp,
   bottomPadding: Dp = 0.dp,
@@ -50,7 +50,7 @@ fun StaticScreenFrame(
       ) {
         val scrollState = rememberScrollState()
         var columnModifier =
-          Modifier.widthIn(max = maxWidth).fillMaxWidth().fillMaxHeight().navigationBarsPadding()
+          Modifier.widthIn(max = maxWidth).fillMaxWidth().fillMaxHeight()
 
         if (scrollable) {
           columnModifier = columnModifier.verticalScroll(scrollState)
