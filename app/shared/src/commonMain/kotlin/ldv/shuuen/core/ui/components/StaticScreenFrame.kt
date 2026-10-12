@@ -5,10 +5,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.minus
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -45,12 +50,13 @@ fun StaticScreenFrame(
       topBar = topBar,
     ) { innerPadding ->
       Box(
-        modifier = Modifier.fillMaxSize().padding(innerPadding),
+        modifier =
+          Modifier.fillMaxSize()
+            .padding(innerPadding - WindowInsets.navigationBars.asPaddingValues()),
         contentAlignment = Alignment.TopCenter,
       ) {
         val scrollState = rememberScrollState()
-        var columnModifier =
-          Modifier.widthIn(max = maxWidth).fillMaxWidth().fillMaxHeight()
+        var columnModifier = Modifier.widthIn(max = maxWidth).fillMaxWidth().fillMaxHeight()
 
         if (scrollable) {
           columnModifier = columnModifier.verticalScroll(scrollState)
@@ -65,7 +71,14 @@ fun StaticScreenFrame(
               bottomPadding,
             ),
           verticalArrangement = Arrangement.spacedBy(verticalSpacing),
-          content = content,
+          content = {
+            content()
+            Spacer(
+              Modifier.padding(
+                WindowInsets.navigationBars.asPaddingValues() - PaddingValues(verticalSpacing)
+              )
+            )
+          },
         )
       }
     }
