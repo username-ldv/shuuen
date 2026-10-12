@@ -8,10 +8,22 @@ class MusicLabelsTest {
   fun spelledPitchUsesNaturalSharpFlatBlocks() {
     val custom = List(MusicLabelDefaults.NoteNames.size) { index -> "n$index" }
 
-    assertEquals("n0", SpelledPitch(letterIndex = 0, accidental = Accidental.Natural).customLabel(custom))
-    assertEquals("n7", SpelledPitch(letterIndex = 0, accidental = Accidental.Sharp).customLabel(custom))
-    assertEquals("n14", SpelledPitch(letterIndex = 0, accidental = Accidental.Flat).customLabel(custom))
-    assertEquals("n19", SpelledPitch(letterIndex = 5, accidental = Accidental.Flat).customLabel(custom))
+    assertEquals(
+      "n0",
+      SpelledPitch(letterIndex = 0, accidental = Accidental.Natural).customLabel(custom),
+    )
+    assertEquals(
+      "n7",
+      SpelledPitch(letterIndex = 0, accidental = Accidental.Sharp).customLabel(custom),
+    )
+    assertEquals(
+      "n14",
+      SpelledPitch(letterIndex = 0, accidental = Accidental.Flat).customLabel(custom),
+    )
+    assertEquals(
+      "n19",
+      SpelledPitch(letterIndex = 5, accidental = Accidental.Flat).customLabel(custom),
+    )
   }
 
   @Test
@@ -41,9 +53,27 @@ class MusicLabelsTest {
   fun builtInPresetsHaveExpectedLabels() {
     assertEquals(
       listOf(
-        "Do", "Re", "Mi", "Fa", "So", "La", "Ti",
-        "Di", "Ri", "Mya", "Fi", "Si", "Li", "Tya",
-        "Du", "Ra", "Me", "Fe", "Se", "Le", "Te",
+        "Do",
+        "Re",
+        "Mi",
+        "Fa",
+        "So",
+        "La",
+        "Ti",
+        "Di",
+        "Ri",
+        "Mya",
+        "Fi",
+        "Si",
+        "Li",
+        "Tya",
+        "Du",
+        "Ra",
+        "Me",
+        "Fe",
+        "Se",
+        "Le",
+        "Te",
       ),
       MusicLabelPresets.NotePresets.first { it.name == "Hybrid solfege" }.labels,
     )

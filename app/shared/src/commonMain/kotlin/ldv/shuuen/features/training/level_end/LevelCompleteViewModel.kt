@@ -72,25 +72,25 @@ class LevelCompleteViewModel(
   @OptIn(ExperimentalCoroutinesApi::class)
   private fun observeLevelAccuracy(session: TrainingSession) {
     levelAccuracyJob?.cancel()
-    levelAccuracyJob =
-      viewModelScope.launch {
-        settingsRepository.settings
-          .map { coerceLevelStatsWindow(it.levelStatsWindow) }
-          .distinctUntilChanged()
-          .flatMapLatest { window ->
-            sessionRepository.observeLevelAccuracyStats(session.flow, session.levelId, window)
-          }
-          .collect { stats -> _state.update { it.copy(levelAccuracyStats = stats) } }
-      }
+    levelAccuracyJob = viewModelScope.launch {
+      settingsRepository.settings
+        .map { coerceLevelStatsWindow(it.levelStatsWindow) }
+        .distinctUntilChanged()
+        .flatMapLatest { window ->
+          sessionRepository.observeLevelAccuracyStats(session.flow, session.levelId, window)
+        }
+        .collect { stats -> _state.update { it.copy(levelAccuracyStats = stats) } }
+    }
   }
 
   private suspend fun loadLevel(session: TrainingSession) {
-    val reference =
-      runCatching { LevelReference.decode(session.levelId) }
-        .getOrElse { error ->
-          Napier.w(error) { "Couldn't decode the completed level reference" }
-          return
-        }
+    val reference = runCatching {
+      LevelReference.decode(session.levelId)
+    }
+      .getOrElse { error ->
+        Napier.w(error) { "Couldn't decode the completed level reference" }
+        return
+      }
     if (reference is LevelReference.Remote) {
       loadCourseLevel(session, reference)
       return
@@ -98,15 +98,19 @@ class LevelCompleteViewModel(
 
     runCatching {
       when (session.flow) {
-        TrainingFlow.Singles -> CompletedLevel.Singles(levelResolver.resolveSingles(session.levelId))
-        TrainingFlow.Melodies -> CompletedLevel.Melodies(levelResolver.resolveMelodies(session.levelId))
+        TrainingFlow.Singles ->
+          CompletedLevel.Singles(levelResolver.resolveSingles(session.levelId))
+        TrainingFlow.Melodies ->
+          CompletedLevel.Melodies(levelResolver.resolveMelodies(session.levelId))
         TrainingFlow.Chords -> CompletedLevel.Chords(levelResolver.resolveChords(session.levelId))
       }
-    }.onSuccess { level ->
-      _state.update { it.copy(level = level) }
-    }.onFailure { error ->
-      Napier.w(error) { "Couldn't load the completed level" }
     }
+      .onSuccess { level ->
+        _state.update { it.copy(level = level) }
+      }
+      .onFailure { error ->
+        Napier.w(error) { "Couldn't load the completed level" }
+      }
   }
 
   private suspend fun loadCourseLevel(
@@ -127,10 +131,12 @@ class LevelCompleteViewModel(
           LevelReference.Remote(reference.courseId, reference.mode, nextLevelId).encoded
         }
       completedLevel to nextReference
-    }.onSuccess { (level, nextReference) ->
-      _state.update { it.copy(level = level, nextLevelReference = nextReference) }
-    }.onFailure { error ->
-      Napier.w(error) { "Couldn't load the completed course level" }
     }
+      .onSuccess { (level, nextReference) ->
+        _state.update { it.copy(level = level, nextLevelReference = nextReference) }
+      }
+      .onFailure { error ->
+        Napier.w(error) { "Couldn't load the completed course level" }
+      }
   }
 }

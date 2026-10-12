@@ -9,12 +9,17 @@ import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.LevelSource
 
 @Entity(
-  tableName = "levels_singles", foreignKeys = [ForeignKey(
-    entity = ContextDbEntity::class,
-    parentColumns = ["id"],
-    childColumns = ["contextId"],
-    onDelete = ForeignKey.SET_NULL
-  )], indices = [Index("contextId")]
+  tableName = "levels_singles",
+  foreignKeys =
+    [
+      ForeignKey(
+        entity = ContextDbEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["contextId"],
+        onDelete = ForeignKey.SET_NULL,
+      )
+    ],
+  indices = [Index("contextId")],
 )
 data class SinglesLevelDbEntity(
   @PrimaryKey val id: String,
@@ -23,5 +28,5 @@ data class SinglesLevelDbEntity(
   val contextId: String?,
   val source: LevelSource,
   val questionsNumber: Int?,
-  val range: NoteRange
+  val range: NoteRange,
 )

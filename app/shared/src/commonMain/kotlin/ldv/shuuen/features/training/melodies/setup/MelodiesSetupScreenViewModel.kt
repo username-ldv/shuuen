@@ -9,8 +9,6 @@ import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.openFilePicker
 import io.github.vinceglb.filekit.name
 import io.github.vinceglb.filekit.readBytes
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -32,6 +30,8 @@ import ldv.shuuen.features.training.domain.LevelSource
 import ldv.shuuen.features.training.domain.ScaleConfig
 import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
 import ldv.shuuen.features.training.melodies.domain.MelodiesLocalLevelRepository
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 enum class MelodiesSourceMode {
   Random,

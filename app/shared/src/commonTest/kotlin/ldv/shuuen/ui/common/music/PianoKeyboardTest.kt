@@ -1,11 +1,11 @@
 package ldv.shuuen.core.ui.components.music
 
 import androidx.compose.ui.geometry.Offset
-import ldv.shuuen.core.ui.components.music.inputs.PianoKeyGeometry
-import ldv.shuuen.core.ui.components.music.inputs.buildPianoKeyGeometry
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import ldv.shuuen.core.ui.components.music.inputs.PianoKeyGeometry
+import ldv.shuuen.core.ui.components.music.inputs.buildPianoKeyGeometry
 
 class PianoKeyboardTest {
   @Test
@@ -51,20 +51,22 @@ class PianoKeyboardTest {
     assertEquals(10, geometry.hitTest(Offset(x = 551f, y = 20f)))
   }
 
-  private fun testGeometry(): List<PianoKeyGeometry> = buildPianoKeyGeometry(
-    width = 700f,
-    height = 100f,
-    keyCount = 12,
-    borderPx = 0f,
-    blackKeyWidthFraction = 0.52f,
-    blackKeyHeightFraction = 0.62f,
-  )
+  private fun testGeometry(): List<PianoKeyGeometry> =
+    buildPianoKeyGeometry(
+      width = 700f,
+      height = 100f,
+      keyCount = 12,
+      borderPx = 0f,
+      blackKeyWidthFraction = 0.52f,
+      blackKeyHeightFraction = 0.62f,
+    )
 }
 
 private fun List<PianoKeyGeometry>.hitTest(position: Offset): Int? {
-  val blackHit = asSequence()
-    .filter { it.isBlack && it.hitRect.contains(position) }
-    .minByOrNull { abs(position.x - it.rect.center.x) }
+  val blackHit =
+    asSequence()
+      .filter { it.isBlack && it.hitRect.contains(position) }
+      .minByOrNull { abs(position.x - it.rect.center.x) }
 
   if (blackHit != null) {
     return blackHit.index

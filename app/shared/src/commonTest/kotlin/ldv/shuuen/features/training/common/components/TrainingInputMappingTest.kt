@@ -1,19 +1,19 @@
 package ldv.shuuen.features.training.common.components
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
 import ldv.shuuen.core.music.MusicLabelDefaults
 import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.ScaleAccidentalType
 import ldv.shuuen.core.settings.InputMode
 import ldv.shuuen.core.settings.MusicLabelSettings
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class TrainingInputMappingTest {
   @Test
   fun relativePitchLabelUsesDegreeOffsetFromRootAndCustomNames() {
     val labels =
       MusicLabelSettings(
-        degreeNames = List(MusicLabelDefaults.DegreeNames.size) { index -> "d$index" },
+        degreeNames = List(MusicLabelDefaults.DegreeNames.size) { index -> "d$index" }
       )
 
     assertEquals(
@@ -31,9 +31,7 @@ class TrainingInputMappingTest {
   @Test
   fun absolutePitchLabelUsesKeyAwareFlatCustomName() {
     val labels =
-      MusicLabelSettings(
-        noteNames = List(MusicLabelDefaults.NoteNames.size) { index -> "n$index" },
-      )
+      MusicLabelSettings(noteNames = List(MusicLabelDefaults.NoteNames.size) { index -> "n$index" })
 
     assertEquals(
       "n20",
@@ -50,9 +48,7 @@ class TrainingInputMappingTest {
   @Test
   fun absolutePitchLabelUsesRootlessCircleSpellingBeforeRootIsKnown() {
     val labels =
-      MusicLabelSettings(
-        noteNames = List(MusicLabelDefaults.NoteNames.size) { index -> "n$index" },
-      )
+      MusicLabelSettings(noteNames = List(MusicLabelDefaults.NoteNames.size) { index -> "n$index" })
 
     assertEquals(
       "n15",

@@ -20,11 +20,11 @@ val contextNavigationModule = module {
     val navigator = LocalAppNavigator.current
     val resultStore = LocalNavResultStore.current
     ContextScreen(
-        onNavigateBack = { navigator.goBack() },
-        onContextChosen = {
-          resultStore.send(route.recipient.resultKey(), AppNavResult.ContextPickedResult(it))
-        },
-        viewModel = koinViewModel { parametersOf(route.contextId.orEmpty()) },
+      onNavigateBack = { navigator.goBack() },
+      onContextChosen = {
+        resultStore.send(route.recipient.resultKey(), AppNavResult.ContextPickedResult(it))
+      },
+      viewModel = koinViewModel { parametersOf(route.contextId.orEmpty()) },
     )
   }
 }

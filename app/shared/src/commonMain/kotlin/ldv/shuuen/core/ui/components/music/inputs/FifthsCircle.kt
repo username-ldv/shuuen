@@ -52,11 +52,6 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import ldv.shuuen.core.ui.components.ShuuenUi
-import ldv.shuuen.core.ui.components.music.Palette
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -65,13 +60,18 @@ import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import ldv.shuuen.core.ui.components.ShuuenUi
+import ldv.shuuen.core.ui.components.music.Palette
 
 @Immutable
 data class FifthsCircleIndication(
   val index: Int,
   /**
-   * null = persistent while this object is present in programmaticIndications.
-   * non-null = pulse for this many milliseconds.
+   * null = persistent while this object is present in programmaticIndications. non-null = pulse for
+   * this many milliseconds.
    */
   val durationMillis: Long? = null,
   /**
@@ -92,10 +92,12 @@ private data class TimedCircleIndication(val count: Int, val color: Color?)
 /**
  * A single transient "flash" on a circle item: a colored highlight that animates in quickly, holds
  * briefly, then fades out. Each flash carries its own identity and [Animatable] progress, so
- * overlapping flashes — even on the same item — are fully independent. Mirrors the piano's KeyFlash.
+ * overlapping flashes — even on the same item — are fully independent. Mirrors the piano's
+ * KeyFlash.
  */
 @Stable
-class CircleFlash internal constructor(
+class CircleFlash
+internal constructor(
   val id: Long,
   val index: Int,
   val color: Color,
@@ -146,10 +148,21 @@ fun rememberFifthsCircleState(): FifthsCircleState {
 }
 
 object FifthsCircleDefalts {
-  val Names = listOf(
-    "1", "♭2", "2", "♭3", "3", "4", "♯4", "5", "♭6", "6", "♭7", "7"
-  )
-
+  val Names =
+    listOf(
+      "1",
+      "♭2",
+      "2",
+      "♭3",
+      "3",
+      "4",
+      "♯4",
+      "5",
+      "♭6",
+      "6",
+      "♭7",
+      "7",
+    )
 
   /** Monotone active-item color — the app default. Inverts on light themes. */
   @Composable
@@ -162,10 +175,7 @@ object FifthsCircleDefalts {
   fun colorfulColors(count: Int): List<Color> =
     List(count) { Palette.entries[it % Palette.entries.size].color }
 
-  /**
-   * For 12 items this returns:
-   * 0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5
-   */
+  /** For 12 items this returns: 0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5 */
   fun circleOfFifthsVisualOrder(
     count: Int,
     fifthStep: Int = 7,
@@ -185,24 +195,25 @@ object FifthsCircleDefalts {
 @Composable
 fun FifthsCircle(
   modifier: Modifier = Modifier,
-
   itemNames: List<String> = FifthsCircleDefalts.Names,
   itemColors: List<Color> = FifthsCircleDefalts.colors(itemNames.size),
   enabledItems: List<Boolean> = List(itemNames.size) { true },
 
   /**
-   * Contains item indices, not label strings.
-   * Default lays chromatic itemNames out around the circle of fifths.
+   * Contains item indices, not label strings. Default lays chromatic itemNames out around the
+   * circle of fifths.
    */
   visualOrder: List<Int> = FifthsCircleDefalts.circleOfFifthsVisualOrder(itemNames.size),
 
   /**
    * When non-null, the whole ring is rotated so this item index ends up at the top slot, animating
    * along the shortest path whenever it changes. null keeps [visualOrder]'s own top item at the top
-   * (no rotation). Item indices are unaffected, so taps and indications still address the same items.
+   * (no rotation). Item indices are unaffected, so taps and indications still address the same
+   * items.
    */
   rotateItemToTop: Int? = null,
-  rotationAnimationSpec: AnimationSpec<Float> = tween(durationMillis = 550, easing = FastOutSlowInEasing),
+  rotationAnimationSpec: AnimationSpec<Float> =
+    tween(durationMillis = 550, easing = FastOutSlowInEasing),
 
   /**
    * External, declarative visual indications.
@@ -212,14 +223,10 @@ fun FifthsCircle(
    */
   programmaticIndications: List<FifthsCircleIndication> = emptyList(),
 
-  /**
-   * Optional hoisted state for transient tap-feedback flashes. See [rememberFifthsCircleState].
-   */
+  /** Optional hoisted state for transient tap-feedback flashes. See [rememberFifthsCircleState]. */
   state: FifthsCircleState? = null,
-
   onItemClick: (index: Int) -> Unit = {},
   onItemPressedChange: (index: Int, pressed: Boolean) -> Unit = { _, _ -> },
-
   backgroundColor: Color = Color.Transparent,
   ringColor: Color = ShuuenUi.Ink.copy(alpha = 0.18f),
   inactiveDotColor: Color = if (ShuuenUi.IsDark) Color(0xFF7A7A80) else Color(0xFF85858B),
@@ -227,12 +234,11 @@ fun FifthsCircle(
   inactiveLabelColor: Color = if (ShuuenUi.IsDark) Color(0xFF9B9BA1) else Color(0xFF64646A),
   activeLabelColor: Color = ShuuenUi.Ink,
   disabledLabelColor: Color = if (ShuuenUi.IsDark) Color(0xFF5D5D63) else Color(0xFFA2A2A8),
-
   ringStrokeWidth: Dp = 1.dp,
   outerPadding: Dp = 30.dp,
   /**
-   * When set, positions the ring so each resting dot's outer edge is this far
-   * from the component edge. Null keeps the legacy ring-center outerPadding.
+   * When set, positions the ring so each resting dot's outer edge is this far from the component
+   * edge. Null keeps the legacy ring-center outerPadding.
    */
   dotEdgePadding: Dp? = null,
   itemTouchRadius: Dp = 36.dp,
@@ -242,10 +248,12 @@ fun FifthsCircle(
   labelInset: Dp = 24.dp,
   labelRingGap: Dp = 2.dp,
   accidentalTuck: Dp = 5.dp,
-  labelStyle: TextStyle = TextStyle(
-    fontSize = 24.sp, fontWeight = FontWeight.Normal, letterSpacing = 0.sp
-  ),
-
+  labelStyle: TextStyle =
+    TextStyle(
+      fontSize = 24.sp,
+      fontWeight = FontWeight.Normal,
+      letterSpacing = 0.sp,
+    ),
   centerButtonSize: Dp = 104.dp,
   onCenterClick: (() -> Unit)? = null,
   centerContent: (@Composable BoxScope.() -> Unit)? = null,
@@ -286,9 +294,10 @@ fun FifthsCircle(
   val touchPointers = remember { mutableStateMapOf<PointerId, Int>() }
   val timedProgrammatic = remember { mutableStateMapOf<Int, TimedCircleIndication>() }
 
-  val timedIndications = remember(programmaticIndications) {
-    programmaticIndications.filter { it.durationMillis != null }
-  }
+  val timedIndications =
+    remember(programmaticIndications) {
+      programmaticIndications.filter { it.durationMillis != null }
+    }
 
   LaunchedEffect(timedIndications) {
     timedIndications.forEach { indication ->
@@ -300,10 +309,11 @@ fun FifthsCircle(
 
       launch {
         val existing = timedProgrammatic[index]
-        timedProgrammatic[index] = TimedCircleIndication(
-          count = (existing?.count ?: 0) + 1,
-          color = indication.color ?: existing?.color,
-        )
+        timedProgrammatic[index] =
+          TimedCircleIndication(
+            count = (existing?.count ?: 0) + 1,
+            color = indication.color ?: existing?.color,
+          )
 
         try {
           delay(duration.coerceAtLeast(1L).milliseconds)
@@ -313,7 +323,8 @@ fun FifthsCircle(
           if (next <= 0) {
             timedProgrammatic.remove(index)
           } else {
-            timedProgrammatic[index] = current?.copy(count = next) ?: TimedCircleIndication(next, null)
+            timedProgrammatic[index] =
+              current?.copy(count = next) ?: TimedCircleIndication(next, null)
           }
         }
       }
@@ -321,58 +332,67 @@ fun FifthsCircle(
   }
 
   val persistentProgrammaticItems =
-    programmaticIndications.asSequence().filter { it.durationMillis == null }.map { it.index }
-      .filter { it in 0 until itemCount && enabledItems[it] }.toSet()
+    programmaticIndications
+      .asSequence()
+      .filter { it.durationMillis == null }
+      .map { it.index }
+      .filter { it in 0 until itemCount && enabledItems[it] }
+      .toSet()
 
   val persistentIndicationColors =
-    programmaticIndications.asSequence()
+    programmaticIndications
+      .asSequence()
       .filter { it.durationMillis == null && it.color != null }
       .filter { it.index in 0 until itemCount && enabledItems[it.index] }
       .associate { it.index to it.color!! }
 
   val activeItems =
-    (touchPointers.values.toSet() + persistentProgrammaticItems + timedProgrammatic.keys).filter { it in 0 until itemCount && enabledItems[it] }
+    (touchPointers.values.toSet() + persistentProgrammaticItems + timedProgrammatic.keys)
+      .filter { it in 0 until itemCount && enabledItems[it] }
       .toSet()
 
   // Effective active color for an item: an active indication's color wins over itemColors.
   fun effectiveColor(index: Int): Color =
     persistentIndicationColors[index] ?: timedProgrammatic[index]?.color ?: itemColors[index]
 
-  val pressProgress = List(itemCount) { index ->
-    animateFloatAsState(
-      targetValue = if (index in activeItems) 1f else 0f,
-      animationSpec = spring(
-        dampingRatio = Spring.DampingRatioMediumBouncy,
-        stiffness = Spring.StiffnessMediumLow,
-      ),
-      label = "note-degree-press-$index",
-    ).value
-  }
+  val pressProgress =
+    List(itemCount) { index ->
+      animateFloatAsState(
+          targetValue = if (index in activeItems) 1f else 0f,
+          animationSpec =
+            spring(
+              dampingRatio = Spring.DampingRatioMediumBouncy,
+              stiffness = Spring.StiffnessMediumLow,
+            ),
+          label = "note-degree-press-$index",
+        )
+        .value
+    }
 
   val infiniteTransition = rememberInfiniteTransition(label = "note-degree-pulse")
-  val pulse by infiniteTransition.animateFloat(
-    initialValue = 0f,
-    targetValue = 1f,
-    animationSpec = infiniteRepeatable(
-      animation = tween(900, easing = LinearEasing),
-      repeatMode = RepeatMode.Restart,
-    ),
-    label = "note-degree-pulse-value",
-  )
+  val pulse by
+    infiniteTransition.animateFloat(
+      initialValue = 0f,
+      targetValue = 1f,
+      animationSpec =
+        infiniteRepeatable(
+          animation = tween(900, easing = LinearEasing),
+          repeatMode = RepeatMode.Restart,
+        ),
+      label = "note-degree-pulse-value",
+    )
 
   // No internal aspectRatio: the circle is drawn centered and sized to the min dimension, so the
   // caller controls the shape. Giving a non-square (e.g. taller) area makes the surrounding region
   // part of the touch surface — items near the edge stay hittable even where their touch radius
   // spills past the ring. Callers that want a square should pass Modifier.aspectRatio(1f).
   Box(
-    modifier = modifier
-      .background(backgroundColor),
+    modifier = modifier.background(backgroundColor),
     contentAlignment = Alignment.Center,
   ) {
     Canvas(
-      modifier = Modifier
-        .fillMaxSize()
-        .pointerInput(
+      modifier =
+        Modifier.fillMaxSize().pointerInput(
           itemCount,
           enabledItems,
           visualOrder,
@@ -384,12 +404,13 @@ fun FifthsCircle(
           fun itemPositionForSlot(slot: Int): Offset {
             val minSide = min(size.width, size.height).toFloat()
             val center = Offset(size.width / 2f, size.height / 2f)
-            val radius = fifthsCircleRingRadiusPx(
-              minSidePx = minSide,
-              outerPaddingPx = outerPadding.toPx(),
-              dotRadiusPx = inactiveDotRadius.toPx(),
-              dotEdgePaddingPx = dotEdgePadding?.toPx(),
-            )
+            val radius =
+              fifthsCircleRingRadiusPx(
+                minSidePx = minSide,
+                outerPaddingPx = outerPadding.toPx(),
+                dotRadiusPx = inactiveDotRadius.toPx(),
+                dotEdgePaddingPx = dotEdgePadding?.toPx(),
+              )
             // Read the live rotation so taps land on items where they currently are mid-spin.
             return pointOnCircle(center, radius, slot, itemCount, rotation.value)
           }
@@ -462,9 +483,10 @@ fun FifthsCircle(
           try {
             awaitEachGesture {
               try {
-                val firstDown = awaitPointerEvent().changes.firstOrNull {
-                  it.pressed && !it.previousPressed
-                } ?: return@awaitEachGesture
+                val firstDown =
+                  awaitPointerEvent().changes.firstOrNull {
+                    it.pressed && !it.previousPressed
+                  } ?: return@awaitEachGesture
 
                 if (setPointerItem(firstDown.id, hitTest(firstDown.position))) {
                   firstDown.consume()
@@ -474,27 +496,28 @@ fun FifthsCircle(
                   val event = awaitPointerEvent()
 
                   event.changes.forEach { change ->
-                    val consumed = when {
-                      change.pressed && !change.previousPressed -> {
-                        setPointerItem(
-                          pointerId = change.id,
-                          newItem = hitTest(change.position),
-                        )
-                      }
+                    val consumed =
+                      when {
+                        change.pressed && !change.previousPressed -> {
+                          setPointerItem(
+                            pointerId = change.id,
+                            newItem = hitTest(change.position),
+                          )
+                        }
 
-                      change.pressed && change.previousPressed -> {
-                        setPointerItem(
-                          pointerId = change.id,
-                          newItem = hitTest(change.position),
-                        )
-                      }
+                        change.pressed && change.previousPressed -> {
+                          setPointerItem(
+                            pointerId = change.id,
+                            newItem = hitTest(change.position),
+                          )
+                        }
 
-                      !change.pressed && change.previousPressed -> {
-                        releasePointer(change.id)
-                      }
+                        !change.pressed && change.previousPressed -> {
+                          releasePointer(change.id)
+                        }
 
-                      else -> false
-                    }
+                        else -> false
+                      }
 
                     if (consumed) change.consume()
                   }
@@ -508,18 +531,19 @@ fun FifthsCircle(
           } finally {
             releaseAll()
           }
-        },
+        }
     ) {
       val minSide = size.minDimension
       val center = this.center
 
       val ringStrokePx = ringStrokeWidth.toPx()
-      val ringRadius = fifthsCircleRingRadiusPx(
-        minSidePx = minSide,
-        outerPaddingPx = outerPadding.toPx(),
-        dotRadiusPx = inactiveDotRadius.toPx(),
-        dotEdgePaddingPx = dotEdgePadding?.toPx(),
-      )
+      val ringRadius =
+        fifthsCircleRingRadiusPx(
+          minSidePx = minSide,
+          outerPaddingPx = outerPadding.toPx(),
+          dotRadiusPx = inactiveDotRadius.toPx(),
+          dotEdgePaddingPx = dotEdgePadding?.toPx(),
+        )
       val innerMaskRadius = max(0f, ringRadius - ringStrokePx / 2f)
 
       val inactiveDotRadiusPx = inactiveDotRadius.toPx()
@@ -578,16 +602,18 @@ fun FifthsCircle(
         val progress = pressProgress[itemIndex]
 
         val dotCenter = pointOnCircle(center, ringRadius, slot, itemCount, rotation.value)
-        val dotColor = when {
-          !enabled -> disabledDotColor
-//          else -> lerp(inactiveDotColor, itemColors[itemIndex], progress)
-          else -> effectiveColor(itemIndex)
-        }
+        val dotColor =
+          when {
+            !enabled -> disabledDotColor
+            //          else -> lerp(inactiveDotColor, itemColors[itemIndex], progress)
+            else -> effectiveColor(itemIndex)
+          }
 
-        val dotRadius = when {
-          !enabled -> inactiveDotRadiusPx * 0.82f
-          else -> lerpFloat(inactiveDotRadiusPx, activeDotRadiusPx, progress)
-        }
+        val dotRadius =
+          when {
+            !enabled -> inactiveDotRadiusPx * 0.82f
+            else -> lerpFloat(inactiveDotRadiusPx, activeDotRadiusPx, progress)
+          }
 
         drawCircle(
           color = dotColor,
@@ -595,48 +621,54 @@ fun FifthsCircle(
           center = dotCenter,
         )
 
-        val labelColor = when {
-          !enabled -> disabledLabelColor
-          progress > 0.45f -> lerp(inactiveLabelColor, activeLabelColor, progress)
-          else -> inactiveLabelColor
-        }
+        val labelColor =
+          when {
+            !enabled -> disabledLabelColor
+            progress > 0.45f -> lerp(inactiveLabelColor, activeLabelColor, progress)
+            else -> inactiveLabelColor
+          }
 
-        val labelLayout = measureFifthsCircleLabel(
-          textMeasurer = textMeasurer,
-          label = itemNames[itemIndex],
-          style = labelStyle.copy(color = labelColor),
-          accidentalTuckPx = accidentalTuckPx,
-        )
+        val labelLayout =
+          measureFifthsCircleLabel(
+            textMeasurer = textMeasurer,
+            label = itemNames[itemIndex],
+            style = labelStyle.copy(color = labelColor),
+            accidentalTuckPx = accidentalTuckPx,
+          )
         val angle = angleForCircleSlot(slot, itemCount, rotation.value)
-        val labelRadius = fifthsCircleLabelRadiusPx(
-          ringRadiusPx = ringRadius,
-          minimumInsetPx = labelInsetPx,
-          labelWidthPx = labelLayout.inkBounds.width,
-          labelHeightPx = labelLayout.inkBounds.height,
-          angleRadians = angle,
-          dotRadiusPx = max(inactiveDotRadiusPx, activeDotRadiusPx),
-          dotGapPx = labelRingGapPx,
-          cardinalTuckPx = cardinalLabelTuckPx,
-        ) +
-          labelLayout.leftDiagonalRadiusNudgePx * leftDiagonalAxisFactor(angle) +
-          labelLayout.rightSideRadiusNudgePx * rightSideAxisFactor(angle) +
-          labelLayout.rightDiagonalRadiusNudgePx * rightDiagonalAxisFactor(angle) +
-          labelLayout.rightLowerDiagonalRadiusNudgePx * rightLowerDiagonalAxisFactor(angle)
+        val labelRadius =
+          fifthsCircleLabelRadiusPx(
+            ringRadiusPx = ringRadius,
+            minimumInsetPx = labelInsetPx,
+            labelWidthPx = labelLayout.inkBounds.width,
+            labelHeightPx = labelLayout.inkBounds.height,
+            angleRadians = angle,
+            dotRadiusPx = max(inactiveDotRadiusPx, activeDotRadiusPx),
+            dotGapPx = labelRingGapPx,
+            cardinalTuckPx = cardinalLabelTuckPx,
+          ) +
+            labelLayout.leftDiagonalRadiusNudgePx * leftDiagonalAxisFactor(angle) +
+            labelLayout.rightSideRadiusNudgePx * rightSideAxisFactor(angle) +
+            labelLayout.rightDiagonalRadiusNudgePx * rightDiagonalAxisFactor(angle) +
+            labelLayout.rightLowerDiagonalRadiusNudgePx * rightLowerDiagonalAxisFactor(angle)
         val labelCenter = pointOnCircle(center, labelRadius, slot, itemCount, rotation.value)
         drawFifthsCircleLabel(
           label = labelLayout,
-          center = labelCenter + Offset(
-            x =
-              labelLayout.verticalCardinalCenterNudgeX * verticalCardinalAxisFactor(angle) +
-                labelLayout.rightCardinalCenterNudgeX * rightCardinalAxisFactor(angle) +
-                labelLayout.leftCardinalCenterNudgeX * leftCardinalAxisFactor(angle),
-            y = 0f,
-          ),
+          center =
+            labelCenter +
+              Offset(
+                x =
+                  labelLayout.verticalCardinalCenterNudgeX * verticalCardinalAxisFactor(angle) +
+                    labelLayout.rightCardinalCenterNudgeX * rightCardinalAxisFactor(angle) +
+                    labelLayout.leftCardinalCenterNudgeX * leftCardinalAxisFactor(angle),
+                y = 0f,
+              ),
         )
       }
 
       // Transient tap-feedback flashes, drawn on top so correct/incorrect colors read clearly over
-      // the resting dots. Reading flashes + each progress here keeps the animation in the draw phase.
+      // the resting dots. Reading flashes + each progress here keeps the animation in the draw
+      // phase.
       val flashesByIndex = state?.flashes?.groupBy { it.index } ?: emptyMap()
       flashesByIndex.forEach { (itemIndex, flashes) ->
         if (itemIndex !in 0 until itemCount || !enabledItems[itemIndex]) return@forEach
@@ -668,14 +700,12 @@ fun FifthsCircle(
       Box(
         // A clickable center is a fixed-size round button; content-only centers size themselves,
         // so callers can host arbitrary control clusters in the ring's empty middle.
-        modifier = if (click != null) {
-          Modifier
-            .size(centerButtonSize)
-            .clip(CircleShape)
-            .clickable(onClick = click)
-        } else {
-          Modifier
-        },
+        modifier =
+          if (click != null) {
+            Modifier.size(centerButtonSize).clip(CircleShape).clickable(onClick = click)
+          } else {
+            Modifier
+          },
         contentAlignment = Alignment.Center,
       ) {
         centerContent?.let { it() }
@@ -753,7 +783,8 @@ private fun measureFifthsCircleLabel(
       second = accidentalLayout,
       tuckPx = accidentalTuckPx,
       verticalCardinalCenterNudgeX = accidentalTuckPx * AccidentalVerticalCenterNudgeFraction,
-      rightCardinalCenterNudgeX = accidentalSuffixRightCardinalNudgePx(accidental, accidentalTuckPx),
+      rightCardinalCenterNudgeX =
+        accidentalSuffixRightCardinalNudgePx(accidental, accidentalTuckPx),
       leftCardinalCenterNudgeX = 0f,
       rightSideRadiusNudgePx = accidentalSuffixRightSideRadiusNudgePx(accidental, accidentalTuckPx),
       rightDiagonalRadiusNudgePx =
@@ -827,8 +858,11 @@ internal fun accidentalSuffixParts(label: String): Pair<String, String>? {
   val base = label.dropLast(1).takeIf { it.isNotEmpty() } ?: return null
 
   return when (accidental) {
-    '♭', '♯', '#' -> base to accidental.toString()
-    'b', 'B' ->
+    '♭',
+    '♯',
+    '#' -> base to accidental.toString()
+    'b',
+    'B' ->
       if (base.length == 1 && base.first().uppercaseChar() in 'A'..'G') {
         base to accidental.toString()
       } else {
@@ -843,8 +877,11 @@ internal fun accidentalPrefixParts(label: String): Pair<String, String>? {
   val base = label.drop(1).takeIf { it.isNotEmpty() } ?: return null
 
   return when (accidental) {
-    '♭', '♯', '#' -> accidental.toString() to base
-    'b', 'B' ->
+    '♭',
+    '♯',
+    '#' -> accidental.toString() to base
+    'b',
+    'B' ->
       if (base.first().isDigit()) {
         accidental.toString() to base
       } else {
@@ -859,8 +896,11 @@ internal fun accidentalPrefixLeftCardinalNudgePx(
   accidentalTuckPx: Float,
 ): Float =
   when (accidental) {
-    "♭", "♯", "#", "b", "B" ->
-      -accidentalTuckPx * PrefixAccidentalHorizontalEdgeNudgeFraction
+    "♭",
+    "♯",
+    "#",
+    "b",
+    "B" -> -accidentalTuckPx * PrefixAccidentalHorizontalEdgeNudgeFraction
     else -> 0f
   }
 
@@ -935,16 +975,18 @@ internal fun fifthsCircleLabelRadiusPx(
   dotGapPx: Float,
   cardinalTuckPx: Float = 0f,
 ): Float {
-  val outwardHalfExtent = radialHalfExtentPx(
-    widthPx = labelWidthPx,
-    heightPx = labelHeightPx,
-    angleRadians = angleRadians,
-  )
-  val inset = if (dotRadiusPx > 0f || dotGapPx > 0f) {
-    dotRadiusPx + dotGapPx + outwardHalfExtent
-  } else {
-    max(minimumInsetPx, outwardHalfExtent)
-  }
+  val outwardHalfExtent =
+    radialHalfExtentPx(
+      widthPx = labelWidthPx,
+      heightPx = labelHeightPx,
+      angleRadians = angleRadians,
+    )
+  val inset =
+    if (dotRadiusPx > 0f || dotGapPx > 0f) {
+      dotRadiusPx + dotGapPx + outwardHalfExtent
+    } else {
+      max(minimumInsetPx, outwardHalfExtent)
+    }
   val opticalInset = max(0f, inset - cardinalTuckPx * cardinalAxisFactor(angleRadians))
   return max(0f, ringRadiusPx - opticalInset)
 }
@@ -1076,11 +1118,12 @@ internal fun fifthsCircleRingRadiusPx(
   dotRadiusPx: Float,
   dotEdgePaddingPx: Float?,
 ): Float {
-  val padding = if (dotEdgePaddingPx != null) {
-    dotEdgePaddingPx + dotRadiusPx
-  } else {
-    outerPaddingPx
-  }
+  val padding =
+    if (dotEdgePaddingPx != null) {
+      dotEdgePaddingPx + dotRadiusPx
+    } else {
+      outerPaddingPx
+    }
 
   return max(0f, minSidePx / 2f - padding)
 }

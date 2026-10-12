@@ -30,8 +30,7 @@ internal fun levelListTrackStartFraction(
   if (firstVisibleLevelIndex != 0) return 0f
   val viewportSize = viewportEndOffset - viewportStartOffset
   if (viewportSize <= 0) return 0f
-  return ((firstLevelItemOffset - viewportStartOffset).toFloat() / viewportSize)
-    .coerceIn(0f, 1f)
+  return ((firstLevelItemOffset - viewportStartOffset).toFloat() / viewportSize).coerceIn(0f, 1f)
 }
 
 /**
@@ -92,14 +91,12 @@ fun LevelListScrollbar(
         }
         val lastLevelItemIndex = firstLevelItemIndex + loadedLevelCount - 1
         val visibleItems = layout.visibleItemsInfo
-        val first =
-          visibleItems.firstOrNull { it.index in firstLevelItemIndex..lastLevelItemIndex }
+        val first = visibleItems.firstOrNull { it.index in firstLevelItemIndex..lastLevelItemIndex }
         if (first == null) {
           return@derivedStateOf when {
             !hasUnloadedLevels && !listState.canScrollForward ->
               levelListScrollbarMetrics(
-                firstVisibleLevelIndex =
-                  minOf(effectiveTotal - 1, Int.MAX_VALUE.toLong()).toInt(),
+                firstVisibleLevelIndex = minOf(effectiveTotal - 1, Int.MAX_VALUE.toLong()).toInt(),
                 firstItemHiddenFraction = 0f,
                 totalLevelCount = effectiveTotal,
                 reachedEnd = true,

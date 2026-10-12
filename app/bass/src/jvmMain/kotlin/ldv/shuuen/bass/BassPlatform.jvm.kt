@@ -51,16 +51,26 @@ internal actual object BassPlatform {
     val memory = Memory(data.size.toLong())
     memory.write(0, data, 0, data.size)
     return libraries.midi.BASS_MIDI_StreamCreateFile(
-      BassConstants.BASS_FILE_MEM, memory, 0, data.size.toLong(), flags, frequency,
+      BassConstants.BASS_FILE_MEM,
+      memory,
+      0,
+      data.size.toLong(),
+      flags,
+      frequency,
     )
   }
 
   actual fun createFileStreamFromMemory(data: ByteArray, flags: Int): Int {
     val memory = Memory(data.size.toLong())
     memory.write(0, data, 0, data.size)
-    val handle = libraries.bass.BASS_StreamCreateFile(
-      BassConstants.BASS_FILE_MEM, memory, 0, data.size.toLong(), flags,
-    )
+    val handle =
+      libraries.bass.BASS_StreamCreateFile(
+        BassConstants.BASS_FILE_MEM,
+        memory,
+        0,
+        data.size.toLong(),
+        flags,
+      )
     if (handle != 0) fileStreamMemory[handle] = memory
     return handle
   }
@@ -102,39 +112,38 @@ internal actual object BassPlatform {
       return libraries.midi.BASS_MIDI_StreamSetFilter(streamHandle, true, null, null)
     }
 
-    val filter =
-      MidiFilterProc { _, _, event, _, _ ->
-        event.read()
-        when (event.event) {
-          BassConstants.MIDI_EVENT_NOTE -> {
-            val velocity = (event.param shr 8) and 0xFF
-            if (normalizeNoteVelocity && velocity > 0) {
-              event.param = (event.param and 0xFF) or (NormalizedMidiValue shl 8)
-              event.write()
-            }
-          }
-
-          BassConstants.MIDI_EVENT_VOLUME,
-          BassConstants.MIDI_EVENT_EXPRESSION -> {
-            event.param = NormalizedMidiValue
+    val filter = MidiFilterProc { _, _, event, _, _ ->
+      event.read()
+      when (event.event) {
+        BassConstants.MIDI_EVENT_NOTE -> {
+          val velocity = (event.param shr 8) and 0xFF
+          if (normalizeNoteVelocity && velocity > 0) {
+            event.param = (event.param and 0xFF) or (NormalizedMidiValue shl 8)
             event.write()
           }
-
-          BassConstants.MIDI_EVENT_CUTOFF -> {
-            if (cutoffOverride != null) {
-              event.param = cutoffOverride
-              event.write()
-            }
-          }
-
-          BassConstants.MIDI_EVENT_PROGRAM,
-          BassConstants.MIDI_EVENT_BANK,
-          BassConstants.MIDI_EVENT_BANK_LSB,
-          BassConstants.MIDI_EVENT_SYSTEM,
-          BassConstants.MIDI_EVENT_SYSTEMEX -> return@MidiFilterProc false
         }
-        true
+
+        BassConstants.MIDI_EVENT_VOLUME,
+        BassConstants.MIDI_EVENT_EXPRESSION -> {
+          event.param = NormalizedMidiValue
+          event.write()
+        }
+
+        BassConstants.MIDI_EVENT_CUTOFF -> {
+          if (cutoffOverride != null) {
+            event.param = cutoffOverride
+            event.write()
+          }
+        }
+
+        BassConstants.MIDI_EVENT_PROGRAM,
+        BassConstants.MIDI_EVENT_BANK,
+        BassConstants.MIDI_EVENT_BANK_LSB,
+        BassConstants.MIDI_EVENT_SYSTEM,
+        BassConstants.MIDI_EVENT_SYSTEMEX -> return@MidiFilterProc false
       }
+      true
+    }
 
     melodyFilters[streamHandle] = filter
     return libraries.midi.BASS_MIDI_StreamSetFilter(streamHandle, true, filter, null)
@@ -149,25 +158,23 @@ internal actual object BassPlatform {
     preset: Int,
     bank: Int,
   ): Boolean {
-    val font = Memory(12).apply {
-      setInt(0, soundFontHandle)
-      setInt(4, preset)
-      setInt(8, bank)
-    }
+    val font =
+      Memory(12).apply {
+        setInt(0, soundFontHandle)
+        setInt(4, preset)
+        setInt(8, bank)
+      }
     return libraries.midi.BASS_MIDI_StreamSetFonts(streamHandle, font, 1)
   }
 
   actual fun play(channelHandle: Int, restart: Boolean): Boolean =
     libraries.bass.BASS_ChannelPlay(channelHandle, restart)
 
-  actual fun start(channelHandle: Int): Boolean =
-    libraries.bass.BASS_ChannelStart(channelHandle)
+  actual fun start(channelHandle: Int): Boolean = libraries.bass.BASS_ChannelStart(channelHandle)
 
-  actual fun pause(channelHandle: Int): Boolean =
-    libraries.bass.BASS_ChannelPause(channelHandle)
+  actual fun pause(channelHandle: Int): Boolean = libraries.bass.BASS_ChannelPause(channelHandle)
 
-  actual fun stop(channelHandle: Int): Boolean =
-    libraries.bass.BASS_ChannelStop(channelHandle)
+  actual fun stop(channelHandle: Int): Boolean = libraries.bass.BASS_ChannelStop(channelHandle)
 
   actual fun channelIsActive(channelHandle: Int): Int =
     libraries.bass.BASS_ChannelIsActive(channelHandle)
@@ -270,11 +277,12 @@ private data class NativeLibraries(
       val prefix = if (os == "windows") "" else "lib"
       val bassPath = extractLibrary("/native/$os/$arch/${prefix}bass.$extension")
       val midiPath = extractLibrary("/native/$os/$arch/${prefix}bassmidi.$extension")
-      val options = if (os == "windows") {
-        mapOf(Library.OPTION_CALLING_CONVENTION to Function.ALT_CONVENTION)
-      } else {
-        emptyMap<String, Any>()
-      }
+      val options =
+        if (os == "windows") {
+          mapOf(Library.OPTION_CALLING_CONVENTION to Function.ALT_CONVENTION)
+        } else {
+          emptyMap<String, Any>()
+        }
 
       // Load BASS before BASSMIDI because the add-on depends on the core library.
       val bass = Native.load(bassPath.toString(), BassNative::class.java, options)
@@ -286,32 +294,61 @@ private data class NativeLibraries(
 
 private interface BassNative : Library {
   fun BASS_GetVersion(): Int
+
   fun BASS_ErrorGetCode(): Int
+
   fun BASS_SetConfig(option: Int, value: Int): Boolean
+
   fun BASS_Init(device: Int, frequency: Int, flags: Int, win: Pointer?, dsguid: Pointer?): Boolean
+
   fun BASS_Free(): Boolean
+
   fun BASS_PluginFree(handle: Int): Boolean
+
   fun BASS_ChannelPlay(handle: Int, restart: Boolean): Boolean
+
   fun BASS_ChannelStart(handle: Int): Boolean
+
   fun BASS_ChannelPause(handle: Int): Boolean
+
   fun BASS_ChannelStop(handle: Int): Boolean
+
   fun BASS_ChannelIsActive(handle: Int): Int
+
   fun BASS_ChannelGetPosition(handle: Int, mode: Int): Long
+
   fun BASS_ChannelSetPosition(handle: Int, pos: Long, mode: Int): Boolean
+
   fun BASS_ChannelUpdate(handle: Int, length: Int): Boolean
+
   fun BASS_ChannelGetLength(handle: Int, mode: Int): Long
+
   fun BASS_ChannelBytes2Seconds(handle: Int, pos: Long): Double
+
   fun BASS_ChannelSeconds2Bytes(handle: Int, pos: Double): Long
+
   fun BASS_ChannelSetAttribute(handle: Int, attrib: Int, value: Float): Boolean
+
   fun BASS_ChannelSetLink(handle: Int, chan: Int): Boolean
+
   fun BASS_ChannelRemoveLink(handle: Int, chan: Int): Boolean
+
   fun BASS_StreamFree(handle: Int): Boolean
-  fun BASS_StreamCreateFile(filetype: Int, file: Pointer, offset: Long, length: Long, flags: Int): Int
+
+  fun BASS_StreamCreateFile(
+    filetype: Int,
+    file: Pointer,
+    offset: Long,
+    length: Long,
+    flags: Int,
+  ): Int
 }
 
 private interface BassMidiNative : Library {
   fun BASS_MIDI_GetVersion(): Int
+
   fun BASS_MIDI_StreamCreate(channels: Int, flags: Int, frequency: Int): Int
+
   fun BASS_MIDI_StreamCreateFile(
     filetype: Int,
     file: String,
@@ -331,6 +368,7 @@ private interface BassMidiNative : Library {
   ): Int
 
   fun BASS_MIDI_StreamGetEvents(handle: Int, track: Int, filter: Int, events: Pointer?): Int
+
   fun BASS_MIDI_StreamSetFilter(
     handle: Int,
     seeking: Boolean,
@@ -339,60 +377,59 @@ private interface BassMidiNative : Library {
   ): Boolean
 
   fun BASS_MIDI_FontInit(file: String, flags: Int): Int
+
   fun BASS_MIDI_FontFree(handle: Int): Boolean
+
   fun BASS_MIDI_InGetDeviceInfo(device: Int, info: BassMidiDeviceInfo): Boolean
+
   fun BASS_MIDI_InInit(device: Int, proc: MidiInProc?, user: Pointer?): Boolean
+
   fun BASS_MIDI_InStart(device: Int): Boolean
+
   fun BASS_MIDI_InStop(device: Int): Boolean
+
   fun BASS_MIDI_InFree(device: Int): Boolean
+
   fun BASS_MIDI_StreamSetFonts(handle: Int, fonts: Pointer, count: Int): Boolean
+
   fun BASS_MIDI_StreamEvent(handle: Int, chan: Int, event: Int, param: Int): Boolean
+
   fun BASS_MIDI_FontGetInfo(handle: Int, info: BassMidiFontInfo): Boolean
+
   fun BASS_MIDI_FontGetPresets(handle: Int, presets: IntArray): Boolean
+
   fun BASS_MIDI_FontGetPreset(handle: Int, preset: Int, bank: Int): String?
 }
 
 class BassMidiFontInfo : Structure() {
-  @JvmField
-  var name: Pointer? = null
+  @JvmField var name: Pointer? = null
 
-  @JvmField
-  var copyright: Pointer? = null
+  @JvmField var copyright: Pointer? = null
 
-  @JvmField
-  var comment: Pointer? = null
+  @JvmField var comment: Pointer? = null
 
-  @JvmField
-  var presets: Int = 0
+  @JvmField var presets: Int = 0
 
-  @JvmField
-  var samsize: Int = 0
+  @JvmField var samsize: Int = 0
 
-  @JvmField
-  var samload: Int = 0
+  @JvmField var samload: Int = 0
 
-  @JvmField
-  var samtype: Int = 0
+  @JvmField var samtype: Int = 0
 
   override fun getFieldOrder(): List<String> =
     listOf("name", "copyright", "comment", "presets", "samsize", "samload", "samtype")
 }
 
 open class BassMidiEventStruct : Structure() {
-  @JvmField
-  var event: Int = 0
+  @JvmField var event: Int = 0
 
-  @JvmField
-  var param: Int = 0
+  @JvmField var param: Int = 0
 
-  @JvmField
-  var chan: Int = 0
+  @JvmField var chan: Int = 0
 
-  @JvmField
-  var tick: Int = 0
+  @JvmField var tick: Int = 0
 
-  @JvmField
-  var pos: Int = 0
+  @JvmField var pos: Int = 0
 
   override fun getFieldOrder(): List<String> = listOf("event", "param", "chan", "tick", "pos")
 
@@ -411,19 +448,19 @@ private fun interface MidiFilterProc : StdCallLibrary.StdCallCallback {
 
 /** BASS_MIDI_DEVICEINFO: { char* name; DWORD id; DWORD flags } */
 class BassMidiDeviceInfo : Structure() {
-  @JvmField
-  var name: Pointer? = null
+  @JvmField var name: Pointer? = null
 
-  @JvmField
-  var id: Int = 0
+  @JvmField var id: Int = 0
 
-  @JvmField
-  var flags: Int = 0
+  @JvmField var flags: Int = 0
 
   override fun getFieldOrder(): List<String> = listOf("name", "id", "flags")
 }
 
-/** MIDIINPROC: void CALLBACK (DWORD device, double time, const BYTE* buffer, DWORD length, void* user) */
+/**
+ * MIDIINPROC: void CALLBACK (DWORD device, double time, const BYTE* buffer, DWORD length, void*
+ * user)
+ */
 fun interface MidiInProc : StdCallLibrary.StdCallCallback {
   fun invoke(device: Int, time: Double, buffer: Pointer, length: Int, user: Pointer?)
 }
@@ -436,8 +473,9 @@ private fun extractLibrary(resourcePath: String): Path {
   val target = libraryCachePath(resourcePath)
   if (target.exists()) return target
 
-  val stream = BassPlatform::class.java.getResourceAsStream(resourcePath)
-    ?: error("BASS native library resource not found: $resourcePath")
+  val stream =
+    BassPlatform::class.java.getResourceAsStream(resourcePath)
+      ?: error("BASS native library resource not found: $resourcePath")
 
   Files.createDirectories(target.parent)
   stream.use { input ->
@@ -459,17 +497,23 @@ private fun currentOs(): String {
   return when {
     os.contains("win") -> "windows"
     os.contains("linux") -> "linux"
-    else -> error("BASS desktop libraries are bundled only for Windows and Linux; current OS is $os")
+    else ->
+      error("BASS desktop libraries are bundled only for Windows and Linux; current OS is $os")
   }
 }
 
 private fun currentArch(): String {
   val arch = System.getProperty("os.arch").lowercase()
   return when (arch) {
-    "amd64", "x86_64" -> "x86_64"
-    "x86", "i386", "i686" -> "x86"
-    "aarch64", "arm64" -> "aarch64"
-    "arm", "arm32" -> "armhf"
+    "amd64",
+    "x86_64" -> "x86_64"
+    "x86",
+    "i386",
+    "i686" -> "x86"
+    "aarch64",
+    "arm64" -> "aarch64"
+    "arm",
+    "arm32" -> "armhf"
     else -> error("Unsupported BASS native architecture: $arch")
   }
 }

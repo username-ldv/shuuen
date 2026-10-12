@@ -1,8 +1,6 @@
 package ldv.shuuen.features.training.common
 
 import io.github.aakira.napier.Napier
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,13 +22,15 @@ import ldv.shuuen.core.music.SetupMelodyRepeat
 import ldv.shuuen.core.music.Sustain
 import ldv.shuuen.core.music.chordAt
 import ldv.shuuen.core.music.constructSetupMelodyFlow
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 private data class CurrentlyPlayingNode(
-    val chord: Chord,
-    val channel: MidiChannel,
-    val startQuestionNumber: Int,
-    val duration: ContextDuration,
-    val sustain: Sustain
+  val chord: Chord,
+  val channel: MidiChannel,
+  val startQuestionNumber: Int,
+  val duration: ContextDuration,
+  val sustain: Sustain,
 )
 
 private data class QuestionEvent(val currentQuestion: Int = 1, val newRoot: Pitch? = null)
@@ -54,8 +54,8 @@ class DegreeContextPlayer(
 
   /**
    * The chord of the context node currently framing the harmony. Kept through a finite node's
-   * silence after its sound stops (the harmonic frame lasts until the next node plays) and
-   * replaced whenever a node starts, including after a key change.
+   * silence after its sound stops (the harmonic frame lasts until the next node plays) and replaced
+   * whenever a node starts, including after a key change.
    */
   private val _currentChord = MutableStateFlow<Chord?>(null)
   val currentChord = _currentChord.asStateFlow()
@@ -64,6 +64,7 @@ class DegreeContextPlayer(
   /** Whether a node has set a setup melody, i.e. whether a manual [playSetupMelody] would sound. */
   val hasSetupMelody: Boolean
     get() = setupMelody != null
+
   private var playedSetupMelody: Boolean = false
   private var currentlyPlaying: CurrentlyPlayingNode? = null
   var currentNodeCount: Int = 0
@@ -83,14 +84,14 @@ class DegreeContextPlayer(
         currentlyPlaying?.let { playing ->
           // if something plays already and the question duration is done, then stop
           val needRotation =
-              when (val d = playing.duration) {
-                is ContextDuration.Finite if
-                    (questionEvent.currentQuestion - playing.startQuestionNumber >=
-                        d.durationInQuestions)
-                 -> true
-                is ContextDuration.SameAsScaleRotation -> questionEvent.newRoot != null
-                else -> false
-              }
+            when (val d = playing.duration) {
+              is ContextDuration.Finite if
+                (questionEvent.currentQuestion - playing.startQuestionNumber >=
+                  d.durationInQuestions)
+               -> true
+              is ContextDuration.SameAsScaleRotation -> questionEvent.newRoot != null
+              else -> false
+            }
           Napier.v { "Need rotation: $needRotation" }
           if (needRotation) {
             val advance = playing.sustain == Sustain.Endless
@@ -128,7 +129,7 @@ class DegreeContextPlayer(
     return currentlyPlaying?.let { playing ->
       when (val d = playing.duration) {
         is ContextDuration.Finite ->
-            currentQuestion - playing.startQuestionNumber >= d.durationInQuestions
+          currentQuestion - playing.startQuestionNumber >= d.durationInQuestions
         is ContextDuration.SameAsScaleRotation -> isNewRoot
         else -> false
       }
@@ -141,23 +142,23 @@ class DegreeContextPlayer(
     var currentlyPlaying: Note? = null
     if (!shouldPlaySetupMelody(m, manual)) return false
     constructSetupMelodyFlow(currentRoot.value, m.melody)
-        .onEach { note ->
-          withContext(NonCancellable) {
-            currentlyPlaying?.let { midiEngine.stopNote(it) }
-          }
+      .onEach { note ->
+        withContext(NonCancellable) {
+          currentlyPlaying?.let { midiEngine.stopNote(it) }
         }
-        .onCompletion {
-          withContext(NonCancellable) {
-            currentlyPlaying?.let { midiEngine.stopNote(it) }
-          }
-          _setupMelodyNotes.value = null
-          playedSetupMelody = true
+      }
+      .onCompletion {
+        withContext(NonCancellable) {
+          currentlyPlaying?.let { midiEngine.stopNote(it) }
         }
-        .collect { note ->
-          midiEngine.playNote(note, MidiChannel.Notes)
-          currentlyPlaying = note
-          _setupMelodyNotes.value = note
-        }
+        _setupMelodyNotes.value = null
+        playedSetupMelody = true
+      }
+      .collect { note ->
+        midiEngine.playNote(note, MidiChannel.Notes)
+        currentlyPlaying = note
+        _setupMelodyNotes.value = note
+      }
     return true
   }
 
@@ -184,10 +185,10 @@ class DegreeContextPlayer(
     Napier.v { "node's chord: $chord" }
     _currentChord.value = chord
     val channel =
-        when (node.sustain) {
-          is Sustain.Endless -> MidiChannel.Drone
-          is Sustain.Finite -> MidiChannel.Cadence
-        }
+      when (node.sustain) {
+        is Sustain.Endless -> MidiChannel.Drone
+        is Sustain.Finite -> MidiChannel.Cadence
+      }
     midiEngine.playChord(chord, channel)
     //      val duration = when (val d = node.duration) {
     //            is ContextDuration.Endless -> null
@@ -196,7 +197,13 @@ class DegreeContextPlayer(
     //            is ContextDuration.SameAsScaleRotation -> TODO("Not implemented yet.")
     //          }
     currentlyPlaying =
-        CurrentlyPlayingNode(chord, channel, questionEvent.currentQuestion, node.duration, node.sustain)
+      CurrentlyPlayingNode(
+        chord,
+        channel,
+        questionEvent.currentQuestion,
+        node.duration,
+        node.sustain,
+      )
 
     when (val sustain = node.sustain) {
       is Sustain.Endless -> {

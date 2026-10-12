@@ -11,8 +11,8 @@ enum class FigureLadder {
   Scale,
 
   /**
-   * Only the tones of the context chord currently sounding — contours become arpeggios. Falls
-   * back to [Scale] when no context chord (of at least two pitch classes) is active.
+   * Only the tones of the context chord currently sounding — contours become arpeggios. Falls back
+   * to [Scale] when no context chord (of at least two pitch classes) is active.
    */
   Chord,
 }
@@ -27,8 +27,8 @@ data class RhythmFigure(
   val values: List<NoteValue>,
   /**
    * Ladder-step moves between consecutive notes, one entry per gap ([values].size - 1 in total):
-   * +1/-1 walks up/down the [ladder]'s notes, 0 repeats the note, and null lets the weighted
-   * note picker choose freely. An empty list makes every gap a free choice.
+   * +1/-1 walks up/down the [ladder]'s notes, 0 repeats the note, and null lets the weighted note
+   * picker choose freely. An empty list makes every gap a free choice.
    */
   val contour: List<Int?> = emptyList(),
   val ladder: FigureLadder = FigureLadder.Scale,
@@ -49,24 +49,24 @@ data class WeightedFigure(val figure: RhythmFigure, val weight: Double) {
 }
 
 /**
- * Configuration of the weighted random note picker. A candidate note's weight is the product of
- * its melodic-interval weight (distance from the previous note) and its degree weight (how good
- * a landing spot the scale degree is), so awkward moves like a leap from 7 onto 4 stay possible
- * but rare while stepwise motion around stable degrees dominates.
+ * Configuration of the weighted random note picker. A candidate note's weight is the product of its
+ * melodic-interval weight (distance from the previous note) and its degree weight (how good a
+ * landing spot the scale degree is), so awkward moves like a leap from 7 onto 4 stay possible but
+ * rare while stepwise motion around stable degrees dominates.
  */
 @Serializable
 data class NoteWeights(
   /**
-   * Weight per melodic interval in semitones, index 0 being a repeated note. Intervals past the
-   * end of the list reuse the last entry; an empty list weighs every interval equally.
+   * Weight per melodic interval in semitones, index 0 being a repeated note. Intervals past the end
+   * of the list reuse the last entry; an empty list weighs every interval equally.
    */
   val intervalWeights: List<Double> = emptyList(),
   /** Multiplier per target scale degree; degrees not listed weigh 1. */
   val degreeWeights: Map<Degree, Double> = emptyMap(),
   /**
-   * Extra multiplier for notes belonging to the context chord currently sounding underneath.
-   * 1 (the default) ignores the context entirely; higher values pull the melody toward the
-   * chord's tones. Has no effect when the level has no context or the chord is a bare drone.
+   * Extra multiplier for notes belonging to the context chord currently sounding underneath. 1 (the
+   * default) ignores the context entirely; higher values pull the melody toward the chord's tones.
+   * Has no effect when the level has no context or the chord is a bare drone.
    */
   val chordToneBoost: Double = 1.0,
 ) {
@@ -132,6 +132,5 @@ data class MelodyStyle(
    */
   val isContextAware: Boolean
     get() =
-      noteWeights.chordToneBoost != 1.0 ||
-        figures.any { it.figure.ladder == FigureLadder.Chord }
+      noteWeights.chordToneBoost != 1.0 || figures.any { it.figure.ladder == FigureLadder.Chord }
 }

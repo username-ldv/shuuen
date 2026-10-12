@@ -24,32 +24,32 @@ data class KeyFlashRequest(val pitch: Pitch, val color: Color)
  * offset from [root] (falling back to the ordinal until a root is known).
  */
 fun pitchToItemIndex(pitch: Pitch, mode: InputMode, root: Pitch?): Int =
-    when (mode) {
-      InputMode.Absolute -> pitch.ordinal
-      InputMode.Relative -> root?.asRoot(pitch)?.offset ?: pitch.ordinal
-    }
+  when (mode) {
+    InputMode.Absolute -> pitch.ordinal
+    InputMode.Relative -> root?.asRoot(pitch)?.offset ?: pitch.ordinal
+  }
 
 /**
  * Labels for the FifthsCircle items, indexed by item index (= pitch ordinal for absolute). Relative
  * uses configurable degree names; absolute uses key-aware spelling for the current
- * [root]/[accidentalType] (sharps vs flats, proper letters), falling back to C-major sharps before a
- * quiz state exists.
+ * [root]/[accidentalType] (sharps vs flats, proper letters), falling back to C-major sharps before
+ * a quiz state exists.
  */
 fun circleItemNames(
-    mode: InputMode,
-    root: Pitch?,
-    accidentalType: ScaleAccidentalType?,
-    musicLabels: MusicLabelSettings,
+  mode: InputMode,
+  root: Pitch?,
+  accidentalType: ScaleAccidentalType?,
+  musicLabels: MusicLabelSettings,
 ): List<String> =
-    when (mode) {
-      InputMode.Relative -> effectiveDegreeNames(musicLabels.degreeNames)
-      InputMode.Absolute ->
-          chromaticSpellingByOrdinal(
-                  rootOrdinal = root?.ordinal ?: 0,
-                  accidentalType = accidentalType ?: ScaleAccidentalType.Sharps,
-              )
-              .map { it.customLabel(musicLabels.noteNames) }
-    }
+  when (mode) {
+    InputMode.Relative -> effectiveDegreeNames(musicLabels.degreeNames)
+    InputMode.Absolute ->
+      chromaticSpellingByOrdinal(
+          rootOrdinal = root?.ordinal ?: 0,
+          accidentalType = accidentalType ?: ScaleAccidentalType.Sharps,
+        )
+        .map { it.customLabel(musicLabels.noteNames) }
+  }
 
 /**
  * Display label for an answered absolute [pitch], using the same item-index mapping and custom
@@ -57,13 +57,13 @@ fun circleItemNames(
  * whether the label is a note name or a degree name.
  */
 fun inputLabelForPitch(
-    pitch: Pitch,
-    mode: InputMode,
-    root: Pitch?,
-    accidentalType: ScaleAccidentalType?,
-    musicLabels: MusicLabelSettings,
+  pitch: Pitch,
+  mode: InputMode,
+  root: Pitch?,
+  accidentalType: ScaleAccidentalType?,
+  musicLabels: MusicLabelSettings,
 ): String =
-    circleItemNames(mode, root, accidentalType, musicLabels)[pitchToItemIndex(pitch, mode, root)]
+  circleItemNames(mode, root, accidentalType, musicLabels)[pitchToItemIndex(pitch, mode, root)]
 
 /**
  * The item the circle should rotate to its top slot, or null to keep the default top (C for
@@ -72,10 +72,12 @@ fun inputLabelForPitch(
  * spin itself whenever this changes (e.g. when a random-scale level rotates its root).
  */
 fun circleTopItem(method: InputMethod, root: Pitch?): Int? =
-    if (method.component == InputComponent.Circle &&
-        method.mode == InputMode.Absolute &&
-        method.circleAbsoluteRootAtTop) {
-      root?.ordinal
-    } else {
-      null
-    }
+  if (
+    method.component == InputComponent.Circle &&
+      method.mode == InputMode.Absolute &&
+      method.circleAbsoluteRootAtTop
+  ) {
+    root?.ordinal
+  } else {
+    null
+  }

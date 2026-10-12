@@ -80,7 +80,8 @@ object ChordStyles {
     ChordStyle(
       id = "seventh-flavors",
       name = "Seventh flavors",
-      description = "Seventh chords in all inversions, spread voicings, and plain triads to rest on.",
+      description =
+        "Seventh chords in all inversions, spread voicings, and plain triads to rest on.",
       tier = StyleTier.Advanced,
       figures =
         listOf(

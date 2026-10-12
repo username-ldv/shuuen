@@ -40,9 +40,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import ldv.shuuen.core.music.DegreeContext
+import ldv.shuuen.core.music.generator.MelodyStyles
 import ldv.shuuen.core.ui.components.FlatSection
 import ldv.shuuen.core.ui.components.Hairline
 import ldv.shuuen.core.ui.components.PillControl
@@ -54,13 +54,13 @@ import ldv.shuuen.core.ui.components.ShuuenTopAppBarType
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.SoftControl
 import ldv.shuuen.core.ui.components.StaticScreenFrame
-import ldv.shuuen.core.music.generator.MelodyStyles
 import ldv.shuuen.core.ui.components.music.NoteRow
 import ldv.shuuen.features.training.common.components.NumberInputBox
 import ldv.shuuen.features.training.common.components.ScaleChooser
 import ldv.shuuen.features.training.common.components.StylePickerSheet
 import ldv.shuuen.features.training.common.components.TuneInconsistencySection
 import ldv.shuuen.features.training.domain.ScaleConfig
+import kotlin.math.roundToInt
 
 @Composable
 fun MelodiesSetupScreen(
@@ -215,8 +215,7 @@ private fun ContextSection(
   SetupNavRow(
     label = label,
     supporting =
-      context?.let { "Using context ${it.name ?: it.id}" }
-        ?: "Open context screen to configure.",
+      context?.let { "Using context ${it.name ?: it.id}" } ?: "Open context screen to configure.",
     onClick = { onOpenContext(context?.id) },
   ) {
     Icon(
@@ -365,9 +364,10 @@ private fun BackingTrackControls(
         )
       }
       // Local text state so a partial entry ("-", empty) doesn't fight the stored value.
-      var offsetText by remember(state.backingOffsetMs) {
-        mutableStateOf(state.backingOffsetMs.toString())
-      }
+      var offsetText by
+        remember(state.backingOffsetMs) {
+          mutableStateOf(state.backingOffsetMs.toString())
+        }
       SoftControl(
         modifier = Modifier.width(96.dp),
         selected = state.backingOffsetMs != 0L,
@@ -453,9 +453,10 @@ private fun NotesPerSequenceSection(
         Text("Custom", color = ShuuenUi.Dim, style = MaterialTheme.typography.bodySmall)
         // Recreated whenever the VM value changes so preset taps refresh the field, while
         // invalid input in-between (e.g. an empty field mid-edit) stays local.
-        var customText by remember(state.notesPerSequence) {
-          mutableStateOf(state.notesPerSequence.toString())
-        }
+        var customText by
+          remember(state.notesPerSequence) {
+            mutableStateOf(state.notesPerSequence.toString())
+          }
         SoftControl(
           modifier = Modifier.width(54.dp),
           selected = state.notesPerSequence !in NotesPerSequencePresets,
@@ -546,17 +547,16 @@ private fun TempoSection(
       Text(
         "${tempoRange.first}",
         color = ShuuenUi.Dim,
-        style = MaterialTheme.typography.bodySmall
+        style = MaterialTheme.typography.bodySmall,
       )
       Text(
         "${tempoRange.last}",
         color = ShuuenUi.Dim,
-        style = MaterialTheme.typography.bodySmall
+        style = MaterialTheme.typography.bodySmall,
       )
     }
   }
 }
-
 
 @Composable
 private fun RhythmSection(
@@ -620,23 +620,25 @@ private fun SetupNavRow(
   trailing: @Composable RowScope.() -> Unit,
 ) {
   Row(
-    modifier = Modifier.fillMaxWidth()
-      .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-      .padding(vertical = 8.dp),
+    modifier =
+      Modifier.fillMaxWidth()
+        .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+        .padding(vertical = 8.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Column(
       modifier = Modifier.weight(1f),
-      verticalArrangement = Arrangement.spacedBy(3.dp)
+      verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
       Text(
         text = label,
         color = ShuuenUi.Muted,
-        style = MaterialTheme.typography.labelLarge.copy(
-          letterSpacing = ShuuenUi.labelSpacing,
-          fontWeight = FontWeight.SemiBold,
-        ),
+        style =
+          MaterialTheme.typography.labelLarge.copy(
+            letterSpacing = ShuuenUi.labelSpacing,
+            fontWeight = FontWeight.SemiBold,
+          ),
       )
       Text(
         text = supporting,

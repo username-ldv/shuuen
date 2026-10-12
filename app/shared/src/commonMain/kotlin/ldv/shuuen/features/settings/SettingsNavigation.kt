@@ -15,8 +15,8 @@ val settingsNavigationModule = module {
   navigation<AppRoute.Settings> {
     val navigator = LocalAppNavigator.current
     SettingsScreen(
-        viewModel = koinViewModel(),
-        onNavigateBack = { navigator.goBack() },
+      viewModel = koinViewModel(),
+      onNavigateBack = { navigator.goBack() },
     )
   }
 }

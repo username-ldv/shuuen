@@ -1,11 +1,11 @@
 package ldv.shuuen.core.music.generator
 
-import kotlin.math.abs
-import kotlin.random.Random
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.NoteRange
 import ldv.shuuen.core.music.NoteValue
 import ldv.shuuen.core.music.Pitch
+import kotlin.math.abs
+import kotlin.random.Random
 
 /** A generated note plus the rhythm value it should be played with. */
 data class TimedNote(val note: Note, val value: NoteValue)
@@ -13,13 +13,13 @@ data class TimedNote(val note: Note, val value: NoteValue)
 /**
  * Generates melody figures shaped by a [MelodyStyle]: each call picks one of the style's rhythm
  * figures by weight, then fills its notes — free positions through the weighted note picker
- * (melodic interval x degree weights against the previous note), contour positions by walking
- * the allowed notes stepwise. The generator remembers the last note it produced, so consecutive
- * figures connect into one line.
+ * (melodic interval x degree weights against the previous note), contour positions by walking the
+ * allowed notes stepwise. The generator remembers the last note it produced, so consecutive figures
+ * connect into one line.
  *
- * A context-aware style additionally reacts to the chord set via [setActiveChord]: chord tones
- * get the style's [NoteWeights.chordToneBoost] in the picker, and [FigureLadder.Chord] contours
- * walk only the chord's tones (arpeggios).
+ * A context-aware style additionally reacts to the chord set via [setActiveChord]: chord tones get
+ * the style's [NoteWeights.chordToneBoost] in the picker, and [FigureLadder.Chord] contours walk
+ * only the chord's tones (arpeggios).
  */
 class WeightedMelodyGenerator(
   private val style: MelodyStyle,
@@ -43,15 +43,14 @@ class WeightedMelodyGenerator(
   private var chordLadder: List<Note> = emptyList()
 
   /**
-   * Sets (or clears, with null) the context chord the melody should lean toward. A chord of
-   * fewer than two distinct pitch classes — a bare drone — is ignored: the base degree weights
-   * already handle tonic gravity.
+   * Sets (or clears, with null) the context chord the melody should lean toward. A chord of fewer
+   * than two distinct pitch classes — a bare drone — is ignored: the base degree weights already
+   * handle tonic gravity.
    */
   fun setActiveChord(pitches: Set<Pitch>?) {
     val effective = pitches?.takeIf { it.size >= 2 }
     chordPitches = effective
-    chordLadder =
-      if (effective == null) emptyList() else ladder.filter { it.pitch in effective }
+    chordLadder = if (effective == null) emptyList() else ladder.filter { it.pitch in effective }
   }
 
   /** The next figure's notes. Throws [NoSuchElementException] when no notes are allowed at all. */
@@ -110,9 +109,9 @@ class WeightedMelodyGenerator(
   }
 
   /**
-   * Moves [step] positions along [walkLadder] from [from], reflecting off the edges to stay
-   * inside. [from] may not be a member (e.g. a passing tone before an arpeggio figure); the
-   * walk then starts from the nearest position at or below it.
+   * Moves [step] positions along [walkLadder] from [from], reflecting off the edges to stay inside.
+   * [from] may not be a member (e.g. a passing tone before an arpeggio figure); the walk then
+   * starts from the nearest position at or below it.
    */
   private fun stepAlong(walkLadder: List<Note>, from: Note, step: Int): Note {
     val exact = walkLadder.indexOfLast { it.midiIndex <= from.midiIndex }

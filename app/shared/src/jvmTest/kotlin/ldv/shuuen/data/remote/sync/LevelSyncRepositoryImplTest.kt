@@ -10,14 +10,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
-import kotlin.io.path.createTempDirectory
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -43,69 +36,83 @@ import ldv.shuuen.data.remote.course.LevelDefinitionCodec
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.LevelSource
 import ldv.shuuen.features.training.domain.ScaleConfig
+import kotlin.io.path.createTempDirectory
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class LevelSyncRepositoryImplTest {
   @Test
-  fun repeatSyncSendsOnlyActualUpsertsAndTombstones() = kotlinx.coroutines.runBlocking {
-    val directory = createTempDirectory("shuuen-level-sync-test")
-    try {
-      val singles = FakeSinglesDao(mutableListOf(testEntity("Original")))
-      val requests = mutableListOf<LevelSyncRequestDto>()
-      val server = FakeSyncServer()
-      val engine = MockEngine { request ->
-        val decoded = ApiJson.decodeFromString<LevelSyncRequestDto>(
-          request.body.toByteArray().decodeToString()
-        )
-        requests += decoded
-        respond(
-          content = ApiJson.encodeToString(LevelSyncEnvelopeDto(server.handle(decoded))),
-          status = HttpStatusCode.OK,
-          headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
-        )
-      }
-      val client = HttpClient(engine) {
-        expectSuccess = true
-        install(ContentNegotiation) { json(ApiJson) }
-      }
-      val repository =
-        LevelSyncRepositoryImpl(
-          path = kotlinx.io.files.Path(directory.toString()),
-          api = LevelSyncApi(client),
-          authRepository = FakeAuthRepository(),
-          singlesDao = singles,
-          melodiesDao = EmptyMelodiesDao,
-          chordsDao = EmptyChordsDao,
-          contextDao = EmptyContextDao,
-          codec = LevelDefinitionCodec(ApiJson),
-          json = ApiJson,
-        )
+  fun repeatSyncSendsOnlyActualUpsertsAndTombstones() =
+    kotlinx.coroutines.runBlocking {
+      val directory = createTempDirectory("shuuen-level-sync-test")
+      try {
+        val singles = FakeSinglesDao(mutableListOf(testEntity("Original")))
+        val requests = mutableListOf<LevelSyncRequestDto>()
+        val server = FakeSyncServer()
+        val engine = MockEngine { request ->
+          val decoded =
+            ApiJson.decodeFromString<LevelSyncRequestDto>(
+              request.body.toByteArray().decodeToString()
+            )
+          requests += decoded
+          respond(
+            content = ApiJson.encodeToString(LevelSyncEnvelopeDto(server.handle(decoded))),
+            status = HttpStatusCode.OK,
+            headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+          )
+        }
+        val client =
+          HttpClient(engine) {
+            expectSuccess = true
+            install(ContentNegotiation) { json(ApiJson) }
+          }
+        val repository =
+          LevelSyncRepositoryImpl(
+            path = kotlinx.io.files.Path(directory.toString()),
+            api = LevelSyncApi(client),
+            authRepository = FakeAuthRepository(),
+            singlesDao = singles,
+            melodiesDao = EmptyMelodiesDao,
+            chordsDao = EmptyChordsDao,
+            contextDao = EmptyContextDao,
+            codec = LevelDefinitionCodec(ApiJson),
+            json = ApiJson,
+          )
 
-      val first = repository.sync()
-      val unchanged = repository.sync()
-      singles.levels[0] = singles.levels[0].copy(name = "Edited")
-      val edited = repository.sync()
-      singles.levels.clear()
-      val deleted = repository.sync()
+        val first = repository.sync()
+        val unchanged = repository.sync()
+        singles.levels[0] = singles.levels[0].copy(name = "Edited")
+        val edited = repository.sync()
+        singles.levels.clear()
+        val deleted = repository.sync()
 
-      assertEquals(4, requests.size)
-      assertEquals(1, requests[0].changes.size)
-      assertEquals(
-        "absolute",
-        requests[0].changes.single().definition!!.jsonObject["level_config"]!!
-          .jsonObject["type"]!!.jsonPrimitive.content,
-      )
-      assertTrue(requests[1].changes.isEmpty())
-      assertEquals("Edited", requests[2].changes.single().name)
-      assertTrue(requests[3].changes.single().deleted)
-      assertEquals(1, first.pushed)
-      assertEquals(0, unchanged.pushed)
-      assertEquals(1, edited.pushed)
-      assertEquals(1, deleted.pushed)
-      assertFalse(server.levels.values.single().definition != null)
-    } finally {
-      directory.toFile().deleteRecursively()
+        assertEquals(4, requests.size)
+        assertEquals(1, requests[0].changes.size)
+        assertEquals(
+          "absolute",
+          requests[0]
+            .changes
+            .single()
+            .definition!!
+            .jsonObject["level_config"]!!
+            .jsonObject["type"]!!
+            .jsonPrimitive
+            .content,
+        )
+        assertTrue(requests[1].changes.isEmpty())
+        assertEquals("Edited", requests[2].changes.single().name)
+        assertTrue(requests[3].changes.single().deleted)
+        assertEquals(1, first.pushed)
+        assertEquals(0, unchanged.pushed)
+        assertEquals(1, edited.pushed)
+        assertEquals(1, deleted.pushed)
+        assertFalse(server.levels.values.single().definition != null)
+      } finally {
+        directory.toFile().deleteRecursively()
+      }
     }
-  }
 }
 
 private class FakeSyncServer {
@@ -147,7 +154,8 @@ private class FakeSyncServer {
 
 private fun JsonElement.canonicalized(): JsonElement =
   when (this) {
-    is JsonObject -> JsonObject(keys.sorted().associateWith { key -> getValue(key).canonicalized() })
+    is JsonObject ->
+      JsonObject(keys.sorted().associateWith { key -> getValue(key).canonicalized() })
     is JsonArray -> JsonArray(map { it.canonicalized() })
     else -> this
   }
@@ -186,21 +194,29 @@ private class FakeSinglesDao(val levels: MutableList<SinglesLevelDbEntity>) : Si
 
 private object EmptyMelodiesDao : MelodiesLevelDao {
   override suspend fun getAll() = emptyList<MelodiesLevelDbEntity>()
+
   override suspend fun getById(id: String): MelodiesLevelDbEntity? = null
+
   override suspend fun upsertLevel(level: MelodiesLevelDbEntity) = Unit
+
   override suspend fun deleteById(id: String) = Unit
 }
 
 private object EmptyChordsDao : ChordsLevelDao {
   override suspend fun getAll() = emptyList<ChordsLevelDbEntity>()
+
   override suspend fun getById(id: String): ChordsLevelDbEntity? = null
+
   override suspend fun upsertLevel(level: ChordsLevelDbEntity) = Unit
+
   override suspend fun deleteById(id: String) = Unit
 }
 
 private object EmptyContextDao : ContextDao {
   override suspend fun getById(id: String): ContextDbEntity? = null
+
   override suspend fun getAll() = emptyList<ContextDbEntity>()
+
   override suspend fun upsertContext(context: ContextDbEntity) = Unit
 }
 

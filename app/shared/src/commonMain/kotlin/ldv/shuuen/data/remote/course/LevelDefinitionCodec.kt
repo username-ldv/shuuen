@@ -18,6 +18,7 @@ import ldv.shuuen.core.music.Sustain
 import ldv.shuuen.core.music.generator.ChordFigure
 import ldv.shuuen.core.music.generator.ChordStyle
 import ldv.shuuen.core.music.generator.MelodyStyle
+import ldv.shuuen.data.remote.ApiJsonQualifier
 import ldv.shuuen.features.training.chords.domain.ChordsLevel
 import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.course.domain.PlayableTrainingLevel
@@ -27,7 +28,6 @@ import ldv.shuuen.features.training.domain.ScaleConfig
 import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
 import ldv.shuuen.features.training.melodies.domain.MidiFileSource
 import ldv.shuuen.features.training.single.domain.SinglesLevel
-import ldv.shuuen.data.remote.ApiJsonQualifier
 import org.koin.core.annotation.Named
 
 /**
@@ -35,9 +35,7 @@ import org.koin.core.annotation.Named
  * This avoids persisting Kotlin class names on the backend and leaves definitions directly useful
  * to a future web/statistics client.
  */
-internal class LevelDefinitionCodec(
-  @Named(ApiJsonQualifier) private val json: Json,
-) {
+internal class LevelDefinitionCodec(@Named(ApiJsonQualifier) private val json: Json) {
   private val courseMapper = CourseDefinitionMapper(json)
 
   fun encode(level: SinglesLevel): JsonElement =
@@ -102,31 +100,31 @@ internal class LevelDefinitionCodec(
         null
       }
     val mapped =
-      courseMapper.map(
-        courseId = 1,
-        mode = flow,
-        dto =
-          CourseLevelDto(
-            // Course-level ids are capped more tightly than local ids; this is
-            // only a validation carrier and the real local id is restored below.
-            id = "sync",
-            progressionGroupId = "sync",
-            name = name,
-            source = source.dbValue,
-            definition = definition,
-            sortOrder = 0,
-            isPublic = false,
-            midi = midi,
-            sections = emptyList(),
-          ),
-      ).playable
+      courseMapper
+        .map(
+          courseId = 1,
+          mode = flow,
+          dto =
+            CourseLevelDto(
+              // Course-level ids are capped more tightly than local ids; this is
+              // only a validation carrier and the real local id is restored below.
+              id = "sync",
+              progressionGroupId = "sync",
+              name = name,
+              source = source.dbValue,
+              definition = definition,
+              sortOrder = 0,
+              isPublic = false,
+              midi = midi,
+              sections = emptyList(),
+            ),
+        )
+        .playable
     return when (mapped) {
-      is PlayableTrainingLevel.Singles ->
-        PlayableTrainingLevel.Singles(mapped.level.copy(id = id))
+      is PlayableTrainingLevel.Singles -> PlayableTrainingLevel.Singles(mapped.level.copy(id = id))
       is PlayableTrainingLevel.Melodies ->
         PlayableTrainingLevel.Melodies(mapped.level.copy(id = id))
-      is PlayableTrainingLevel.Chords ->
-        PlayableTrainingLevel.Chords(mapped.level.copy(id = id))
+      is PlayableTrainingLevel.Chords -> PlayableTrainingLevel.Chords(mapped.level.copy(id = id))
     }
   }
 
@@ -246,12 +244,14 @@ internal class LevelDefinitionCodec(
       // Older chromatic levels contain the tonic twice (root and octave).
       // Collapse them to the unique pitch-class representation used by the API.
       pitchStates =
-        pitchStates.distinctBy { it.pitch }.map { state ->
-          PitchStateDto(
-            pitch = state.pitch.name,
-            active = pitchStates.any { it.pitch == state.pitch && it.active },
-          )
-        },
+        pitchStates
+          .distinctBy { it.pitch }
+          .map { state ->
+            PitchStateDto(
+              pitch = state.pitch.name,
+              active = pitchStates.any { it.pitch == state.pitch && it.active },
+            )
+          },
     )
 
   private fun ScaleConfig.RelativeScaleConfig.toDto(includeType: Boolean) =
@@ -259,12 +259,14 @@ internal class LevelDefinitionCodec(
       type = "relative".takeIf { includeType },
       scaleType = scaleType.name,
       degreeStates =
-        degreeStates.distinctBy { it.degree }.map { state ->
-          DegreeStateDto(
-            degree = state.degree.name,
-            active = degreeStates.any { it.degree == state.degree && it.active },
-          )
-        },
+        degreeStates
+          .distinctBy { it.degree }
+          .map { state ->
+            DegreeStateDto(
+              degree = state.degree.name,
+              active = degreeStates.any { it.degree == state.degree && it.active },
+            )
+          },
     )
 
   private fun Note.toDto() = NoteDto(midiIndex)

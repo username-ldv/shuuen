@@ -1,9 +1,9 @@
 package ldv.shuuen.features.training.level_end.domain
 
 /**
- * Longest run of consecutive positions (chronological, 0-based) that are not in
- * [missedPositions]. Used for the best-streak stat: a position is a Singles question or a
- * melody note, in the order they were answered.
+ * Longest run of consecutive positions (chronological, 0-based) that are not in [missedPositions].
+ * Used for the best-streak stat: a position is a Singles question or a melody note, in the order
+ * they were answered.
  */
 fun longestCleanRun(totalPositions: Int, missedPositions: Set<Int>): Int {
   var best = 0

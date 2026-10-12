@@ -21,18 +21,17 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import kotlin.math.roundToInt
 import ldv.shuuen.core.ui.components.FlatSection
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.SoftControl
+import kotlin.math.roundToInt
 
 /** How far a level's tune inconsistency can go, in ± cents. */
 val TuneInconsistencyRange = 0..70
 
 /**
- * Level-creator section for the tune inconsistency setting: a slider over
- * [TuneInconsistencyRange] with an exact-value box. [label] carries the screen's own section
- * numbering.
+ * Level-creator section for the tune inconsistency setting: a slider over [TuneInconsistencyRange]
+ * with an exact-value box. [label] carries the screen's own section numbering.
  */
 @Composable
 fun TuneInconsistencySection(
@@ -71,8 +70,7 @@ fun TuneInconsistencySlider(
       value = cents.toFloat(),
       onValueChange = { onChange(it.roundToInt()) },
       onValueChangeFinished = onChangeFinished,
-      valueRange =
-        TuneInconsistencyRange.first.toFloat()..TuneInconsistencyRange.last.toFloat(),
+      valueRange = TuneInconsistencyRange.first.toFloat()..TuneInconsistencyRange.last.toFloat(),
       colors =
         SliderDefaults.colors(
           thumbColor = ShuuenUi.Text,

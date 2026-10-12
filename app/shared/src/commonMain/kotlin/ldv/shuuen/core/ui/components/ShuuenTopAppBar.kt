@@ -25,7 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 enum class ShuuenTopAppBarType(val height: Dp) {
-  Simple(50.dp), Labeled(TopAppBarDefaults.TopAppBarExpandedHeight)
+  Simple(50.dp),
+  Labeled(TopAppBarDefaults.TopAppBarExpandedHeight),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,7 +42,8 @@ fun ShuuenTopAppBar(
   statusContent: @Composable () -> Unit = {},
   /** Extra action buttons, sitting between the status content and the trailing icon. */
   actions: @Composable RowScope.() -> Unit = {},
-  type: ldv.shuuen.core.ui.components.ShuuenTopAppBarType = ldv.shuuen.core.ui.components.ShuuenTopAppBarType.Simple,
+  type: ldv.shuuen.core.ui.components.ShuuenTopAppBarType =
+    ldv.shuuen.core.ui.components.ShuuenTopAppBarType.Simple,
   /** Replaces the standard title/subtitle column when the app bar needs interactive title UI. */
   titleContent: (@Composable () -> Unit)? = null,
 ) {
@@ -63,12 +65,13 @@ fun ShuuenTopAppBar(
               Text(
                 text = title,
                 color = ldv.shuuen.core.ui.components.ShuuenUi.Text,
-                style = MaterialTheme.typography.displayMedium.copy(
-                  fontSize = titleSize,
-                  lineHeight = if (compact) 31.sp else 38.sp,
-                  letterSpacing = ldv.shuuen.core.ui.components.ShuuenUi.titlesSpacing,
-                  fontWeight = FontWeight.SemiBold,
-                ),
+                style =
+                  MaterialTheme.typography.displayMedium.copy(
+                    fontSize = titleSize,
+                    lineHeight = if (compact) 31.sp else 38.sp,
+                    letterSpacing = ldv.shuuen.core.ui.components.ShuuenUi.titlesSpacing,
+                    fontWeight = FontWeight.SemiBold,
+                  ),
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -78,7 +81,9 @@ fun ShuuenTopAppBar(
               Text(
                 text = subtitle,
                 color = ldv.shuuen.core.ui.components.ShuuenUi.Muted,
-                style = if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
+                style =
+                  if (compact) MaterialTheme.typography.bodyMedium
+                  else MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -108,13 +113,14 @@ fun ShuuenTopAppBar(
           )
         }
       },
-      colors = TopAppBarDefaults.topAppBarColors(
-        containerColor = Color.Transparent,
-        scrolledContainerColor = Color.Transparent,
-        navigationIconContentColor = ldv.shuuen.core.ui.components.ShuuenUi.Text,
-        titleContentColor = ldv.shuuen.core.ui.components.ShuuenUi.Text,
-        actionIconContentColor = ldv.shuuen.core.ui.components.ShuuenUi.Text,
-      ),
+      colors =
+        TopAppBarDefaults.topAppBarColors(
+          containerColor = Color.Transparent,
+          scrolledContainerColor = Color.Transparent,
+          navigationIconContentColor = ldv.shuuen.core.ui.components.ShuuenUi.Text,
+          titleContentColor = ldv.shuuen.core.ui.components.ShuuenUi.Text,
+          actionIconContentColor = ldv.shuuen.core.ui.components.ShuuenUi.Text,
+        ),
     )
   }
 }

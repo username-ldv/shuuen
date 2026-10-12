@@ -1,17 +1,17 @@
 package ldv.shuuen.core.music.generator
 
-import kotlin.random.Random
 import ldv.shuuen.core.music.Note
+import kotlin.random.Random
 
 /**
  * Generates chords shaped by a [ChordStyle]: each question picks one of the style's figures by
  * weight — a [ChordFigure.Stacked] shape built on a random bass position of the allowed-note
  * ladder, or a [ChordFigure.FreePick] delegated to the uniform [NaiveRandomChordGenerator].
  *
- * Only figures the level can actually produce take part in the draw: a stacked shape must fit
- * the chord-size range and have room on the ladder. When no figure is feasible (e.g. a triads
- * preset on a two-note chord-size level), generation falls back to the free pick, mirroring the
- * naive generator's own size fallback.
+ * Only figures the level can actually produce take part in the draw: a stacked shape must fit the
+ * chord-size range and have room on the ladder. When no figure is feasible (e.g. a triads preset on
+ * a two-note chord-size level), generation falls back to the free pick, mirroring the naive
+ * generator's own size fallback.
  */
 class WeightedChordGenerator(
   allowedNotes: List<Note>,
@@ -34,7 +34,8 @@ class WeightedChordGenerator(
 
   override fun next(): List<Note> =
     when (val figure = pickFigure()) {
-      null, is ChordFigure.FreePick -> freePick.next()
+      null,
+      is ChordFigure.FreePick -> freePick.next()
       is ChordFigure.Stacked -> build(figure.ladderSteps)
     }
 
@@ -52,8 +53,7 @@ class WeightedChordGenerator(
     when (figure) {
       is ChordFigure.FreePick -> true
       is ChordFigure.Stacked ->
-        figure.ladderSteps.size in minSize..maxSize &&
-          figure.ladderSteps.last() <= ladder.lastIndex
+        figure.ladderSteps.size in minSize..maxSize && figure.ladderSteps.last() <= ladder.lastIndex
     }
 
   private fun build(ladderSteps: List<Int>): List<Note> {

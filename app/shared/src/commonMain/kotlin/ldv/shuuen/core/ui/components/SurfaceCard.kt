@@ -14,8 +14,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 /**
- * Borderless card with a subtle fill. Reserved for genuinely tappable items
- * (menu rows, level cards); static content should use flat sections instead.
+ * Borderless card with a subtle fill. Reserved for genuinely tappable items (menu rows, level
+ * cards); static content should use flat sections instead.
  */
 @Composable
 fun SurfaceCard(

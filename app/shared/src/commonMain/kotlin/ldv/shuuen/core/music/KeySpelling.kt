@@ -4,8 +4,8 @@ import kotlin.random.Random
 
 /**
  * A single-accidental spelling of a pitch: one letter (C..B) with at most one accidental. Kept
- * separate from any display string so the rendered labels can become user-customizable later
- * (7 naturals + 7 sharps + 7 flats = 21 atoms). Use [defaultLabel] for the built-in rendering.
+ * separate from any display string so the rendered labels can become user-customizable later (7
+ * naturals + 7 sharps + 7 flats = 21 atoms). Use [defaultLabel] for the built-in rendering.
  */
 enum class Accidental(val semitoneShift: Int) {
   Flat(-1),
@@ -30,12 +30,14 @@ private val LetterNaturalSemitone = intArrayOf(0, 2, 4, 5, 7, 9, 11)
 
 /**
  * Letter steps from the root letter for chromatic offsets 0..11, following the relative degree
- * labels 1 ♭2 2 ♭3 3 4 ♯4 5 ♭6 6 ♭7 7: ♯4 borrows the 4th's letter (raised), 5 takes the 5th's,
- * and so on. Uniform across major, minor, chromatic and custom — only the root spelling differs.
+ * labels 1 ♭2 2 ♭3 3 4 ♯4 5 ♭6 6 ♭7 7: ♯4 borrows the 4th's letter (raised), 5 takes the 5th's, and
+ * so on. Uniform across major, minor, chromatic and custom — only the root spelling differs.
  */
 private val LetterStepByOffset = intArrayOf(0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6)
 
-/** Letter of the root when the key is spelled with sharps / flats, indexed by root pitch ordinal. */
+/**
+ * Letter of the root when the key is spelled with sharps / flats, indexed by root pitch ordinal.
+ */
 private val SharpRootLetter = intArrayOf(0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6)
 private val FlatRootLetter = intArrayOf(0, 1, 1, 2, 2, 3, 4, 4, 5, 5, 6, 0)
 
@@ -61,7 +63,8 @@ fun chromaticSpellingByOrdinal(
 ): List<SpelledPitch> {
   val root = rootOrdinal.mod(12)
   val rootLetter =
-    if (accidentalType == ScaleAccidentalType.Sharps) SharpRootLetter[root] else FlatRootLetter[root]
+    if (accidentalType == ScaleAccidentalType.Sharps) SharpRootLetter[root]
+    else FlatRootLetter[root]
 
   val byOrdinal = arrayOfNulls<SpelledPitch>(12)
   for (offset in 0 until 12) {
@@ -84,7 +87,10 @@ fun chromaticSpellingByOrdinal(
   return byOrdinal.map { it!! }
 }
 
-/** Simplest single-accidental spelling of a pitch class: natural where possible, else per orientation. */
+/**
+ * Simplest single-accidental spelling of a pitch class: natural where possible, else per
+ * orientation.
+ */
 private fun simplestSpelling(ordinal: Int, accidentalType: ScaleAccidentalType): SpelledPitch {
   val naturalLetter = LetterNaturalSemitone.indexOf(ordinal)
   if (naturalLetter >= 0) return SpelledPitch(naturalLetter, Accidental.Natural)
@@ -99,9 +105,9 @@ private fun simplestSpelling(ordinal: Int, accidentalType: ScaleAccidentalType):
  * Chooses the sharp/flat orientation for the key rooted at [rootOrdinal]. A key that is clearly
  * fewer accidentals one way wins automatically (G major → sharps, F major → flats). The three
  * enharmonic pitch classes (F♯/G♭, C♯/D♭, B/C♭) have no clear winner and pick randomly; by default
- * the 7-accidental side is excluded, so C♯/D♭ and B/C♭ resolve to their 5-accidental spelling unless
- * [allowSevenAccidentals] is set. Minor keys count via their relative major; chromatic/custom are
- * counted as a major key on the root.
+ * the 7-accidental side is excluded, so C♯/D♭ and B/C♭ resolve to their 5-accidental spelling
+ * unless [allowSevenAccidentals] is set. Minor keys count via their relative major;
+ * chromatic/custom are counted as a major key on the root.
  */
 fun decideAccidentalType(
   rootOrdinal: Int,
@@ -122,7 +128,8 @@ fun decideAccidentalType(
 
   return when {
     sharps == 0 -> ScaleAccidentalType.Sharps // C / natural key: spell chromatic notes as sharps
-    sharpOk && flatOk -> if (random.nextBoolean()) ScaleAccidentalType.Sharps else ScaleAccidentalType.Flats
+    sharpOk && flatOk ->
+      if (random.nextBoolean()) ScaleAccidentalType.Sharps else ScaleAccidentalType.Flats
     flatOk -> ScaleAccidentalType.Flats
     else -> ScaleAccidentalType.Sharps
   }

@@ -2,8 +2,8 @@ package ldv.shuuen.features.training.domain
 
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.PlatformFileSerializer
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import ldv.shuuen.core.music.Degree
 import ldv.shuuen.core.music.NoteRange
 import ldv.shuuen.core.music.Pitch
@@ -48,10 +48,9 @@ sealed interface LevelConfig {
     val rotateEveryQuestions: Int?
 
     /**
-     * Weighted chord figures shaping the generated chords. Lives inside the config (stored as
-     * one JSON column by the Room converter) so it survives the entity round-trip without a
-     * schema change. The default matches levels saved before styles existed: fully random
-     * note stacks.
+     * Weighted chord figures shaping the generated chords. Lives inside the config (stored as one
+     * JSON column by the Room converter) so it survives the entity round-trip without a schema
+     * change. The default matches levels saved before styles existed: fully random note stacks.
      */
     val chordStyle: ChordStyle
 
@@ -76,7 +75,10 @@ sealed interface LevelConfig {
     @Serializable
     data class Random(
       val scaleConfig: ScaleConfig,
-      /** null means an unlimited session. Ignored (always unlimited) when [notesPerSequence] is null. */
+      /**
+       * null means an unlimited session. Ignored (always unlimited) when [notesPerSequence] is
+       * null.
+       */
       val questionsNumber: Int?,
       /** Notes per question sequence; null means one endless, continuously playing stream. */
       val notesPerSequence: Int?,
@@ -88,8 +90,8 @@ sealed interface LevelConfig {
        */
       val rotateEveryQuestions: Int? = null,
       /**
-       * Rhythm figures and note-picker weights shaping the generated melodies. The default
-       * matches levels saved before styles existed: uniformly random quarter notes.
+       * Rhythm figures and note-picker weights shaping the generated melodies. The default matches
+       * levels saved before styles existed: uniformly random quarter notes.
        */
       val melodyStyle: MelodyStyle = MelodyStyles.Default,
       /** Each note plays randomly out of tune by up to ± this many cents; 0 is off. */
@@ -136,12 +138,12 @@ sealed interface LevelConfig {
 
       /** Existing local setup/edit code intentionally remains local-file-only. */
       val file: PlatformFile
-        get() = (midiSource as? MidiFileSource.Local)?.platformFile
-          ?: error("A backend MIDI level has no local PlatformFile.")
+        get() =
+          (midiSource as? MidiFileSource.Local)?.platformFile
+            ?: error("A backend MIDI level has no local PlatformFile.")
     }
   }
 }
-
 
 @Serializable
 sealed interface ScaleConfig {
@@ -152,18 +154,19 @@ sealed interface ScaleConfig {
     @Serializable
     data class ScaleDegreeState(val degree: Degree, val active: Boolean) : ScaleItemState
 
-    @Serializable
-    data class ScalePitchState(val pitch: Pitch, val active: Boolean) : ScaleItemState
+    @Serializable data class ScalePitchState(val pitch: Pitch, val active: Boolean) : ScaleItemState
   }
 
   @Serializable
   data class AbsoluteScaleConfig(
-    val root: Pitch, override val scaleType: ScaleType, val pitchStates: List<ScaleItemState.ScalePitchState>
+    val root: Pitch,
+    override val scaleType: ScaleType,
+    val pitchStates: List<ScaleItemState.ScalePitchState>,
   ) : ScaleConfig
 
   @Serializable
   data class RelativeScaleConfig(
-    override val scaleType: ScaleType, val degreeStates: List<ScaleItemState.ScaleDegreeState>
+    override val scaleType: ScaleType,
+    val degreeStates: List<ScaleItemState.ScaleDegreeState>,
   ) : ScaleConfig
 }
-

@@ -11,13 +11,12 @@ import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.Scale
 import ldv.shuuen.core.ui.theme.ShuuenTheme
 
-
 @Composable
 fun <T> BoxedItemRow(
   items: Map<T, BoxedListItemState>,
   modifier: Modifier = Modifier,
   itemSize: Dp = 50.dp,
-  onClick: (T) -> Unit = {}
+  onClick: (T) -> Unit = {},
 ) {
   LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = modifier) {
     items.forEach { pitch ->
@@ -26,7 +25,7 @@ fun <T> BoxedItemRow(
           label = pitch.value.label,
           active = pitch.value.active,
           onClicked = { onClick(pitch.key) },
-          itemSize = itemSize
+          itemSize = itemSize,
         )
       }
     }
@@ -37,10 +36,18 @@ fun <T> BoxedItemRow(
 @Composable
 fun BoxedItemRowPreview() {
   ShuuenTheme {
-    BoxedItemRow(items = Scale.major(Pitch.C).pitches.map {
-      it to BoxedListItemState(
-        true, it.toString()
-      )
-    }.toMap())
+    BoxedItemRow(
+      items =
+        Scale.major(Pitch.C)
+          .pitches
+          .map {
+            it to
+              BoxedListItemState(
+                true,
+                it.toString(),
+              )
+          }
+          .toMap()
+    )
   }
 }

@@ -14,14 +14,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ldv.shuuen.core.settings.DefaultLevelStatsWindow
 import ldv.shuuen.core.settings.SettingsRepository
+import ldv.shuuen.core.settings.coerceLevelStatsWindow
+import ldv.shuuen.features.training.chords.domain.ChordsLocalLevelRepository
 import ldv.shuuen.features.training.common.LevelAccuracyStats
 import ldv.shuuen.features.training.common.TrainingFlow
-import ldv.shuuen.core.settings.coerceLevelStatsWindow
-import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
-import ldv.shuuen.features.training.chords.domain.ChordsLocalLevelRepository
 import ldv.shuuen.features.training.course.domain.CourseRepository
 import ldv.shuuen.features.training.course.domain.PlayableTrainingLevel
 import ldv.shuuen.features.training.course.presentation.CourseLevelBrowser
+import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
 
 class ChordsLevelSelectScreenViewModel(
   private val levelRepository: ChordsLocalLevelRepository,
@@ -54,14 +54,14 @@ class ChordsLevelSelectScreenViewModel(
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DefaultLevelStatsWindow)
 
   val attemptedLevelIds =
-    trainingSessionRepository.observeAttemptedLevelIds(TrainingFlow.Chords)
+    trainingSessionRepository
+      .observeAttemptedLevelIds(TrainingFlow.Chords)
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
   @OptIn(ExperimentalCoroutinesApi::class)
-  fun levelStats(levelId: String): Flow<LevelAccuracyStats> =
-    statsWindow.flatMapLatest { window ->
-      trainingSessionRepository.observeLevelAccuracyStats(TrainingFlow.Chords, levelId, window)
-    }
+  fun levelStats(levelId: String): Flow<LevelAccuracyStats> = statsWindow.flatMapLatest { window ->
+    trainingSessionRepository.observeLevelAccuracyStats(TrainingFlow.Chords, levelId, window)
+  }
 
   fun deleteLevel(levelId: String) {
     viewModelScope.launch {
@@ -87,11 +87,17 @@ class ChordsLevelSelectScreenViewModel(
   }
 
   fun refreshCourses() = courseBrowser.refreshCourses()
+
   fun selectMyLevels() = courseBrowser.selectMyLevels()
+
   fun selectCourse(courseId: Long) = courseBrowser.selectCourse(courseId)
+
   fun selectGroup(groupId: String) = courseBrowser.selectGroup(groupId)
+
   fun loadNextPage() = courseBrowser.loadNextPage()
+
   suspend fun firstUnattemptedCourseLevel(attemptedLevelIds: Set<String>): String? =
-      courseBrowser.firstUnattemptedReference(attemptedLevelIds)
+    courseBrowser.firstUnattemptedReference(attemptedLevelIds)
+
   fun retryCourseLevels() = courseBrowser.retryLevels()
 }

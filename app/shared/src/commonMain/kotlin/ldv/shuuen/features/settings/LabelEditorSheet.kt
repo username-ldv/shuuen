@@ -110,11 +110,8 @@ private fun LabelEditorContent(
   }
 
   Column(
-    modifier = Modifier
-      .fillMaxWidth()
-      .imePadding()
-      .padding(horizontal = 20.dp)
-      .padding(bottom = 12.dp),
+    modifier =
+      Modifier.fillMaxWidth().imePadding().padding(horizontal = 20.dp).padding(bottom = 12.dp),
     verticalArrangement = Arrangement.spacedBy(14.dp),
   ) {
     Row(
@@ -131,10 +128,11 @@ private fun LabelEditorContent(
       Text(
         text = if (editor == LabelEditor.Notes) "NOTE NAMES" else "DEGREE NAMES",
         color = ShuuenUi.Text,
-        style = MaterialTheme.typography.titleMedium.copy(
-          fontWeight = FontWeight.SemiBold,
-          letterSpacing = ShuuenUi.titlesSpacing,
-        ),
+        style =
+          MaterialTheme.typography.titleMedium.copy(
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = ShuuenUi.titlesSpacing,
+          ),
         modifier = Modifier.weight(1f),
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
@@ -144,11 +142,11 @@ private fun LabelEditorContent(
         Icons.Rounded.Close,
         contentDescription = "Close",
         tint = ShuuenUi.Muted,
-        modifier = Modifier
-          .size(28.dp)
-          .clip(ShuuenUi.PillShape)
-          .clickable(onClick = onDismiss)
-          .padding(4.dp),
+        modifier =
+          Modifier.size(28.dp)
+            .clip(ShuuenUi.PillShape)
+            .clickable(onClick = onDismiss)
+            .padding(4.dp),
       )
     }
 
@@ -166,18 +164,33 @@ private fun LabelEditorContent(
     ) {
       when (editor) {
         LabelEditor.Notes -> {
-          labelSection("NATURAL", 0, values, onLabelChange = { index, value ->
-            values = values.withValue(index, value)
-            onLabelChange(index, value)
-          })
-          labelSection("SHARP", 7, values, onLabelChange = { index, value ->
-            values = values.withValue(index, value)
-            onLabelChange(index, value)
-          })
-          labelSection("FLAT", 14, values, onLabelChange = { index, value ->
-            values = values.withValue(index, value)
-            onLabelChange(index, value)
-          })
+          labelSection(
+            "NATURAL",
+            0,
+            values,
+            onLabelChange = { index, value ->
+              values = values.withValue(index, value)
+              onLabelChange(index, value)
+            },
+          )
+          labelSection(
+            "SHARP",
+            7,
+            values,
+            onLabelChange = { index, value ->
+              values = values.withValue(index, value)
+              onLabelChange(index, value)
+            },
+          )
+          labelSection(
+            "FLAT",
+            14,
+            values,
+            onLabelChange = { index, value ->
+              values = values.withValue(index, value)
+              onLabelChange(index, value)
+            },
+          )
         }
 
         LabelEditor.Degrees -> {
@@ -242,11 +255,11 @@ private fun PresetChip(
   onClick: () -> Unit,
 ) {
   Row(
-    modifier = Modifier
-      .clip(ShuuenUi.PillShape)
-      .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
-      .clickable(onClick = onClick)
-      .padding(horizontal = 14.dp, vertical = 8.dp),
+    modifier =
+      Modifier.clip(ShuuenUi.PillShape)
+        .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
+        .clickable(onClick = onClick)
+        .padding(horizontal = 14.dp, vertical = 8.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Text(
@@ -261,11 +274,11 @@ private fun PresetChip(
 @Composable
 private fun SaveCustomButton(onClick: () -> Unit) {
   Row(
-    modifier = Modifier
-      .clip(ShuuenUi.PillShape)
-      .background(ShuuenUi.Ink.copy(alpha = 0.06f))
-      .clickable(onClick = onClick)
-      .padding(horizontal = 10.dp, vertical = 7.dp),
+    modifier =
+      Modifier.clip(ShuuenUi.PillShape)
+        .background(ShuuenUi.Ink.copy(alpha = 0.06f))
+        .clickable(onClick = onClick)
+        .padding(horizontal = 10.dp, vertical = 7.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(6.dp),
   ) {
@@ -316,11 +329,11 @@ private fun LabelEditorRow(
   onValueChange: (String) -> Unit,
 ) {
   Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .clip(ShuuenUi.ControlShape)
-      .background(ShuuenUi.Ink.copy(alpha = 0.05f))
-      .padding(horizontal = 12.dp, vertical = 11.dp),
+    modifier =
+      Modifier.fillMaxWidth()
+        .clip(ShuuenUi.ControlShape)
+        .background(ShuuenUi.Ink.copy(alpha = 0.05f))
+        .padding(horizontal = 12.dp, vertical = 11.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(10.dp),
   ) {
@@ -356,12 +369,15 @@ private fun LabelEditorRow(
 
 @Composable
 private fun LabelEditorDragHandle() {
-  Box(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), contentAlignment = Alignment.Center) {
+  Box(
+    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+    contentAlignment = Alignment.Center,
+  ) {
     Box(
-      modifier = Modifier
-        .size(width = 36.dp, height = 4.dp)
-        .clip(RoundedCornerShape(50))
-        .background(ShuuenUi.HairlineStrong),
+      modifier =
+        Modifier.size(width = 36.dp, height = 4.dp)
+          .clip(RoundedCornerShape(50))
+          .background(ShuuenUi.HairlineStrong)
     )
   }
 }
@@ -373,4 +389,6 @@ private fun editableMusicLabels(
   List(defaultNames.size) { index -> customNames.getOrNull(index) ?: defaultNames[index] }
 
 private fun List<String>.withValue(index: Int, value: String): List<String> =
-  mapIndexed { itemIndex, itemValue -> if (itemIndex == index) value else itemValue }
+  mapIndexed { itemIndex, itemValue ->
+    if (itemIndex == index) value else itemValue
+  }

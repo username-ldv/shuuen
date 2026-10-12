@@ -3,9 +3,8 @@ package ldv.shuuen.core.settings
 import kotlinx.serialization.Serializable
 
 /**
- * Visual style of the app. Every style ships a dark and a light variant;
- * [ThemeSettings.appearance] decides which of the two is active.
- * Future non-monochrome themes are added as new entries here.
+ * Visual style of the app. Every style ships a dark and a light variant; [ThemeSettings.appearance]
+ * decides which of the two is active. Future non-monochrome themes are added as new entries here.
  */
 @Serializable
 enum class ThemeStyle {

@@ -3,7 +3,6 @@ package ldv.shuuen.features.main
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
-import kotlin.math.roundToInt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,15 +13,16 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.core.sync.DataSyncResult
 import ldv.shuuen.core.sync.DataSyncStatus
 import ldv.shuuen.core.sync.LevelSyncRepository
 import ldv.shuuen.core.sync.TrainingSessionSyncRepository
+import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.course.domain.CourseRepository
 import ldv.shuuen.features.training.course.domain.LevelReference
 import ldv.shuuen.features.training.level_end.domain.TrainingSession
 import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
+import kotlin.math.roundToInt
 
 data class MainMenuState(
   val continueCard: ContinueCardState? = null,
@@ -45,10 +45,11 @@ data class ContinueCourseProgress(
   val groups: List<ContinueGroupProgress>,
 ) {
   val total: CompletionProgress
-    get() = CompletionProgress(
-      completed = groups.sumOf { it.progress.completed },
-      total = groups.sumOf { it.progress.total },
-    )
+    get() =
+      CompletionProgress(
+        completed = groups.sumOf { it.progress.completed },
+        total = groups.sumOf { it.progress.total },
+      )
 }
 
 data class ContinueGroupProgress(
@@ -89,19 +90,19 @@ class MainMenuViewModel(
   @OptIn(ExperimentalCoroutinesApi::class)
   private fun observeContinueTarget() {
     viewModelScope.launch {
-      trainingSessionRepository.observeLatestSession()
+      trainingSessionRepository
+        .observeLatestSession()
         .flatMapLatest { latest ->
           if (latest == null) {
             flowOf(ContinueSnapshot())
           } else {
-            trainingSessionRepository.observeCompletedLevelIds(latest.flow)
-              .map { completed ->
-                ContinueSnapshot(
-                  latest = latest,
-                  completedLevelIds =
-                    if (latest.finishedEarly) completed else completed + latest.levelId,
-                )
-              }
+            trainingSessionRepository.observeCompletedLevelIds(latest.flow).map { completed ->
+              ContinueSnapshot(
+                latest = latest,
+                completedLevelIds =
+                  if (latest.finishedEarly) completed else completed + latest.levelId,
+              )
+            }
           }
         }
         .collectLatest { snapshot ->
@@ -152,10 +153,7 @@ class MainMenuViewModel(
       } catch (error: Throwable) {
         Napier.w(error) { "Couldn't sync data" }
         _state.update {
-          it.copy(
-            dataSyncStatus =
-              DataSyncStatus.Failed(error.message ?: "Couldn't sync data."),
-          )
+          it.copy(dataSyncStatus = DataSyncStatus.Failed(error.message ?: "Couldn't sync data."))
         }
       }
     }
@@ -172,28 +170,36 @@ class MainMenuViewModel(
     val latestItem = courseRepository.getLevel(reference)
 
     val completedRemoteIds =
-      completedLevelIds.mapNotNull { encoded ->
-        val completed = runCatching { LevelReference.decode(encoded) }.getOrNull()
-          as? LevelReference.Remote
-        completed?.takeIf {
-          it.courseId == reference.courseId && it.mode == reference.mode
-        }?.levelId
-      }.distinct()
+      completedLevelIds
+        .mapNotNull { encoded ->
+          val completed =
+            runCatching { LevelReference.decode(encoded) }.getOrNull() as? LevelReference.Remote
+          completed
+            ?.takeIf {
+              it.courseId == reference.courseId && it.mode == reference.mode
+            }
+            ?.levelId
+        }
+        .distinct()
 
     val completedItems =
-      completedRemoteIds.chunked(CourseQueryLimit).flatMap { ids ->
-        courseRepository.queryLevels(reference.courseId, reference.mode, ids).levels
-      }.distinctBy { it.reference.encoded }
+      completedRemoteIds
+        .chunked(CourseQueryLimit)
+        .flatMap { ids ->
+          courseRepository.queryLevels(reference.courseId, reference.mode, ids).levels
+        }
+        .distinctBy { it.reference.encoded }
     val completedByGroup = completedItems.groupingBy { it.progressionGroupId }.eachCount()
     val groups =
       mode.groups.sortedWith(compareBy({ it.sortOrder }, { it.name }, { it.id })).map { group ->
         ContinueGroupProgress(
           id = group.id,
           name = group.name,
-          progress = CompletionProgress(
-            completed = (completedByGroup[group.id] ?: 0).toLong().coerceAtMost(group.levelCount),
-            total = group.levelCount,
-          ),
+          progress =
+            CompletionProgress(
+              completed = (completedByGroup[group.id] ?: 0).toLong().coerceAtMost(group.levelCount),
+              total = group.levelCount,
+            ),
         )
       }
     val nextReference =
@@ -201,15 +207,18 @@ class MainMenuViewModel(
         LevelReference.Remote(reference.courseId, reference.mode, nextLevelId).encoded
       }
 
-    return latest.toContinueCard(isCourseLevel = true).copy(
-      isLoadingCourse = false,
-      course = ContinueCourseProgress(
-        name = course.name,
-        currentGroup = groups.firstOrNull { it.id == latestItem.progressionGroupId },
-        groups = groups,
-      ),
-      nextLevelReference = nextReference,
-    )
+    return latest
+      .toContinueCard(isCourseLevel = true)
+      .copy(
+        isLoadingCourse = false,
+        course =
+          ContinueCourseProgress(
+            name = course.name,
+            currentGroup = groups.firstOrNull { it.id == latestItem.progressionGroupId },
+            groups = groups,
+          ),
+        nextLevelReference = nextReference,
+      )
   }
 
   private fun TrainingSession.toContinueCard(isCourseLevel: Boolean) =

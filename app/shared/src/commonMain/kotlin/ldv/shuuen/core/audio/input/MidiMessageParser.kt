@@ -5,16 +5,20 @@ package ldv.shuuen.core.audio.input
  * status persists across [feed] calls, so interleaving streams from different sources through one
  * parser would corrupt it.
  *
- * Only note messages become [MidiKeyboardEvent]s; everything else (controllers, pitch bend,
- * SysEx, real-time ticks) is consumed and dropped. A note-on with velocity 0 is a note-off, per
- * the MIDI spec.
+ * Only note messages become [MidiKeyboardEvent]s; everything else (controllers, pitch bend, SysEx,
+ * real-time ticks) is consumed and dropped. A note-on with velocity 0 is a note-off, per the MIDI
+ * spec.
  */
 class MidiMessageParser {
   private var status = 0
   private var firstDataByte = -1
   private var inSysEx = false
 
-  fun feed(bytes: ByteArray, offset: Int = 0, count: Int = bytes.size - offset): List<MidiKeyboardEvent> {
+  fun feed(
+    bytes: ByteArray,
+    offset: Int = 0,
+    count: Int = bytes.size - offset,
+  ): List<MidiKeyboardEvent> {
     var events: MutableList<MidiKeyboardEvent>? = null
     for (i in offset until offset + count) {
       val byte = bytes[i].toInt() and 0xFF

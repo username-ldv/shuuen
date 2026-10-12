@@ -1,14 +1,9 @@
 package ldv.shuuen.features.training.melodies.play
 
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.cancel
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -21,10 +16,11 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import ldv.shuuen.core.audio.engine.LoadedMelody
+import ldv.shuuen.core.audio.engine.MelodyNote
 import ldv.shuuen.core.audio.engine.MidiEngine
 import ldv.shuuen.core.audio.engine.MidiEngineStatus
 import ldv.shuuen.core.audio.engine.MidiFilePlaybackOptions
@@ -34,7 +30,7 @@ import ldv.shuuen.core.audio.input.MidiKeyboardInput
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.audio.midi.PresetCutoffScope
-import kotlin.test.assertFalse
+import ldv.shuuen.core.music.Chord
 import ldv.shuuen.core.music.ContextDuration
 import ldv.shuuen.core.music.ContextSource
 import ldv.shuuen.core.music.Degree
@@ -43,41 +39,45 @@ import ldv.shuuen.core.music.DegreeContextNode
 import ldv.shuuen.core.music.DegreeDirection
 import ldv.shuuen.core.music.DegreeWithOctave
 import ldv.shuuen.core.music.DirectedDegree
-import ldv.shuuen.core.music.RelativeMelody
-import ldv.shuuen.core.music.ScaleAccidentalType
-import ldv.shuuen.core.music.SetupMelody
-import ldv.shuuen.core.music.SetupMelodyRepeat
-import ldv.shuuen.core.music.Sustain
-import ldv.shuuen.core.settings.MidiLevelOptions
-import ldv.shuuen.features.training.melodies.domain.MidiKey
-import ldv.shuuen.core.music.Chord
-import ldv.shuuen.core.audio.engine.MelodyNote
+import ldv.shuuen.core.music.MidiTransposition
+import ldv.shuuen.core.music.MidiTranspositionMode
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.NoteRange
 import ldv.shuuen.core.music.Pitch
+import ldv.shuuen.core.music.RelativeMelody
+import ldv.shuuen.core.music.ScaleAccidentalType
 import ldv.shuuen.core.music.ScaleType
+import ldv.shuuen.core.music.SetupMelody
+import ldv.shuuen.core.music.SetupMelodyRepeat
+import ldv.shuuen.core.music.Sustain
 import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.core.settings.AppSettings
 import ldv.shuuen.core.settings.InputMethod
+import ldv.shuuen.core.settings.MidiLevelOptions
 import ldv.shuuen.core.settings.PresetShuffleMode
 import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.core.settings.ThemeSettings
+import ldv.shuuen.features.training.chords.domain.ChordsLevel
 import ldv.shuuen.features.training.common.LevelAccuracyStats
 import ldv.shuuen.features.training.common.TrainingFlow
+import ldv.shuuen.features.training.course.domain.TrainingLevelResolver
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.LevelSource
 import ldv.shuuen.features.training.domain.ScaleConfig
 import ldv.shuuen.features.training.domain.ScaleConfig.ScaleItemState.ScalePitchState
 import ldv.shuuen.features.training.level_end.domain.TrainingSession
 import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
-import ldv.shuuen.features.training.chords.domain.ChordsLevel
-import ldv.shuuen.features.training.course.domain.TrainingLevelResolver
 import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
 import ldv.shuuen.features.training.melodies.domain.MidiContentResolver
 import ldv.shuuen.features.training.melodies.domain.MidiFileSource
-import ldv.shuuen.core.music.MidiTransposition
-import ldv.shuuen.core.music.MidiTranspositionMode
+import ldv.shuuen.features.training.melodies.domain.MidiKey
 import ldv.shuuen.features.training.single.domain.SinglesLevel
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MelodiesPlayScreenViewModelTest {
@@ -94,28 +94,29 @@ class MelodiesPlayScreenViewModelTest {
   }
 
   @Test
-  fun rewindingFiniteSequencePlaysFromFourNotesBeforeTheCursor() = runTest(dispatcher) {
-    val engine = FakeMidiEngine()
-    val viewModel =
-      MelodiesPlayScreenViewModel(
-        levelId = TestLevelId,
-        levelResolver = FakeTrainingLevelResolver(finiteRandomLevel(notesPerSequence = 6)),
-        midiEngine = engine,
-        player = FakeMidiFilePlayer(),
-        midiContentResolver = FakeMidiContentResolver(),
-        settingsRepository = FakeSettingsRepository(),
-        trainingSessionRepository = FakeTrainingSessionRepository(),
-        midiKeyboardInput = FakeMidiKeyboardInput(),
-      )
-    advanceUntilIdle()
-    assertEquals(6, engine.playedNotes.size)
+  fun rewindingFiniteSequencePlaysFromFourNotesBeforeTheCursor() =
+    runTest(dispatcher) {
+      val engine = FakeMidiEngine()
+      val viewModel =
+        MelodiesPlayScreenViewModel(
+          levelId = TestLevelId,
+          levelResolver = FakeTrainingLevelResolver(finiteRandomLevel(notesPerSequence = 6)),
+          midiEngine = engine,
+          player = FakeMidiFilePlayer(),
+          midiContentResolver = FakeMidiContentResolver(),
+          settingsRepository = FakeSettingsRepository(),
+          trainingSessionRepository = FakeTrainingSessionRepository(),
+          midiKeyboardInput = FakeMidiKeyboardInput(),
+        )
+      advanceUntilIdle()
+      assertEquals(6, engine.playedNotes.size)
 
-    engine.playedNotes.clear()
-    viewModel.rewindSequence()
-    advanceUntilIdle()
+      engine.playedNotes.clear()
+      viewModel.rewindSequence()
+      advanceUntilIdle()
 
-    assertEquals(4, engine.playedNotes.size)
-  }
+      assertEquals(4, engine.playedNotes.size)
+    }
 
   @Test
   fun rewindingFiniteSequenceImmediatelyStopsCurrentNoteAndStartsRewoundNote() =
@@ -124,7 +125,7 @@ class MelodiesPlayScreenViewModelTest {
       val viewModel =
         MelodiesPlayScreenViewModel(
           levelId = TestLevelId,
-            levelResolver = FakeTrainingLevelResolver(finiteRandomLevel(notesPerSequence = 6)),
+          levelResolver = FakeTrainingLevelResolver(finiteRandomLevel(notesPerSequence = 6)),
           midiEngine = engine,
           player = FakeMidiFilePlayer(),
           midiContentResolver = FakeMidiContentResolver(),
@@ -144,132 +145,137 @@ class MelodiesPlayScreenViewModelTest {
     }
 
   @Test
-  fun replayingTheSetupMelodyStopsTheSequence() = runTest(dispatcher) {
-    val engine = FakeMidiEngine()
-    val viewModel =
-      MelodiesPlayScreenViewModel(
-        levelId = TestLevelId,
-        levelResolver =
-          FakeTrainingLevelResolver(
-            finiteRandomLevel(notesPerSequence = 6, tempo = 60, context = setupMelodyContext())
-          ),
-        midiEngine = engine,
-        player = FakeMidiFilePlayer(),
-        midiContentResolver = FakeMidiContentResolver(),
-        settingsRepository = FakeSettingsRepository(),
-        trainingSessionRepository = FakeTrainingSessionRepository(),
-        midiKeyboardInput = FakeMidiKeyboardInput(),
-      )
-    // The drone and its opening setup melody come first; the sequence starts once they settle.
-    viewModel.state.first { it.isPlayingSequence }
-    engine.events.clear()
+  fun replayingTheSetupMelodyStopsTheSequence() =
+    runTest(dispatcher) {
+      val engine = FakeMidiEngine()
+      val viewModel =
+        MelodiesPlayScreenViewModel(
+          levelId = TestLevelId,
+          levelResolver =
+            FakeTrainingLevelResolver(
+              finiteRandomLevel(notesPerSequence = 6, tempo = 60, context = setupMelodyContext())
+            ),
+          midiEngine = engine,
+          player = FakeMidiFilePlayer(),
+          midiContentResolver = FakeMidiContentResolver(),
+          settingsRepository = FakeSettingsRepository(),
+          trainingSessionRepository = FakeTrainingSessionRepository(),
+          midiKeyboardInput = FakeMidiKeyboardInput(),
+        )
+      // The drone and its opening setup melody come first; the sequence starts once they settle.
+      viewModel.state.first { it.isPlayingSequence }
+      engine.events.clear()
 
-    viewModel.playSetupMelody()
+      viewModel.playSetupMelody()
 
-    // The sounding sequence note stops at once, and the rest of the sequence never plays.
-    assertEquals(listOf("stop:C4"), engine.events)
-    assertFalse(viewModel.state.value.isPlayingSequence)
-    advanceUntilIdle()
-    assertEquals(listOf("stop:C4", "play:E4", "stop:E4", "play:G4", "stop:G4"), engine.events)
-  }
-
-  @Test
-  fun rewindingStopsTheSetupMelodyBeforeTheSequenceSounds() = runTest(dispatcher) {
-    val engine = FakeMidiEngine()
-    val viewModel =
-      MelodiesPlayScreenViewModel(
-        levelId = TestLevelId,
-        levelResolver =
-          FakeTrainingLevelResolver(
-            finiteRandomLevel(notesPerSequence = 6, tempo = 60, context = setupMelodyContext())
-          ),
-        midiEngine = engine,
-        player = FakeMidiFilePlayer(),
-        midiContentResolver = FakeMidiContentResolver(),
-        settingsRepository = FakeSettingsRepository(),
-        trainingSessionRepository = FakeTrainingSessionRepository(),
-        midiKeyboardInput = FakeMidiKeyboardInput(),
-      )
-    advanceUntilIdle()
-    viewModel.playSetupMelody()
-    runCurrent()
-    engine.events.clear()
-
-    viewModel.rewindSequence()
-    runCurrent()
-
-    // The setup melody's note-off lands before the sequence's first note-on.
-    assertEquals(listOf("stop:E4", "play:C4"), engine.events)
-    advanceUntilIdle()
-    assertFalse("play:G4" in engine.events)
-  }
+      // The sounding sequence note stops at once, and the rest of the sequence never plays.
+      assertEquals(listOf("stop:C4"), engine.events)
+      assertFalse(viewModel.state.value.isPlayingSequence)
+      advanceUntilIdle()
+      assertEquals(listOf("stop:C4", "play:E4", "stop:E4", "play:G4", "stop:G4"), engine.events)
+    }
 
   @Test
-  fun setupMelodyButtonWithoutAContextLeavesTheSequencePlaying() = runTest(dispatcher) {
-    val engine = FakeMidiEngine()
-    val viewModel =
-      MelodiesPlayScreenViewModel(
-        levelId = TestLevelId,
-        levelResolver = FakeTrainingLevelResolver(finiteRandomLevel(notesPerSequence = 6)),
-        midiEngine = engine,
-        player = FakeMidiFilePlayer(),
-        midiContentResolver = FakeMidiContentResolver(),
-        settingsRepository = FakeSettingsRepository(),
-        trainingSessionRepository = FakeTrainingSessionRepository(),
-        midiKeyboardInput = FakeMidiKeyboardInput(),
-      )
-    runCurrent()
+  fun rewindingStopsTheSetupMelodyBeforeTheSequenceSounds() =
+    runTest(dispatcher) {
+      val engine = FakeMidiEngine()
+      val viewModel =
+        MelodiesPlayScreenViewModel(
+          levelId = TestLevelId,
+          levelResolver =
+            FakeTrainingLevelResolver(
+              finiteRandomLevel(notesPerSequence = 6, tempo = 60, context = setupMelodyContext())
+            ),
+          midiEngine = engine,
+          player = FakeMidiFilePlayer(),
+          midiContentResolver = FakeMidiContentResolver(),
+          settingsRepository = FakeSettingsRepository(),
+          trainingSessionRepository = FakeTrainingSessionRepository(),
+          midiKeyboardInput = FakeMidiKeyboardInput(),
+        )
+      advanceUntilIdle()
+      viewModel.playSetupMelody()
+      runCurrent()
+      engine.events.clear()
 
-    viewModel.playSetupMelody()
+      viewModel.rewindSequence()
+      runCurrent()
 
-    assertEquals(listOf("play:C4"), engine.events)
-    assertTrue(viewModel.state.value.isPlayingSequence)
-    advanceUntilIdle()
-  }
-
-  @Test
-  fun setupMelodyAndMidiFilePlaybackAreExclusive() = runTest(dispatcher) {
-    val engine = FakeMidiEngine()
-    val player = FakeMidiFilePlayer(notes = listOf(MelodyNote(Note(Pitch.D, 4), tick = 0L)))
-    val settings =
-      FakeSettingsRepository(
-        AppSettings(midiLevelOptions = MidiLevelOptions(context = setupMelodyContext()))
-      )
-    val viewModel =
-      MelodiesPlayScreenViewModel(
-        levelId = TestLevelId,
-        levelResolver = FakeTrainingLevelResolver(midiLevel(key = dMajor())),
-        midiEngine = engine,
-        player = player,
-        midiContentResolver = FakeMidiContentResolver(),
-        settingsRepository = settings,
-        trainingSessionRepository = FakeTrainingSessionRepository(),
-        midiKeyboardInput = FakeMidiKeyboardInput(),
-      )
-    viewModel.state.first { it.isPlaying }
-    engine.events.clear()
-
-    viewModel.playSetupMelody()
-    runCurrent()
-
-    assertFalse(player.isPlaying())
-    assertEquals(1, engine.events.count { it.startsWith("play:") })
-
-    viewModel.togglePlayPause()
-    // The file transport polls forever once playback starts, so only advance by a bounded time.
-    advanceTimeBy(5_000)
-
-    assertTrue(player.isPlaying())
-    // Resuming the file cut the setup melody after its first note.
-    assertEquals(1, engine.events.count { it.startsWith("play:") })
-    assertEquals(1, engine.events.count { it.startsWith("stop:") })
-    viewModel.viewModelScope.cancel()
-  }
+      // The setup melody's note-off lands before the sequence's first note-on.
+      assertEquals(listOf("stop:E4", "play:C4"), engine.events)
+      advanceUntilIdle()
+      assertFalse("play:G4" in engine.events)
+    }
 
   @Test
-  fun playedNotesCarryDetunesWithinTheLevelsTuneInconsistency() = runTest(dispatcher) {
-    val engine = FakeMidiEngine()
-    MelodiesPlayScreenViewModel(
+  fun setupMelodyButtonWithoutAContextLeavesTheSequencePlaying() =
+    runTest(dispatcher) {
+      val engine = FakeMidiEngine()
+      val viewModel =
+        MelodiesPlayScreenViewModel(
+          levelId = TestLevelId,
+          levelResolver = FakeTrainingLevelResolver(finiteRandomLevel(notesPerSequence = 6)),
+          midiEngine = engine,
+          player = FakeMidiFilePlayer(),
+          midiContentResolver = FakeMidiContentResolver(),
+          settingsRepository = FakeSettingsRepository(),
+          trainingSessionRepository = FakeTrainingSessionRepository(),
+          midiKeyboardInput = FakeMidiKeyboardInput(),
+        )
+      runCurrent()
+
+      viewModel.playSetupMelody()
+
+      assertEquals(listOf("play:C4"), engine.events)
+      assertTrue(viewModel.state.value.isPlayingSequence)
+      advanceUntilIdle()
+    }
+
+  @Test
+  fun setupMelodyAndMidiFilePlaybackAreExclusive() =
+    runTest(dispatcher) {
+      val engine = FakeMidiEngine()
+      val player = FakeMidiFilePlayer(notes = listOf(MelodyNote(Note(Pitch.D, 4), tick = 0L)))
+      val settings =
+        FakeSettingsRepository(
+          AppSettings(midiLevelOptions = MidiLevelOptions(context = setupMelodyContext()))
+        )
+      val viewModel =
+        MelodiesPlayScreenViewModel(
+          levelId = TestLevelId,
+          levelResolver = FakeTrainingLevelResolver(midiLevel(key = dMajor())),
+          midiEngine = engine,
+          player = player,
+          midiContentResolver = FakeMidiContentResolver(),
+          settingsRepository = settings,
+          trainingSessionRepository = FakeTrainingSessionRepository(),
+          midiKeyboardInput = FakeMidiKeyboardInput(),
+        )
+      viewModel.state.first { it.isPlaying }
+      engine.events.clear()
+
+      viewModel.playSetupMelody()
+      runCurrent()
+
+      assertFalse(player.isPlaying())
+      assertEquals(1, engine.events.count { it.startsWith("play:") })
+
+      viewModel.togglePlayPause()
+      // The file transport polls forever once playback starts, so only advance by a bounded time.
+      advanceTimeBy(5_000)
+
+      assertTrue(player.isPlaying())
+      // Resuming the file cut the setup melody after its first note.
+      assertEquals(1, engine.events.count { it.startsWith("play:") })
+      assertEquals(1, engine.events.count { it.startsWith("stop:") })
+      viewModel.viewModelScope.cancel()
+    }
+
+  @Test
+  fun playedNotesCarryDetunesWithinTheLevelsTuneInconsistency() =
+    runTest(dispatcher) {
+      val engine = FakeMidiEngine()
+      MelodiesPlayScreenViewModel(
         levelId = TestLevelId,
         levelResolver =
           FakeTrainingLevelResolver(
@@ -282,21 +288,22 @@ class MelodiesPlayScreenViewModelTest {
         trainingSessionRepository = FakeTrainingSessionRepository(),
         midiKeyboardInput = FakeMidiKeyboardInput(),
       )
-    advanceUntilIdle()
+      advanceUntilIdle()
 
-    assertEquals(12, engine.playedDetunes.size)
-    assertTrue(
-      engine.playedDetunes.all { it in -30..30 },
-      "all detunes within ±30, got ${engine.playedDetunes}",
-    )
-    // 12 independent draws from -30..30 are all zero with odds ~2e-22.
-    assertTrue(engine.playedDetunes.any { it != 0 }, "the detune actually varies")
-  }
+      assertEquals(12, engine.playedDetunes.size)
+      assertTrue(
+        engine.playedDetunes.all { it in -30..30 },
+        "all detunes within ±30, got ${engine.playedDetunes}",
+      )
+      // 12 independent draws from -30..30 are all zero with odds ~2e-22.
+      assertTrue(engine.playedDetunes.any { it != 0 }, "the detune actually varies")
+    }
 
   @Test
-  fun playedNotesAreInTuneWhenTheSettingIsOff() = runTest(dispatcher) {
-    val engine = FakeMidiEngine()
-    MelodiesPlayScreenViewModel(
+  fun playedNotesAreInTuneWhenTheSettingIsOff() =
+    runTest(dispatcher) {
+      val engine = FakeMidiEngine()
+      MelodiesPlayScreenViewModel(
         levelId = TestLevelId,
         levelResolver = FakeTrainingLevelResolver(finiteRandomLevel(notesPerSequence = 6)),
         midiEngine = engine,
@@ -306,101 +313,108 @@ class MelodiesPlayScreenViewModelTest {
         trainingSessionRepository = FakeTrainingSessionRepository(),
         midiKeyboardInput = FakeMidiKeyboardInput(),
       )
-    advanceUntilIdle()
+      advanceUntilIdle()
 
-    assertEquals(List(6) { 0 }, engine.playedDetunes)
-  }
+      assertEquals(List(6) { 0 }, engine.playedDetunes)
+    }
 
   @Test
-  fun definedMidiTranspositionFromSettingsIsPassedToTheFilePlayer() = runTest(dispatcher) {
-    val player = FakeMidiFilePlayer()
-    val settings =
-      FakeSettingsRepository(
-        AppSettings(
-          midiLevelOptions =
-            MidiLevelOptions(
-              transposition = MidiTransposition(mode = MidiTranspositionMode.Defined, semitones = 3)
-            )
+  fun definedMidiTranspositionFromSettingsIsPassedToTheFilePlayer() =
+    runTest(dispatcher) {
+      val player = FakeMidiFilePlayer()
+      val settings =
+        FakeSettingsRepository(
+          AppSettings(
+            midiLevelOptions =
+              MidiLevelOptions(
+                transposition =
+                  MidiTransposition(mode = MidiTranspositionMode.Defined, semitones = 3)
+              )
+          )
         )
-      )
-    MelodiesPlayScreenViewModel(
-      levelId = TestLevelId,
-      levelResolver = FakeTrainingLevelResolver(midiLevel()),
-      midiEngine = FakeMidiEngine(),
-      player = player,
-      midiContentResolver = FakeMidiContentResolver(),
-      settingsRepository = settings,
-      trainingSessionRepository = FakeTrainingSessionRepository(),
-      midiKeyboardInput = FakeMidiKeyboardInput(),
-    )
-    runCurrent()
-
-    assertEquals(3, player.loadedOptions?.transpositionSemitones)
-  }
-
-  @Test
-  fun labelledMidiLevelShowsItsTransposedKeyAndPlaysTheSharedContext() = runTest(dispatcher) {
-    val engine = FakeMidiEngine()
-    val settings =
-      FakeSettingsRepository(
-        AppSettings(
-          midiLevelOptions =
-            MidiLevelOptions(
-              transposition = MidiTransposition(mode = MidiTranspositionMode.Defined, semitones = 2),
-              context = droneContext(),
-            )
-        )
-      )
-    val viewModel =
-      MelodiesPlayScreenViewModel(
-        levelId = TestLevelId,
-        levelResolver = FakeTrainingLevelResolver(midiLevel(key = dMajor())),
-        midiEngine = engine,
-        player = FakeMidiFilePlayer(notes = listOf(MelodyNote(Note(Pitch.D, 4), tick = 0L))),
-        midiContentResolver = FakeMidiContentResolver(),
-        settingsRepository = settings,
-        trainingSessionRepository = FakeTrainingSessionRepository(),
-        midiKeyboardInput = FakeMidiKeyboardInput(),
-      )
-    // The file transport polls forever once playback starts, so only drain what is queued now.
-    runCurrent()
-
-    val state = viewModel.state.value
-    assertEquals(Pitch.E, state.root)
-    assertEquals("E major", state.keyLabel)
-    assertTrue(state.hasContext)
-    // The drone is built on the transposed tonic, not on the file's original key.
-    assertEquals(Pitch.E, engine.playedChords.single().first.notes.first().pitch)
-    // Stop the transport poll and the context, or runTest never finds the scheduler idle.
-    viewModel.viewModelScope.cancel()
-  }
-
-  @Test
-  fun unlabelledMidiLevelIgnoresTheSharedContext() = runTest(dispatcher) {
-    val engine = FakeMidiEngine()
-    val settings =
-      FakeSettingsRepository(AppSettings(midiLevelOptions = MidiLevelOptions(context = droneContext())))
-    val viewModel =
       MelodiesPlayScreenViewModel(
         levelId = TestLevelId,
         levelResolver = FakeTrainingLevelResolver(midiLevel()),
-        midiEngine = engine,
-        player = FakeMidiFilePlayer(notes = listOf(MelodyNote(Note(Pitch.C, 4), tick = 0L))),
+        midiEngine = FakeMidiEngine(),
+        player = player,
         midiContentResolver = FakeMidiContentResolver(),
         settingsRepository = settings,
         trainingSessionRepository = FakeTrainingSessionRepository(),
         midiKeyboardInput = FakeMidiKeyboardInput(),
       )
-    // The file transport polls forever once playback starts, so only drain what is queued now.
-    runCurrent()
+      runCurrent()
 
-    val state = viewModel.state.value
-    assertEquals(null, state.root)
-    assertEquals(null, state.keyLabel)
-    assertFalse(state.hasContext)
-    assertTrue(engine.playedChords.isEmpty())
-    viewModel.viewModelScope.cancel()
-  }
+      assertEquals(3, player.loadedOptions?.transpositionSemitones)
+    }
+
+  @Test
+  fun labelledMidiLevelShowsItsTransposedKeyAndPlaysTheSharedContext() =
+    runTest(dispatcher) {
+      val engine = FakeMidiEngine()
+      val settings =
+        FakeSettingsRepository(
+          AppSettings(
+            midiLevelOptions =
+              MidiLevelOptions(
+                transposition =
+                  MidiTransposition(mode = MidiTranspositionMode.Defined, semitones = 2),
+                context = droneContext(),
+              )
+          )
+        )
+      val viewModel =
+        MelodiesPlayScreenViewModel(
+          levelId = TestLevelId,
+          levelResolver = FakeTrainingLevelResolver(midiLevel(key = dMajor())),
+          midiEngine = engine,
+          player = FakeMidiFilePlayer(notes = listOf(MelodyNote(Note(Pitch.D, 4), tick = 0L))),
+          midiContentResolver = FakeMidiContentResolver(),
+          settingsRepository = settings,
+          trainingSessionRepository = FakeTrainingSessionRepository(),
+          midiKeyboardInput = FakeMidiKeyboardInput(),
+        )
+      // The file transport polls forever once playback starts, so only drain what is queued now.
+      runCurrent()
+
+      val state = viewModel.state.value
+      assertEquals(Pitch.E, state.root)
+      assertEquals("E major", state.keyLabel)
+      assertTrue(state.hasContext)
+      // The drone is built on the transposed tonic, not on the file's original key.
+      assertEquals(Pitch.E, engine.playedChords.single().first.notes.first().pitch)
+      // Stop the transport poll and the context, or runTest never finds the scheduler idle.
+      viewModel.viewModelScope.cancel()
+    }
+
+  @Test
+  fun unlabelledMidiLevelIgnoresTheSharedContext() =
+    runTest(dispatcher) {
+      val engine = FakeMidiEngine()
+      val settings =
+        FakeSettingsRepository(
+          AppSettings(midiLevelOptions = MidiLevelOptions(context = droneContext()))
+        )
+      val viewModel =
+        MelodiesPlayScreenViewModel(
+          levelId = TestLevelId,
+          levelResolver = FakeTrainingLevelResolver(midiLevel()),
+          midiEngine = engine,
+          player = FakeMidiFilePlayer(notes = listOf(MelodyNote(Note(Pitch.C, 4), tick = 0L))),
+          midiContentResolver = FakeMidiContentResolver(),
+          settingsRepository = settings,
+          trainingSessionRepository = FakeTrainingSessionRepository(),
+          midiKeyboardInput = FakeMidiKeyboardInput(),
+        )
+      // The file transport polls forever once playback starts, so only drain what is queued now.
+      runCurrent()
+
+      val state = viewModel.state.value
+      assertEquals(null, state.root)
+      assertEquals(null, state.keyLabel)
+      assertFalse(state.hasContext)
+      assertTrue(engine.playedChords.isEmpty())
+      viewModel.viewModelScope.cancel()
+    }
 }
 
 private fun dMajor(): MidiKey =
@@ -501,11 +515,13 @@ private fun midiLevel(key: MidiKey? = null): MelodiesLevel =
   )
 
 private class FakeTrainingLevelResolver(private val level: MelodiesLevel) : TrainingLevelResolver {
-  override suspend fun resolveSingles(encodedReference: String): SinglesLevel = error("not implemented")
+  override suspend fun resolveSingles(encodedReference: String): SinglesLevel =
+    error("not implemented")
 
   override suspend fun resolveMelodies(encodedReference: String): MelodiesLevel = level
 
-  override suspend fun resolveChords(encodedReference: String): ChordsLevel = error("not implemented")
+  override suspend fun resolveChords(encodedReference: String): ChordsLevel =
+    error("not implemented")
 }
 
 private class FakeMidiContentResolver : MidiContentResolver {
@@ -606,7 +622,12 @@ private class FakeMidiEngine : MidiEngine {
 
   override suspend fun initialize(): MidiEngineStatus = MidiEngineStatus.Ready
 
-  override fun playNote(note: Note, channel: MidiChannel, velocity: Int, detuneCents: Int): Boolean {
+  override fun playNote(
+    note: Note,
+    channel: MidiChannel,
+    velocity: Int,
+    detuneCents: Int,
+  ): Boolean {
     events += "play:${note.name}"
     playedNotes += note to channel
     playedDetunes += detuneCents
@@ -642,7 +663,8 @@ private class FakeMidiEngine : MidiEngine {
   override fun close() = Unit
 }
 
-private class FakeMidiFilePlayer(private val notes: List<MelodyNote> = emptyList()) : MidiFilePlayer {
+private class FakeMidiFilePlayer(private val notes: List<MelodyNote> = emptyList()) :
+  MidiFilePlayer {
   var loadedOptions: MidiFilePlaybackOptions? = null
   private var playing = false
 
@@ -651,7 +673,11 @@ private class FakeMidiFilePlayer(private val notes: List<MelodyNote> = emptyList
     options: MidiFilePlaybackOptions,
   ): LoadedMelody {
     loadedOptions = options
-    return LoadedMelody(notes = notes, lengthTicks = notes.size.toLong(), lengthSeconds = notes.size.toDouble())
+    return LoadedMelody(
+      notes = notes,
+      lengthTicks = notes.size.toLong(),
+      lengthSeconds = notes.size.toDouble(),
+    )
   }
 
   override fun play() {

@@ -22,13 +22,13 @@ import androidx.compose.material.icons.automirrored.rounded.Article
 import androidx.compose.material.icons.automirrored.rounded.VolumeDown
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.Audiotrack
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.Language
-import androidx.compose.material.icons.rounded.Audiotrack
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Piano
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -54,7 +54,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -63,7 +62,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlin.math.roundToInt
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.music.effectiveDegreeNames
 import ldv.shuuen.core.music.effectiveNoteNames
@@ -90,6 +88,7 @@ import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.SoftControl
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.label
+import kotlin.math.roundToInt
 
 @Composable
 fun SettingsScreen(
@@ -110,7 +109,7 @@ fun SettingsScreen(
           BackendStatusBadge()
           MidiKeyboardBadge()
         },
-        type = ShuuenTopAppBarType.Simple
+        type = ShuuenTopAppBarType.Simple,
       )
     },
   ) {
@@ -142,7 +141,7 @@ fun SettingsScreen(
               state = state,
               onAction = viewModel::onAction,
             )
-}
+          }
           Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(26.dp),
@@ -184,9 +183,7 @@ fun SettingsScreen(
       text = "Changes are applied automatically.",
       color = ShuuenUi.Dim,
       style = MaterialTheme.typography.bodyMedium,
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(top = 10.dp, bottom = 18.dp),
+      modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 18.dp),
       textAlign = TextAlign.Center,
     )
   }
@@ -248,7 +245,7 @@ fun SettingsScreen(
           when (editor) {
             LabelEditor.Notes -> SettingsAction.SetNoteName(index, value)
             LabelEditor.Degrees -> SettingsAction.SetDegreeName(index, value)
-          },
+          }
         )
       },
       onLabelsChange = { values ->
@@ -256,7 +253,7 @@ fun SettingsScreen(
           when (editor) {
             LabelEditor.Notes -> SettingsAction.SetNoteNames(values)
             LabelEditor.Degrees -> SettingsAction.SetDegreeNames(values)
-          },
+          }
         )
       },
       onSaveCustom = { values ->
@@ -264,7 +261,7 @@ fun SettingsScreen(
           when (editor) {
             LabelEditor.Notes -> SettingsAction.SaveCustomNoteNamesPreset(values)
             LabelEditor.Degrees -> SettingsAction.SaveCustomDegreeNamesPreset(values)
-          },
+          }
         )
       },
       onDismiss = { viewModel.onAction(SettingsAction.CloseLabelEditor) },
@@ -284,8 +281,7 @@ private fun OnlineSection(
   FlatSection(label = "ONLINE") {
     Row(
       modifier =
-        Modifier
-          .fillMaxWidth()
+        Modifier.fillMaxWidth()
           .clip(ShuuenUi.ControlShape)
           .clickable { onAction(SettingsAction.OpenBackendUrlDialog) }
           .padding(vertical = 6.dp),
@@ -309,11 +305,12 @@ private fun OnlineSection(
       }
       Text(
         text = state.backendStatus.label().uppercase(),
-        color = if (state.backendStatus == ldv.shuuen.core.online.BackendStatus.Available) {
-          ShuuenUi.Correct
-        } else {
-          ShuuenUi.Dim
-        },
+        color =
+          if (state.backendStatus == ldv.shuuen.core.online.BackendStatus.Available) {
+            ShuuenUi.Correct
+          } else {
+            ShuuenUi.Dim
+          },
         style = MaterialTheme.typography.labelSmall.copy(letterSpacing = ShuuenUi.labelSpacing),
       )
       Icon(
@@ -347,7 +344,7 @@ private fun BackendUrlDialog(
           supportingText = {
             Text(
               state.backendUrlError
-                ?: "Leave blank to use the platform default: ${state.defaultBackendUrl}",
+                ?: "Leave blank to use the platform default: ${state.defaultBackendUrl}"
             )
           },
           isError = state.backendUrlError != null,
@@ -408,28 +405,62 @@ private fun InputMethodSection(
       Column {
         Row(
           horizontalArrangement = Arrangement.spacedBy(10.dp),
-          modifier = Modifier.fillMaxWidth()
+          modifier = Modifier.fillMaxWidth(),
         ) {
-          Card(InputComponent.Piano, InputMode.Absolute, Icons.Rounded.Keyboard, selected, compact, onSelect, Modifier.weight(1f))
-          Card(InputComponent.Piano, InputMode.Relative, Icons.Rounded.Keyboard, selected, compact, onSelect, Modifier.weight(1f))
+          Card(
+            InputComponent.Piano,
+            InputMode.Absolute,
+            Icons.Rounded.Keyboard,
+            selected,
+            compact,
+            onSelect,
+            Modifier.weight(1f),
+          )
+          Card(
+            InputComponent.Piano,
+            InputMode.Relative,
+            Icons.Rounded.Keyboard,
+            selected,
+            compact,
+            onSelect,
+            Modifier.weight(1f),
+          )
         }
         Spacer(modifier = Modifier.height(spacing))
         Row(
           horizontalArrangement = Arrangement.spacedBy(10.dp),
-          modifier = Modifier.fillMaxWidth()
+          modifier = Modifier.fillMaxWidth(),
         ) {
-          Card(InputComponent.Circle, InputMode.Absolute, Icons.Rounded.GraphicEq, selected, compact, onSelect, Modifier.weight(1f))
-          Card(InputComponent.Circle, InputMode.Relative, Icons.Rounded.GraphicEq, selected, compact, onSelect, Modifier.weight(1f))
+          Card(
+            InputComponent.Circle,
+            InputMode.Absolute,
+            Icons.Rounded.GraphicEq,
+            selected,
+            compact,
+            onSelect,
+            Modifier.weight(1f),
+          )
+          Card(
+            InputComponent.Circle,
+            InputMode.Relative,
+            Icons.Rounded.GraphicEq,
+            selected,
+            compact,
+            onSelect,
+            Modifier.weight(1f),
+          )
         }
 
         // Circle + Absolute has a sub-choice: keep the fixed C-at-top layout, or rotate so the
         // level's root sits at the top.
-        AnimatedVisibility (selected.component == InputComponent.Circle && selected.mode == InputMode.Absolute) {
+        AnimatedVisibility(
+          selected.component == InputComponent.Circle && selected.mode == InputMode.Absolute
+        ) {
           Column {
             Spacer(modifier = Modifier.height(spacing))
             Row(
               horizontalArrangement = Arrangement.spacedBy(10.dp),
-              modifier = Modifier.fillMaxWidth()
+              modifier = Modifier.fillMaxWidth(),
             ) {
               PillControl(
                 text = "C at the top",
@@ -454,8 +485,8 @@ private fun InputMethodSection(
 }
 
 /**
- * Theme choice: appearance decides which brightness variant is active (System follows
- * the device), contrast switches between the standard and the softer monochrome look.
+ * Theme choice: appearance decides which brightness variant is active (System follows the device),
+ * contrast switches between the standard and the softer monochrome look.
  */
 @Composable
 private fun ThemeSection(
@@ -542,9 +573,7 @@ private fun MidiKeyboardSection(
     supporting = "A connected MIDI keyboard answers alongside the on-screen input.",
   ) {
     Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(vertical = 6.dp),
+      modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -603,25 +632,25 @@ private fun SoundfontSection(
               Icons.AutoMirrored.Rounded.Article,
               contentDescription = null,
               tint = ShuuenUi.Muted,
-              modifier = Modifier.size(22.dp)
+              modifier = Modifier.size(22.dp),
             )
             Text(
               "GeneralUser-GS",
               color = ShuuenUi.Text,
               style = MaterialTheme.typography.titleSmall,
               modifier = Modifier.weight(1f),
-              maxLines = 1
+              maxLines = 1,
             )
           }
           Row(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
           ) {
             PillControl(
               "Load",
               leadingIcon = Icons.Rounded.FolderOpen,
               selected = true,
-              modifier = Modifier.weight(1f)
+              modifier = Modifier.weight(1f),
             )
             PillControl("Default", modifier = Modifier.weight(1f))
           }
@@ -632,19 +661,19 @@ private fun SoundfontSection(
             Icons.AutoMirrored.Rounded.Article,
             contentDescription = null,
             tint = ShuuenUi.Muted,
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(24.dp),
           )
           Text(
             "GeneralUser-GS",
             color = ShuuenUi.Text,
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.weight(1f),
-            maxLines = 1
+            maxLines = 1,
           )
           PillControl(
             "Load from storage",
             leadingIcon = Icons.Rounded.FolderOpen,
-            selected = true
+            selected = true,
           )
           PillControl("Default")
         }
@@ -744,7 +773,8 @@ private fun GeneralSection(
     SettingsRow(
       Icons.Rounded.TextFields,
       "Degree names",
-      subtitle = labelPreview(effectiveDegreeNames(state.musicLabels.degreeNames), PreviewDegreeCount),
+      subtitle =
+        labelPreview(effectiveDegreeNames(state.musicLabels.degreeNames), PreviewDegreeCount),
       onClick = { onAction(SettingsAction.OpenLabelEditor(LabelEditor.Degrees)) },
     )
     Hairline()
@@ -763,9 +793,7 @@ private fun GeneralSection(
     )
     Hairline()
     Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(vertical = 6.dp),
+      modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -773,7 +801,7 @@ private fun GeneralSection(
         Icons.Rounded.PlayArrow,
         contentDescription = null,
         tint = ShuuenUi.Muted,
-        modifier = Modifier.size(22.dp)
+        modifier = Modifier.size(22.dp),
       )
       Text(
         text = "Play next question automatically",
@@ -804,9 +832,7 @@ private fun SwitchRow(
   onCheckedChange: (Boolean) -> Unit,
 ) {
   Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .padding(vertical = 6.dp),
+    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(14.dp),
   ) {
@@ -832,9 +858,8 @@ private fun InputMethodCard(
   modifier: Modifier = Modifier,
 ) {
   SoftControl(
-    modifier = modifier
-      .heightIn(min = if (compact) 92.dp else 86.dp),
-        onClick = onClick,
+    modifier = modifier.heightIn(min = if (compact) 92.dp else 86.dp),
+    onClick = onClick,
     selected = selected,
   ) {
     Column(
@@ -849,7 +874,7 @@ private fun InputMethodCard(
           icon,
           contentDescription = null,
           tint = if (selected) ShuuenUi.Text else ShuuenUi.Muted,
-          modifier = Modifier.size(if (compact) 22.dp else 24.dp)
+          modifier = Modifier.size(if (compact) 22.dp else 24.dp),
         )
         Spacer(Modifier.weight(1f))
         Icon(
@@ -906,7 +931,7 @@ private fun SoundCategoryRow(
             icon,
             contentDescription = null,
             tint = ShuuenUi.Muted,
-            modifier = Modifier.size(22.dp)
+            modifier = Modifier.size(22.dp),
           )
           Text(
             text = label,
@@ -918,7 +943,7 @@ private fun SoundCategoryRow(
         }
         Row(
           horizontalArrangement = Arrangement.spacedBy(10.dp),
-          modifier = Modifier.fillMaxWidth()
+          modifier = Modifier.fillMaxWidth(),
         ) {
           SoundPickerColumn("SOUNDBANK", soundbankLabel, onOpen, Modifier.weight(1f))
           SoundPickerColumn("PRESET", presetLabel, onOpen, Modifier.weight(1f))
@@ -933,7 +958,7 @@ private fun SoundCategoryRow(
             icon,
             contentDescription = null,
             tint = ShuuenUi.Muted,
-            modifier = Modifier.size(22.dp)
+            modifier = Modifier.size(22.dp),
           )
           Text(
             text = label,
@@ -958,8 +983,8 @@ private fun SoundCategoryRow(
 }
 
 /**
- * How often a channel re-rolls among its chosen presets, as a summary row that opens the choices
- * in a sheet. Three labelled pills side by side don't survive a phone's width — see
+ * How often a channel re-rolls among its chosen presets, as a summary row that opens the choices in
+ * a sheet. Three labelled pills side by side don't survive a phone's width — see
  * [PresetShuffleSheet].
  */
 @Composable
@@ -969,11 +994,11 @@ private fun PresetShuffleRow(
   onOpen: () -> Unit,
 ) {
   Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .clip(ShuuenUi.ControlShape)
-      .clickable(onClick = onOpen)
-      .padding(vertical = 6.dp),
+    modifier =
+      Modifier.fillMaxWidth()
+        .clip(ShuuenUi.ControlShape)
+        .clickable(onClick = onOpen)
+        .padding(vertical = 6.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(14.dp),
   ) {
@@ -1156,7 +1181,9 @@ private fun ValueSlider(
   // [value] only changes on commit/load and re-syncs us without fighting the drag.
   val rangeStart = valueRange.start
   val rangeEnd = valueRange.endInclusive
-  var sliderValue by remember { mutableFloatStateOf(value.toFloat().coerceIn(rangeStart, rangeEnd)) }
+  var sliderValue by remember {
+    mutableFloatStateOf(value.toFloat().coerceIn(rangeStart, rangeEnd))
+  }
   LaunchedEffect(value, valueRange) { sliderValue = value.toFloat().coerceIn(rangeStart, rangeEnd) }
   val current = sliderValue.roundToInt()
 
@@ -1181,11 +1208,12 @@ private fun ValueSlider(
       onValueChangeFinished = { onCommit(sliderValue.roundToInt()) },
       valueRange = valueRange,
       steps = steps,
-      colors = SliderDefaults.colors(
-        thumbColor = ShuuenUi.Text,
-        activeTrackColor = ShuuenUi.Inverse,
-        inactiveTrackColor = ShuuenUi.Ink.copy(alpha = 0.12f),
-      ),
+      colors =
+        SliderDefaults.colors(
+          thumbColor = ShuuenUi.Text,
+          activeTrackColor = ShuuenUi.Inverse,
+          inactiveTrackColor = ShuuenUi.Ink.copy(alpha = 0.12f),
+        ),
       modifier = Modifier.weight(1f),
     )
     Text(
@@ -1240,16 +1268,16 @@ private fun SettingsRow(
   onClick: (() -> Unit)? = null,
 ) {
   Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .then(
-        if (onClick != null) {
-          Modifier.clip(ShuuenUi.ControlShape).clickable(onClick = onClick)
-        } else {
-          Modifier
-        }
-      )
-      .padding(vertical = 6.dp),
+    modifier =
+      Modifier.fillMaxWidth()
+        .then(
+          if (onClick != null) {
+            Modifier.clip(ShuuenUi.ControlShape).clickable(onClick = onClick)
+          } else {
+            Modifier
+          }
+        )
+        .padding(vertical = 6.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(14.dp),
   ) {
@@ -1271,7 +1299,7 @@ private fun SettingsRow(
         Icons.Rounded.ChevronRight,
         contentDescription = null,
         tint = ShuuenUi.Dim,
-        modifier = Modifier.size(24.dp)
+        modifier = Modifier.size(24.dp),
       )
     }
   }

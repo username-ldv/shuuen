@@ -33,8 +33,8 @@ import ldv.shuuen.core.ui.components.ShuuenUi
  * The three schedules a channel can re-roll its instrument on. A sheet rather than a row of pills:
  * the labels don't fit side by side on a phone, and each one wants a line of explanation anyway.
  *
- * [perNoteApplies] is true only for the Notes channel — nothing else plays its notes one at a
- * time, so offering "each note" there would be offering the same thing as "each question".
+ * [perNoteApplies] is true only for the Notes channel — nothing else plays its notes one at a time,
+ * so offering "each note" there would be offering the same thing as "each question".
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,10 +73,7 @@ private fun ColumnScope.ShuffleSheetContent(
   onSelect: (PresetShuffleMode) -> Unit,
 ) {
   Column(
-    modifier = Modifier
-      .fillMaxWidth()
-      .padding(horizontal = 20.dp)
-      .padding(bottom = 20.dp),
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 20.dp),
     verticalArrangement = Arrangement.spacedBy(14.dp),
   ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -94,14 +91,16 @@ private fun ColumnScope.ShuffleSheetContent(
         Text(
           text = "CHANGE INSTRUMENT",
           color = ShuuenUi.Text,
-          style = MaterialTheme.typography.titleMedium.copy(
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = ShuuenUi.titlesSpacing,
-          ),
+          style =
+            MaterialTheme.typography.titleMedium.copy(
+              fontWeight = FontWeight.SemiBold,
+              letterSpacing = ShuuenUi.titlesSpacing,
+            ),
         )
       }
       Text(
-        text = "How often the ${channelLabel.lowercase()} channel picks another of its instruments.",
+        text =
+          "How often the ${channelLabel.lowercase()} channel picks another of its instruments.",
         color = ShuuenUi.Dim,
         style = MaterialTheme.typography.bodySmall,
       )
@@ -128,12 +127,12 @@ private fun ShuffleModeRow(
   onClick: () -> Unit,
 ) {
   Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .clip(ShuuenUi.ControlShape)
-      .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
-      .clickable(onClick = onClick)
-      .padding(horizontal = 14.dp, vertical = 12.dp),
+    modifier =
+      Modifier.fillMaxWidth()
+        .clip(ShuuenUi.ControlShape)
+        .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
+        .clickable(onClick = onClick)
+        .padding(horizontal = 14.dp, vertical = 12.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
@@ -144,9 +143,10 @@ private fun ShuffleModeRow(
       Text(
         text = label,
         color = if (selected) ShuuenUi.OnInverse else ShuuenUi.Text,
-        style = MaterialTheme.typography.titleSmall.copy(
-          fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-        ),
+        style =
+          MaterialTheme.typography.titleSmall.copy(
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+          ),
       )
       Text(
         text = description,

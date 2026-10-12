@@ -1,7 +1,5 @@
 package ldv.shuuen.data.database
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -13,6 +11,8 @@ import ldv.shuuen.core.music.DegreeContextNode
 import ldv.shuuen.core.music.DegreeDirection
 import ldv.shuuen.core.music.DegreeWithOctave
 import ldv.shuuen.core.music.Sustain
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class ContextJsonTest {
   @Test
@@ -30,10 +30,11 @@ class ContextJsonTest {
     val encoded = RoomJson.encode(listOf(node))
     val legacyJson =
       JsonArray(
-        Json.parseToJsonElement(encoded).jsonArray.map { element ->
-          JsonObject(element.jsonObject.filterKeys { it != "relativeDirection" })
-        }
-      ).toString()
+          Json.parseToJsonElement(encoded).jsonArray.map { element ->
+            JsonObject(element.jsonObject.filterKeys { it != "relativeDirection" })
+          }
+        )
+        .toString()
 
     val decoded: List<DegreeContextNode> = RoomJson.decode(legacyJson)
 

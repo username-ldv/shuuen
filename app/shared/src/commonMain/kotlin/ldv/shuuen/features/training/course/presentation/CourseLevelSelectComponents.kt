@@ -123,10 +123,9 @@ fun CourseSourceTopBarSelector(
   ) {
     Box(
       modifier =
-        Modifier
-          .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+        Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
           .fillMaxWidth()
-          .padding(horizontal = 8.dp, vertical = 4.dp),
+          .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
       Text(
         text = selectedLabel,
@@ -295,12 +294,10 @@ fun CourseLevelsMessage(
         isError = true,
         modifier = modifier,
       )
-    isLoading ->
-      Text("Loading course levels…", color = ShuuenUi.Muted, modifier = modifier)
+    isLoading -> Text("Loading course levels…", color = ShuuenUi.Muted, modifier = modifier)
     isEmpty ->
       Text("This progression group has no levels.", color = ShuuenUi.Muted, modifier = modifier)
-    isLoadingMore ->
-      Text("Loading more…", color = ShuuenUi.Muted, modifier = modifier)
+    isLoadingMore -> Text("Loading more…", color = ShuuenUi.Muted, modifier = modifier)
   }
 }
 
@@ -333,15 +330,16 @@ fun CoursePagingEffect(
 ) {
   LaunchedEffect(listState, levels, canLoadMore) {
     snapshotFlow {
-      listState.layoutInfo.visibleItemsInfo
-        .asReversed()
-        .firstNotNullOfOrNull { info ->
-          (info.key as? String)?.removePrefix(CourseLevelItemKeyPrefix)
-            ?.takeIf { info.key.toString().startsWith(CourseLevelItemKeyPrefix) }
+      listState.layoutInfo.visibleItemsInfo.asReversed().firstNotNullOfOrNull { info ->
+        (info.key as? String)?.removePrefix(CourseLevelItemKeyPrefix)?.takeIf {
+          info.key.toString().startsWith(CourseLevelItemKeyPrefix)
         }
-    }.distinctUntilChanged().collect { reference ->
-      val index = levels.indexOfLast { it.reference == reference }
-      if (canLoadMore && index >= (levels.size - 5).coerceAtLeast(0)) onLoadMore()
+      }
     }
+      .distinctUntilChanged()
+      .collect { reference ->
+        val index = levels.indexOfLast { it.reference == reference }
+        if (canLoadMore && index >= (levels.size - 5).coerceAtLeast(0)) onLoadMore()
+      }
   }
 }

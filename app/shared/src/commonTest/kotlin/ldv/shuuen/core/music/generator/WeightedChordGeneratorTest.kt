@@ -1,19 +1,17 @@
 package ldv.shuuen.core.music.generator
 
+import ldv.shuuen.core.music.Note
+import ldv.shuuen.core.music.Pitch
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import ldv.shuuen.core.music.Note
-import ldv.shuuen.core.music.Pitch
 
 class WeightedChordGeneratorTest {
-  private val cMajorPitches =
-    listOf(Pitch.C, Pitch.D, Pitch.E, Pitch.F, Pitch.G, Pitch.A, Pitch.B)
+  private val cMajorPitches = listOf(Pitch.C, Pitch.D, Pitch.E, Pitch.F, Pitch.G, Pitch.A, Pitch.B)
 
   /** C major over two octaves: the ladder stacked shapes climb. */
-  private val ladder =
-    (Note(Pitch.C, 3)..Note(Pitch.C, 5)).filter { it.pitch in cMajorPitches }
+  private val ladder = (Note(Pitch.C, 3)..Note(Pitch.C, 5)).filter { it.pitch in cMajorPitches }
 
   private fun generator(
     style: ChordStyle,

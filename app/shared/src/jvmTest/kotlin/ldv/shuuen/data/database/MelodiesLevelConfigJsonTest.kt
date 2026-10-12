@@ -1,10 +1,6 @@
 package ldv.shuuen.data.database
 
 import io.github.vinceglb.filekit.PlatformFile
-import java.io.File
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -17,6 +13,10 @@ import ldv.shuuen.core.music.generator.MelodyStyles
 import ldv.shuuen.features.training.common.asConfigDegreeStates
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.ScaleConfig
+import java.io.File
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * The melodies level config is stored as JSON by the Room type converter; these tests pin the
@@ -83,10 +83,11 @@ class MelodiesLevelConfigJsonTest {
     // A level saved by the previous app version has no rotateEveryQuestions key.
     val legacyJson =
       JsonObject(
-        Json.parseToJsonElement(RoomJson.encode(config)).jsonObject.filterKeys {
-          it != "rotateEveryQuestions"
-        }
-      ).toString()
+          Json.parseToJsonElement(RoomJson.encode(config)).jsonObject.filterKeys {
+            it != "rotateEveryQuestions"
+          }
+        )
+        .toString()
 
     val decoded: LevelConfig.Melodies = RoomJson.decode(legacyJson)
 
@@ -133,10 +134,11 @@ class MelodiesLevelConfigJsonTest {
     // A level saved by the previous app version has no melodyStyle key.
     val legacyJson =
       JsonObject(
-        Json.parseToJsonElement(RoomJson.encode(config)).jsonObject.filterKeys {
-          it != "melodyStyle"
-        }
-      ).toString()
+          Json.parseToJsonElement(RoomJson.encode(config)).jsonObject.filterKeys {
+            it != "melodyStyle"
+          }
+        )
+        .toString()
 
     val decoded: LevelConfig.Melodies = RoomJson.decode(legacyJson)
 
@@ -182,10 +184,11 @@ class MelodiesLevelConfigJsonTest {
     // A level saved by the previous app version has no tuneInconsistencyCents key.
     val legacyJson =
       JsonObject(
-        Json.parseToJsonElement(RoomJson.encode(config)).jsonObject.filterKeys {
-          it != "tuneInconsistencyCents"
-        }
-      ).toString()
+          Json.parseToJsonElement(RoomJson.encode(config)).jsonObject.filterKeys {
+            it != "tuneInconsistencyCents"
+          }
+        )
+        .toString()
 
     val decoded: LevelConfig.Melodies = RoomJson.decode(legacyJson)
 
@@ -204,7 +207,10 @@ class MelodiesLevelConfigJsonTest {
       )
 
     val legacyJson = RoomJson.encode(config)
-    assertTrue(Json.parseToJsonElement(legacyJson).jsonObject["file"] is kotlinx.serialization.json.JsonPrimitive)
+    assertTrue(
+      Json.parseToJsonElement(legacyJson).jsonObject["file"]
+        is kotlinx.serialization.json.JsonPrimitive
+    )
     val decoded = RoomJson.decode<LevelConfig.Melodies>(legacyJson)
 
     assertTrue(decoded is LevelConfig.Melodies.Midi)

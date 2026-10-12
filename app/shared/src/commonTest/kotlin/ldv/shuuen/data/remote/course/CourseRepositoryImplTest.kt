@@ -6,34 +6,34 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.headersOf
 import io.ktor.http.content.OutgoingContent
+import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 import ldv.shuuen.data.remote.ApiConfig
 import ldv.shuuen.data.remote.ApiJson
 import ldv.shuuen.features.training.common.TrainingFlow
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class CourseRepositoryImplTest {
   @Test
   fun decodesCourseDiscoveryAndOrderedProgressionGroups() = runTest {
     val engine = MockEngine { request ->
       val body =
-        if (request.url.encodedPath.endsWith("/melodies")) modeResponse
-        else coursePageResponse
+        if (request.url.encodedPath.endsWith("/melodies")) modeResponse else coursePageResponse
       respond(
         content = body,
         status = HttpStatusCode.OK,
         headers = headersOf(HttpHeaders.ContentType, "application/json"),
       )
     }
-    val client = HttpClient(engine) {
-      expectSuccess = true
-      install(ContentNegotiation) { json(ApiJson) }
-    }
+    val client =
+      HttpClient(engine) {
+        expectSuccess = true
+        install(ContentNegotiation) { json(ApiJson) }
+      }
     val repository =
       CourseRepositoryImpl(
         CourseApi(client, ApiConfig("http://backend.test")),
@@ -61,14 +61,16 @@ class CourseRepositoryImplTest {
         headers = headersOf(HttpHeaders.ContentType, "application/json"),
       )
     }
-    val client = HttpClient(engine) {
-      expectSuccess = true
-      install(ContentNegotiation) { json(ApiJson) }
-    }
-    val repository = CourseRepositoryImpl(
-      CourseApi(client, ApiConfig("http://backend.test")),
-      CourseDefinitionMapper(ApiJson),
-    )
+    val client =
+      HttpClient(engine) {
+        expectSuccess = true
+        install(ContentNegotiation) { json(ApiJson) }
+      }
+    val repository =
+      CourseRepositoryImpl(
+        CourseApi(client, ApiConfig("http://backend.test")),
+        CourseDefinitionMapper(ApiJson),
+      )
 
     val result = repository.queryLevels(7, TrainingFlow.Melodies, listOf("a", "b"))
 
@@ -86,7 +88,8 @@ private val coursePageResponse =
     "modes":[{"mode":"melodies","name":"Melodies","description":"","sort_order":0,
       "group_count":6,"level_count":66}]
   }],"meta":{"limit":50,"offset":0,"total":1}}
-  """.trimIndent()
+  """
+    .trimIndent()
 
 private val modeResponse =
   """
@@ -97,4 +100,5 @@ private val modeResponse =
       {"id":"g2","library_group_id":2,"name":"F♯","description":"","sort_order":1,
         "level_count":11,"section_count":0,"blueprint":false}
     ]}}
-  """.trimIndent()
+  """
+    .trimIndent()

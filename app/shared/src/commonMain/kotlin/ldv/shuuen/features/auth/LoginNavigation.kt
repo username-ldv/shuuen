@@ -15,8 +15,8 @@ val loginNavigationModule = module {
   navigation<AppRoute.Login> {
     val navigator = LocalAppNavigator.current
     LoginScreen(
-        viewModel = koinViewModel(),
-        onNavigateBack = { navigator.goBack() },
+      viewModel = koinViewModel(),
+      onNavigateBack = { navigator.goBack() },
     )
   }
 }

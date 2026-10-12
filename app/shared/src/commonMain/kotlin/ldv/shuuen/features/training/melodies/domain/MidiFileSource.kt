@@ -11,7 +11,6 @@ import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonEncoder
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -41,8 +40,9 @@ object MidiFileSourceSerializer : KSerializer<MidiFileSource> {
         encoder.encodeSerializableValue(PlatformFileSerializer, value.platformFile)
 
       is MidiFileSource.Backend -> {
-        val jsonEncoder = encoder as? JsonEncoder
-          ?: throw SerializationException("Backend MIDI references require JSON encoding.")
+        val jsonEncoder =
+          encoder as? JsonEncoder
+            ?: throw SerializationException("Backend MIDI references require JSON encoding.")
         jsonEncoder.encodeJsonElement(
           buildJsonObject {
             put("type", "backend")
@@ -57,8 +57,9 @@ object MidiFileSourceSerializer : KSerializer<MidiFileSource> {
   }
 
   override fun deserialize(decoder: Decoder): MidiFileSource {
-    val jsonDecoder = decoder as? JsonDecoder
-      ?: return MidiFileSource.Local(decoder.decodeSerializableValue(PlatformFileSerializer))
+    val jsonDecoder =
+      decoder as? JsonDecoder
+        ?: return MidiFileSource.Local(decoder.decodeSerializableValue(PlatformFileSerializer))
     val element = jsonDecoder.decodeJsonElement()
     if (element !is JsonObject) {
       return MidiFileSource.Local(

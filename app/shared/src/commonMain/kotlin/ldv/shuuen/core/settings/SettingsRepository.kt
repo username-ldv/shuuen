@@ -45,7 +45,9 @@ interface SettingsRepository {
   /** Transposition and shared harmonic context for imported MIDI levels. */
   suspend fun setMidiLevelOptions(options: MidiLevelOptions)
 
-  /** Replaces the tune inconsistency of every level in [courseId]; null restores each level's own. */
+  /**
+   * Replaces the tune inconsistency of every level in [courseId]; null restores each level's own.
+   */
   suspend fun setCourseTuneInconsistency(courseId: Long, cents: Int?)
 
   suspend fun setInputMethod(inputMethod: InputMethod)
@@ -95,14 +97,13 @@ data class AppSettings(
   val presetVolumes: PresetVolumes = PresetVolumes(),
   /** Optional per-instrument CC74 compensation for velocity-dependent SoundFont filtering. */
   val presetCutoffs: PresetCutoffs = PresetCutoffs(),
-  @SerialName("melodyOriginalVelocityBoost")
-  val melodyOriginalVolumeBoost: Int = 0,
+  @SerialName("melodyOriginalVelocityBoost") val melodyOriginalVolumeBoost: Int = 0,
   val inputMethod: InputMethod = InputMethod(),
   val theme: ThemeSettings = ThemeSettings(),
   /**
-   * MIDI keyboard answers only: when true, a guess must land in the exact octave of the asked
-   * note; when false (default) any octave of the right pitch class counts, matching the
-   * octave-less on-screen inputs. On-screen taps are always octave independent.
+   * MIDI keyboard answers only: when true, a guess must land in the exact octave of the asked note;
+   * when false (default) any octave of the right pitch class counts, matching the octave-less
+   * on-screen inputs. On-screen taps are always octave independent.
    */
   val midiRespectOctaves: Boolean = false,
   val musicLabels: MusicLabelSettings = MusicLabelSettings(),

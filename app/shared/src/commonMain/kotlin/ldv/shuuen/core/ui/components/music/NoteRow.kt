@@ -32,10 +32,11 @@ fun NoteRow(
     val viewportWidthPx = with(density) { maxWidth.roundToPx() }
     val centerOffsetPx = -(viewportWidthPx / 2 - itemWidthPx / 2)
 
-    val listState = rememberLazyListState(
-      initialFirstVisibleItemIndex = selectedIndex.coerceAtLeast(0),
-      initialFirstVisibleItemScrollOffset = centerOffsetPx
-    )
+    val listState =
+      rememberLazyListState(
+        initialFirstVisibleItemIndex = selectedIndex.coerceAtLeast(0),
+        initialFirstVisibleItemScrollOffset = centerOffsetPx,
+      )
     LazyRow(state = listState, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
       for (note in bounds.first..bounds.second) {
         item {
@@ -43,7 +44,7 @@ fun NoteRow(
             label = nameGenerator?.invoke(note) ?: note.toString(),
             active = value.midiIndex == note.midiIndex,
             onClicked = { onChoose(note) },
-            itemSize = itemSize
+            itemSize = itemSize,
           )
         }
       }

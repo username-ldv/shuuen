@@ -30,8 +30,8 @@ import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material.icons.rounded.Schedule
-import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.TrackChanges
@@ -54,7 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlin.math.roundToInt
+import ldv.shuuen.core.music.DegreeContext
 import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.core.ui.components.BoxedItemRow
 import ldv.shuuen.core.ui.components.FlatSection
@@ -65,7 +65,6 @@ import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.SoftControl
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.SurfaceCard
-import ldv.shuuen.core.music.DegreeContext
 import ldv.shuuen.core.util.toRoundedString
 import ldv.shuuen.features.training.common.LevelAccuracyStats
 import ldv.shuuen.features.training.common.TrainingFlow
@@ -82,7 +81,7 @@ import ldv.shuuen.features.training.domain.ScaleConfig
 import ldv.shuuen.features.training.level_end.domain.AccuracyBucket
 import ldv.shuuen.features.training.level_end.domain.TrainingSession
 import ldv.shuuen.features.training.level_end.domain.accuracyBuckets
-import kotlin.math.round
+import kotlin.math.roundToInt
 
 @Composable
 fun LevelCompleteScreen(
@@ -256,10 +255,11 @@ private fun sessionSubtitle(session: TrainingSession, level: CompletedLevel?): S
       null -> null
     }
   return listOfNotNull(
-    flowLabel,
-    keyLabel,
-    "Ended early".takeIf { session.finishedEarly },
-  ).joinToString(" • ")
+      flowLabel,
+      keyLabel,
+      "Ended early".takeIf { session.finishedEarly },
+    )
+    .joinToString(" • ")
 }
 
 private fun scaleLabel(scale: ScaleConfig.AbsoluteScaleConfig): String =
@@ -312,16 +312,20 @@ private fun ScoreRing(accuracy: Float) {
       Text(
         text = "${(accuracy * 100).toRoundedString(1)}%",
         color = ShuuenUi.Text,
-        style = MaterialTheme.typography.displayLarge.copy(
-          fontSize = 32.sp, fontWeight = FontWeight.Bold
-        ),
+        style =
+          MaterialTheme.typography.displayLarge.copy(
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Bold,
+          ),
       )
       Text(
         text = "SCORE",
         color = ShuuenUi.Dim,
-        style = MaterialTheme.typography.labelLarge.copy(
-          letterSpacing = 4.sp, fontWeight = FontWeight.SemiBold
-        ),
+        style =
+          MaterialTheme.typography.labelLarge.copy(
+            letterSpacing = 4.sp,
+            fontWeight = FontWeight.SemiBold,
+          ),
       )
     }
   }
@@ -337,9 +341,11 @@ private fun ScoreSummary(
     Text(
       text = "${session.correctNotes} / ${session.notesTotal} CORRECT",
       color = ShuuenUi.Text,
-      style = MaterialTheme.typography.titleLarge.copy(
-        letterSpacing = 2.sp, fontWeight = FontWeight.Bold
-      ),
+      style =
+        MaterialTheme.typography.titleLarge.copy(
+          letterSpacing = 2.sp,
+          fontWeight = FontWeight.Bold,
+        ),
       maxLines = 2,
       overflow = TextOverflow.Ellipsis,
     )
@@ -349,9 +355,7 @@ private fun ScoreSummary(
       style = MaterialTheme.typography.bodyMedium,
     )
     if (levelAccuracyStats != null) {
-      Column(
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-      ) {
+      Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(
           text = "LEVEL ACCURACY",
           color = ShuuenUi.Dim,
@@ -379,7 +383,8 @@ private fun scoreDescription(session: TrainingSession): String =
   when (session.flow) {
     TrainingFlow.Singles ->
       "${session.questionsAnswered} " +
-        (if (session.questionsAnswered == 1) "question" else "questions") + " answered"
+        (if (session.questionsAnswered == 1) "question" else "questions") +
+        " answered"
 
     TrainingFlow.Melodies ->
       // Per-note sessions (a MIDI melody or the endless stream) have one entry per note; a
@@ -392,7 +397,8 @@ private fun scoreDescription(session: TrainingSession): String =
 
     TrainingFlow.Chords ->
       "${session.questionsAnswered} " +
-        (if (session.questionsAnswered == 1) "chord" else "chords") + " answered"
+        (if (session.questionsAnswered == 1) "chord" else "chords") +
+        " answered"
   }
 
 // endregion
@@ -524,9 +530,11 @@ private fun AccuracyRangeBar(buckets: List<AccuracyBucket>) {
         // A small alpha floor keeps a fully-missed range visible as an empty slot.
         val alpha = 0.12f + 0.8f * bucket.accuracy
         Box(
-          modifier = Modifier.weight(1f).fillMaxWidth()
-            .height(14.dp)
-            .background(ShuuenUi.Ink.copy(alpha = alpha), MaterialTheme.shapes.extraSmall),
+          modifier =
+            Modifier.weight(1f)
+              .fillMaxWidth()
+              .height(14.dp)
+              .background(ShuuenUi.Ink.copy(alpha = alpha), MaterialTheme.shapes.extraSmall)
         )
       }
     }
@@ -712,7 +720,8 @@ private fun ParameterChips(parameters: List<Pair<ImageVector, String>>) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
       parameters.chunked(if (compact) 2 else 3).forEach { row ->
         Row(
-          modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
           row.forEach { (icon, text) ->
             ParameterChip(icon, text, Modifier.weight(1f))
@@ -734,7 +743,10 @@ private fun ParameterChip(
 ) {
   SoftControl(modifier = modifier.height(44.dp)) {
     Icon(
-      icon, contentDescription = null, tint = ShuuenUi.Muted, modifier = Modifier.size(20.dp)
+      icon,
+      contentDescription = null,
+      tint = ShuuenUi.Muted,
+      modifier = Modifier.size(20.dp),
     )
     Text(
       text = text,
@@ -795,10 +807,15 @@ private fun CompactCompletionButton(
   val shape = ShuuenUi.PillShape
   val contentColor = if (filled) ShuuenUi.OnInverse else ShuuenUi.Text
   Row(
-    modifier = Modifier.fillMaxWidth(0.74f).widthIn(max = 360.dp).height(50.dp).clip(shape)
-      .background(if (filled) ShuuenUi.Inverse else Color.Transparent)
-      .border(1.dp, if (filled) Color.Transparent else ShuuenUi.HairlineStrong, shape)
-      .clickable(onClick = onClick).padding(horizontal = 18.dp),
+    modifier =
+      Modifier.fillMaxWidth(0.74f)
+        .widthIn(max = 360.dp)
+        .height(50.dp)
+        .clip(shape)
+        .background(if (filled) ShuuenUi.Inverse else Color.Transparent)
+        .border(1.dp, if (filled) Color.Transparent else ShuuenUi.HairlineStrong, shape)
+        .clickable(onClick = onClick)
+        .padding(horizontal = 18.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
   ) {
@@ -811,10 +828,11 @@ private fun CompactCompletionButton(
     Text(
       text = text,
       color = contentColor,
-      style = MaterialTheme.typography.titleMedium.copy(
-        letterSpacing = 3.sp,
-        fontWeight = FontWeight.Bold,
-      ),
+      style =
+        MaterialTheme.typography.titleMedium.copy(
+          letterSpacing = 3.sp,
+          fontWeight = FontWeight.Bold,
+        ),
       maxLines = 1,
       overflow = TextOverflow.Ellipsis,
     )

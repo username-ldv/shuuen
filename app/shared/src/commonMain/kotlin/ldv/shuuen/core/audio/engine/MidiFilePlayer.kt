@@ -6,8 +6,8 @@ import ldv.shuuen.core.music.Note
 /**
  * A note within a loaded melody: the pitch plus its start position in MIDI ticks.
  * [durationQuarters] is the note's rhythm value in quarter-note beats; only generated (random)
- * melodies play by it — a MIDI file's own player keeps the file's real timing. [detuneCents]
- * plays the note out of tune by that many cents; also generated melodies only.
+ * melodies play by it — a MIDI file's own player keeps the file's real timing. [detuneCents] plays
+ * the note out of tune by that many cents; also generated melodies only.
  */
 data class MelodyNote(
   val note: Note,
@@ -43,7 +43,10 @@ data class MidiFilePlaybackOptions(
  * [positionTicks]/[positionSeconds]/[isPlaying]; there is one active melody at a time.
  */
 interface MidiFilePlayer {
-  /** Loads [bytes] as a MIDI stream and returns its note sequence and length. Does not start playback. */
+  /**
+   * Loads [bytes] as a MIDI stream and returns its note sequence and length. Does not start
+   * playback.
+   */
   suspend fun load(
     bytes: ByteArray,
     options: MidiFilePlaybackOptions = MidiFilePlaybackOptions(),
@@ -56,7 +59,9 @@ interface MidiFilePlayer {
   /** Seeks to an absolute MIDI tick position. */
   fun seekToTick(tick: Long)
 
-  /** Seeks forward (positive) or backward (negative) by a number of seconds, clamped to the file. */
+  /**
+   * Seeks forward (positive) or backward (negative) by a number of seconds, clamped to the file.
+   */
   fun seekBySeconds(deltaSeconds: Double)
 
   fun positionTicks(): Long
@@ -67,8 +72,8 @@ interface MidiFilePlayer {
 
   /**
    * Keeps the backing track (when one is loaded) aligned with the melody; the caller invokes it
-   * periodically, e.g. from the same timer that polls the position. Play/pause/seek keep the two
-   * in sync on their own — this covers what they can't: starting a late backing track (negative
+   * periodically, e.g. from the same timer that polls the position. Play/pause/seek keep the two in
+   * sync on their own — this covers what they can't: starting a late backing track (negative
    * offset), silencing it past the melody's end, and correcting drift after audio hiccups.
    */
   fun syncBackingTrack() {}

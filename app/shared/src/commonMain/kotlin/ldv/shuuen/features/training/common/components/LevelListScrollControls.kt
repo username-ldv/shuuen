@@ -26,8 +26,8 @@ import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import ldv.shuuen.core.ui.components.ShuuenUi
 
 private const val LevelJumpSize = 10
@@ -77,12 +77,14 @@ fun LevelListScrollControls(
   val currentResolver by rememberUpdatedState(resolveFirstUnattemptedLevelId)
   var isResolvingTarget by remember { mutableStateOf(false) }
   val lastLevelIndex = orderedLevelIds.lastIndex
-  val currentLevelIndex by remember(listState, firstLevelItemIndex, lastLevelIndex) {
-    derivedStateOf {
-      (listState.firstVisibleItemIndex - firstLevelItemIndex).coerceIn(0, lastLevelIndex)
+  val currentLevelIndex by
+    remember(listState, firstLevelItemIndex, lastLevelIndex) {
+      derivedStateOf {
+        (listState.firstVisibleItemIndex - firstLevelItemIndex).coerceIn(0, lastLevelIndex)
+      }
     }
-  }
-  val isAtStart = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+  val isAtStart =
+    listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
 
   fun scrollToLevel(levelIndex: Int) {
     scope.launch { listState.animateScrollToItem(firstLevelItemIndex + levelIndex) }
@@ -154,8 +156,9 @@ fun LevelListScrollControls(
                   firstUnattemptedLevelIndex(currentOrderedLevelIds, attemptedLevelIds)
                 )
             if (targetLevelId != null) {
-              val targetLevelIndex =
-                snapshotFlow { currentOrderedLevelIds.indexOf(targetLevelId) }.first { it >= 0 }
+              val targetLevelIndex = snapshotFlow {
+                currentOrderedLevelIds.indexOf(targetLevelId)
+              }.first { it >= 0 }
               scrollToLevelCentered(targetLevelIndex)
             }
           } finally {
@@ -183,12 +186,10 @@ private fun LevelScrollFab(
   SmallFloatingActionButton(
     onClick = { if (enabled) onClick() },
     modifier =
-      Modifier
-        .alpha(if (enabled) 1f else 0.38f)
-        .semantics {
-          this.contentDescription = contentDescription
-          if (!enabled) disabled()
-        },
+      Modifier.alpha(if (enabled) 1f else 0.38f).semantics {
+        this.contentDescription = contentDescription
+        if (!enabled) disabled()
+      },
     containerColor = ShuuenUi.Inverse,
     contentColor = ShuuenUi.OnInverse,
     shape = ShuuenUi.ControlShape,

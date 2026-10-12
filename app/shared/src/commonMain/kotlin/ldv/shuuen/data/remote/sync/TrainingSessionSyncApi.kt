@@ -16,11 +16,13 @@ internal class TrainingSessionSyncApi(private val client: HttpClient) {
     accessToken: String,
     request: TrainingSessionSyncRequestDto,
   ): LevelSyncEnvelopeDto<TrainingSessionSyncResponseDto> =
-    client.post {
-      url(baseUrl)
-      url { appendPathSegments("api", "v1", "sync", "training-sessions") }
-      bearerAuth(accessToken)
-      contentType(ContentType.Application.Json)
-      setBody(request)
-    }.bodyAndClose()
+    client
+      .post {
+        url(baseUrl)
+        url { appendPathSegments("api", "v1", "sync", "training-sessions") }
+        bearerAuth(accessToken)
+        contentType(ContentType.Application.Json)
+        setBody(request)
+      }
+      .bodyAndClose()
 }

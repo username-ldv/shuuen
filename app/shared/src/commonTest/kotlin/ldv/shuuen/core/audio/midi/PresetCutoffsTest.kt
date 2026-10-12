@@ -45,10 +45,7 @@ class PresetCutoffsTest {
 
   @Test
   fun allPlaybackScopeAppliesOutsideMidiMelodies() {
-    val cutoffs =
-      PresetCutoffs()
-        .with(piano, 96)
-        .withScope(piano, PresetCutoffScope.AllPlayback)
+    val cutoffs = PresetCutoffs().with(piano, 96).withScope(piano, PresetCutoffScope.AllPlayback)
 
     assertEquals(96, cutoffs.effectiveForPreset(piano, originalVelocityMelody = false))
     assertEquals(96, cutoffs.effectiveForPreset(piano, originalVelocityMelody = true))

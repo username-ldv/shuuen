@@ -1,13 +1,5 @@
 package ldv.shuuen.features.main
 
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -50,6 +42,14 @@ import ldv.shuuen.features.training.domain.ScaleConfig
 import ldv.shuuen.features.training.level_end.domain.TrainingSession
 import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
 import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainMenuViewModelTest {
@@ -66,115 +66,119 @@ class MainMenuViewModelTest {
   }
 
   @Test
-  fun localLevelCanBeContinuedWithoutCoursePercentage() = runTest(dispatcher) {
-    val sessions = FakeTrainingSessionRepository(localSession())
-    val courses = FakeCourseRepository()
-    val viewModel =
-      MainMenuViewModel(
-        sessions,
-        courses,
-        FakeLevelSyncRepository(),
-        FakeTrainingSessionSyncRepository(),
-      )
+  fun localLevelCanBeContinuedWithoutCoursePercentage() =
+    runTest(dispatcher) {
+      val sessions = FakeTrainingSessionRepository(localSession())
+      val courses = FakeCourseRepository()
+      val viewModel =
+        MainMenuViewModel(
+          sessions,
+          courses,
+          FakeLevelSyncRepository(),
+          FakeTrainingSessionSyncRepository(),
+        )
 
-    advanceUntilIdle()
+      advanceUntilIdle()
 
-    val card = assertNotNull(viewModel.state.value.continueCard)
-    assertEquals("local-level", card.levelReference)
-    assertFalse(card.isCourseLevel)
-    assertNull(card.course)
-    assertNull(card.nextLevelReference)
-    assertEquals(0, courses.requestCount)
-  }
-
-  @Test
-  fun latestCourseGroupDrivesContinueNextAndWholeCourseProgress() = runTest(dispatcher) {
-    val courses = FakeCourseRepository()
-    val latestReference = courses.reference("a")
-    val sessions =
-      FakeTrainingSessionRepository(
-        session(levelId = latestReference, levelName = "Level A"),
-        completed = setOf(latestReference, courses.reference("c"), courses.reference("d")),
-      )
-    val viewModel =
-      MainMenuViewModel(
-        sessions,
-        courses,
-        FakeLevelSyncRepository(),
-        FakeTrainingSessionSyncRepository(),
-      )
-
-    advanceUntilIdle()
-
-    val initial = assertNotNull(viewModel.state.value.continueCard)
-    val progress = assertNotNull(initial.course)
-    assertEquals("Tonic course", progress.name)
-    assertEquals("Foundations", progress.currentGroup?.name)
-    assertEquals(50, progress.currentGroup?.progress?.percentage)
-    assertEquals(listOf("Foundations", "Advanced"), progress.groups.map { it.name })
-    assertEquals(75, progress.total.percentage)
-    assertEquals(courses.reference("b"), initial.nextLevelReference)
-
-    sessions.completed.value = courses.allReferences
-    advanceUntilIdle()
-
-    val completed = assertNotNull(viewModel.state.value.continueCard?.course)
-    assertEquals(100, completed.total.percentage)
-    assertTrue(completed.groups.all { it.progress.percentage == 100 })
-  }
+      val card = assertNotNull(viewModel.state.value.continueCard)
+      assertEquals("local-level", card.levelReference)
+      assertFalse(card.isCourseLevel)
+      assertNull(card.course)
+      assertNull(card.nextLevelReference)
+      assertEquals(0, courses.requestCount)
+    }
 
   @Test
-  fun endingLatestLevelEarlyDoesNotIncreaseCourseCompletion() = runTest(dispatcher) {
-    val courses = FakeCourseRepository()
-    val latestReference = courses.reference("a")
-    val sessions =
-      FakeTrainingSessionRepository(
-        session(levelId = latestReference, levelName = "Level A", finishedEarly = true),
-        completed = setOf(courses.reference("c"), courses.reference("d")),
-      )
-    val viewModel =
-      MainMenuViewModel(
-        sessions,
-        courses,
-        FakeLevelSyncRepository(),
-        FakeTrainingSessionSyncRepository(),
-      )
+  fun latestCourseGroupDrivesContinueNextAndWholeCourseProgress() =
+    runTest(dispatcher) {
+      val courses = FakeCourseRepository()
+      val latestReference = courses.reference("a")
+      val sessions =
+        FakeTrainingSessionRepository(
+          session(levelId = latestReference, levelName = "Level A"),
+          completed = setOf(latestReference, courses.reference("c"), courses.reference("d")),
+        )
+      val viewModel =
+        MainMenuViewModel(
+          sessions,
+          courses,
+          FakeLevelSyncRepository(),
+          FakeTrainingSessionSyncRepository(),
+        )
 
-    advanceUntilIdle()
+      advanceUntilIdle()
 
-    val card = assertNotNull(viewModel.state.value.continueCard)
-    val progress = assertNotNull(card.course)
-    assertEquals(latestReference, card.levelReference)
-    assertEquals(courses.reference("b"), card.nextLevelReference)
-    assertEquals(0, progress.currentGroup?.progress?.percentage)
-    assertEquals(50, progress.total.percentage)
-  }
+      val initial = assertNotNull(viewModel.state.value.continueCard)
+      val progress = assertNotNull(initial.course)
+      assertEquals("Tonic course", progress.name)
+      assertEquals("Foundations", progress.currentGroup?.name)
+      assertEquals(50, progress.currentGroup?.progress?.percentage)
+      assertEquals(listOf("Foundations", "Advanced"), progress.groups.map { it.name })
+      assertEquals(75, progress.total.percentage)
+      assertEquals(courses.reference("b"), initial.nextLevelReference)
+
+      sessions.completed.value = courses.allReferences
+      advanceUntilIdle()
+
+      val completed = assertNotNull(viewModel.state.value.continueCard?.course)
+      assertEquals(100, completed.total.percentage)
+      assertTrue(completed.groups.all { it.progress.percentage == 100 })
+    }
 
   @Test
-  fun manualDataSyncPublishesBothResultsWithoutLosingContinueState() = runTest(dispatcher) {
-    val sessions = FakeTrainingSessionRepository(localSession())
-    val levelResult = LevelSyncResult(pushed = 2, received = 3, conflicts = 1)
-    val sessionResult = TrainingSessionSyncResult(pushed = 4, received = 5, conflicts = 2)
-    val levelSync = FakeLevelSyncRepository(levelResult)
-    val sessionSync = FakeTrainingSessionSyncRepository(sessionResult)
-    val viewModel = MainMenuViewModel(sessions, FakeCourseRepository(), levelSync, sessionSync)
-    advanceUntilIdle()
+  fun endingLatestLevelEarlyDoesNotIncreaseCourseCompletion() =
+    runTest(dispatcher) {
+      val courses = FakeCourseRepository()
+      val latestReference = courses.reference("a")
+      val sessions =
+        FakeTrainingSessionRepository(
+          session(levelId = latestReference, levelName = "Level A", finishedEarly = true),
+          completed = setOf(courses.reference("c"), courses.reference("d")),
+        )
+      val viewModel =
+        MainMenuViewModel(
+          sessions,
+          courses,
+          FakeLevelSyncRepository(),
+          FakeTrainingSessionSyncRepository(),
+        )
 
-    viewModel.syncData()
-    advanceUntilIdle()
+      advanceUntilIdle()
 
-    assertEquals(1, levelSync.calls)
-    assertEquals(1, sessionSync.calls)
-    assertEquals(
-      DataSyncStatus.Complete(DataSyncResult(levelResult, sessionResult)),
-      viewModel.state.value.dataSyncStatus,
-    )
-    assertNotNull(viewModel.state.value.continueCard)
-  }
+      val card = assertNotNull(viewModel.state.value.continueCard)
+      val progress = assertNotNull(card.course)
+      assertEquals(latestReference, card.levelReference)
+      assertEquals(courses.reference("b"), card.nextLevelReference)
+      assertEquals(0, progress.currentGroup?.progress?.percentage)
+      assertEquals(50, progress.total.percentage)
+    }
+
+  @Test
+  fun manualDataSyncPublishesBothResultsWithoutLosingContinueState() =
+    runTest(dispatcher) {
+      val sessions = FakeTrainingSessionRepository(localSession())
+      val levelResult = LevelSyncResult(pushed = 2, received = 3, conflicts = 1)
+      val sessionResult = TrainingSessionSyncResult(pushed = 4, received = 5, conflicts = 2)
+      val levelSync = FakeLevelSyncRepository(levelResult)
+      val sessionSync = FakeTrainingSessionSyncRepository(sessionResult)
+      val viewModel = MainMenuViewModel(sessions, FakeCourseRepository(), levelSync, sessionSync)
+      advanceUntilIdle()
+
+      viewModel.syncData()
+      advanceUntilIdle()
+
+      assertEquals(1, levelSync.calls)
+      assertEquals(1, sessionSync.calls)
+      assertEquals(
+        DataSyncStatus.Complete(DataSyncResult(levelResult, sessionResult)),
+        viewModel.state.value.dataSyncStatus,
+      )
+      assertNotNull(viewModel.state.value.continueCard)
+    }
 }
 
 private class FakeLevelSyncRepository(
-  private val result: LevelSyncResult = LevelSyncResult(pushed = 0, received = 0, conflicts = 0),
+  private val result: LevelSyncResult = LevelSyncResult(pushed = 0, received = 0, conflicts = 0)
 ) : LevelSyncRepository {
   var calls = 0
 
@@ -186,7 +190,7 @@ private class FakeLevelSyncRepository(
 
 private class FakeTrainingSessionSyncRepository(
   private val result: TrainingSessionSyncResult =
-    TrainingSessionSyncResult(pushed = 0, received = 0, conflicts = 0),
+    TrainingSessionSyncResult(pushed = 0, received = 0, conflicts = 0)
 ) : TrainingSessionSyncRepository {
   var calls = 0
 
@@ -293,14 +297,16 @@ private class FakeCourseRepository : CourseRepository {
   private fun item(id: String): CourseLevelItem {
     val reference = LevelReference.Remote(CourseId, TrainingFlow.Melodies, id)
     val groupId = if (id == "a" || id == "b") "foundations" else "advanced"
-    val next = when (id) {
-      "a" -> "b"
-      "c" -> "d"
-      else -> null
-    }
+    val next =
+      when (id) {
+        "a" -> "b"
+        "c" -> "d"
+        else -> null
+      }
     return CourseLevelItem(
       reference = reference,
-      playable = PlayableTrainingLevel.Melodies(testLevel(reference.encoded, "Level ${id.uppercase()}")),
+      playable =
+        PlayableTrainingLevel.Melodies(testLevel(reference.encoded, "Level ${id.uppercase()}")),
       progressionGroupId = groupId,
       sortOrder = id.first().code,
       sections = emptyList(),
@@ -315,8 +321,7 @@ private class FakeCourseRepository : CourseRepository {
   }
 }
 
-private fun localSession() =
-  session(levelId = "local-level", levelName = "My local level")
+private fun localSession() = session(levelId = "local-level", levelName = "My local level")
 
 private fun session(
   levelId: String,

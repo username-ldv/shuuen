@@ -1,10 +1,5 @@
 package ldv.shuuen.data.remote.course
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertIs
-import kotlin.test.assertTrue
 import kotlinx.serialization.json.decodeFromJsonElement
 import ldv.shuuen.core.music.Degree
 import ldv.shuuen.core.music.Pitch
@@ -19,6 +14,11 @@ import ldv.shuuen.features.training.course.domain.PlayableTrainingLevel
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.melodies.domain.MidiFileSource
 import ldv.shuuen.features.training.melodies.domain.MidiKey
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 class CourseAdditionalMappingTest {
   @Test
@@ -71,11 +71,18 @@ class CourseAdditionalMappingTest {
     assertEquals(ScaleAccidentalType.Flats, key.accidentalType)
     assertEquals(ScaleType.Custom, key.scaleType)
     assertEquals("Lydian", key.scaleName)
-    assertEquals(listOf(Degree.D1, Degree.D2, Degree.D3, Degree.DS4, Degree.D5, Degree.D6, Degree.D7), key.degrees)
+    assertEquals(
+      listOf(Degree.D1, Degree.D2, Degree.D3, Degree.DS4, Degree.D5, Degree.D6, Degree.D7),
+      key.degrees,
+    )
     assertEquals("E♭ lydian", key.displayName())
     assertEquals(Pitch.F, key.transposed(2).tonic)
 
-    val major = MidiKey(Pitch.G, listOf(Degree.D1, Degree.D2, Degree.D3, Degree.D4, Degree.D5, Degree.D6, Degree.D7))
+    val major =
+      MidiKey(
+        Pitch.G,
+        listOf(Degree.D1, Degree.D2, Degree.D3, Degree.D4, Degree.D5, Degree.D6, Degree.D7),
+      )
     assertEquals(ScaleType.Major, MidiKey.scaleTypeFor(major.degrees))
   }
 
@@ -83,17 +90,21 @@ class CourseAdditionalMappingTest {
   fun midiKeyWithUnknownSpellingFailsMapping() {
     val error =
       assertFailsWith<CourseMappingException> {
-        map(TrainingFlow.Melodies, midiWithKeyJson.replace("\"spelling\":\"flats\"", "\"spelling\":\"naturals\""))
+        map(
+          TrainingFlow.Melodies,
+          midiWithKeyJson.replace("\"spelling\":\"flats\"", "\"spelling\":\"naturals\""),
+        )
       }
     assertTrue(error.message!!.contains("definition.config.key.spelling"), error.message)
   }
 
   private fun map(mode: TrainingFlow, payload: String) =
-    CourseDefinitionMapper(ApiJson).map(
-      9,
-      mode,
-      ApiJson.decodeFromJsonElement<CourseLevelDto>(ApiJson.parseToJsonElement(payload)),
-    )
+    CourseDefinitionMapper(ApiJson)
+      .map(
+        9,
+        mode,
+        ApiJson.decodeFromJsonElement<CourseLevelDto>(ApiJson.parseToJsonElement(payload)),
+      )
 }
 
 private val singlesJson =
@@ -125,7 +136,8 @@ private val singlesJson =
     },
     "sort_order":1,"is_public":true,"sections":[]
   }
-  """.trimIndent()
+  """
+    .trimIndent()
 
 private val chordsJson =
   """
@@ -150,7 +162,8 @@ private val chordsJson =
     },
     "sort_order":2,"is_public":true,"sections":[]
   }
-  """.trimIndent()
+  """
+    .trimIndent()
 
 private val midiWithKeyJson =
   """
@@ -191,4 +204,5 @@ private val midiJson =
     "midi":{"melody_id":12,"variant_id":34,"download_url":"/api/v1/library/variants/34/download"},
     "sections":[]
   }
-  """.trimIndent()
+  """
+    .trimIndent()

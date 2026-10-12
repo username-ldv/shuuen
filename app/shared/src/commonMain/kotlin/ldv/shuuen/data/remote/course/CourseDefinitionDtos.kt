@@ -3,20 +3,15 @@ package ldv.shuuen.data.remote.course
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
-@Serializable
-internal data class TypeDto(val type: String)
+@Serializable internal data class TypeDto(val type: String)
 
-@Serializable
-internal data class NoteDto(val midiIndex: Int)
+@Serializable internal data class NoteDto(val midiIndex: Int)
 
-@Serializable
-internal data class NoteRangeDto(val from: NoteDto, val to: NoteDto)
+@Serializable internal data class NoteRangeDto(val from: NoteDto, val to: NoteDto)
 
-@Serializable
-internal data class PitchStateDto(val pitch: String, val active: Boolean)
+@Serializable internal data class PitchStateDto(val pitch: String, val active: Boolean)
 
-@Serializable
-internal data class DegreeStateDto(val degree: String, val active: Boolean)
+@Serializable internal data class DegreeStateDto(val degree: String, val active: Boolean)
 
 @Serializable
 internal data class AbsoluteScaleConfigDto(
@@ -33,11 +28,9 @@ internal data class RelativeScaleConfigDto(
   val degreeStates: List<DegreeStateDto>,
 )
 
-@Serializable
-internal data class DegreeWithOctaveDto(val degree: String, val octave: Int)
+@Serializable internal data class DegreeWithOctaveDto(val degree: String, val octave: Int)
 
-@Serializable
-internal data class DirectedDegreeDto(val degree: String, val direction: String)
+@Serializable internal data class DirectedDegreeDto(val degree: String, val direction: String)
 
 @Serializable
 internal data class RelativeMelodyDto(
@@ -45,11 +38,9 @@ internal data class RelativeMelodyDto(
   val extraDegrees: List<DirectedDegreeDto> = emptyList(),
 )
 
-@Serializable
-internal data class SetupMelodyDto(val melody: RelativeMelodyDto, val repeat: String)
+@Serializable internal data class SetupMelodyDto(val melody: RelativeMelodyDto, val repeat: String)
 
-@Serializable
-internal data class SustainDto(val type: String, val durationMs: Long? = null)
+@Serializable internal data class SustainDto(val type: String, val durationMs: Long? = null)
 
 @Serializable
 internal data class ContextDurationDto(
@@ -203,8 +194,7 @@ internal data class MidiMelodyConfigDto(
   val backingOffsetMs: Long = 0,
 )
 
-@Serializable
-internal data class ChordSizeRangeDto(val min: Int, val max: Int)
+@Serializable internal data class ChordSizeRangeDto(val min: Int, val max: Int)
 
 @Serializable
 internal data class ChordsDefinitionDto(

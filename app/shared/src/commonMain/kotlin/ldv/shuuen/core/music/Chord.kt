@@ -16,11 +16,9 @@ data class Chord(
   override fun toString(): String = notes.joinToString(", ")
 
   companion object {
-    fun major(from: Note, inversion: Int = 0): Chord =
-      fromFormula(from, ChordType.Major, inversion)
+    fun major(from: Note, inversion: Int = 0): Chord = fromFormula(from, ChordType.Major, inversion)
 
-    fun minor(from: Note, inversion: Int = 0): Chord =
-      fromFormula(from, ChordType.Minor, inversion)
+    fun minor(from: Note, inversion: Int = 0): Chord = fromFormula(from, ChordType.Minor, inversion)
 
     private fun fromFormula(from: Note, type: ChordType, inversion: Int): Chord {
       require(inversion in 0 until type.formula.size) {

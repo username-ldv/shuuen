@@ -14,7 +14,7 @@ import ldv.shuuen.features.training.melodies.domain.MelodiesLocalLevelRepository
 
 class MelodiesLocalLevelRepositoryImpl(
   private val melodiesLevelDao: MelodiesLevelDao,
-  private val contextLocalRepository: ContextLocalRepository
+  private val contextLocalRepository: ContextLocalRepository,
 ) : MelodiesLocalLevelRepository {
   override fun getLevels(): Flow<ResponseState<List<MelodiesLevel>>> {
     return flow {
@@ -22,9 +22,10 @@ class MelodiesLocalLevelRepositoryImpl(
       val entities = melodiesLevelDao.getAll()
       Napier.v { "got melodies level entities, size: ${entities.size}" }
       emit(ResponseState.Success(entities.map { mapEntity(it) }))
-    }.catch {
-      emit(ResponseState.Error(it))
     }
+      .catch {
+        emit(ResponseState.Error(it))
+      }
   }
 
   override fun getLevelById(id: String): Flow<ResponseState<MelodiesLevel>> {
@@ -33,9 +34,10 @@ class MelodiesLocalLevelRepositoryImpl(
       val response =
         melodiesLevelDao.getById(id)?.let { mapEntity(it) } ?: error("level with id $id not found")
       emit(ResponseState.Success(response))
-    }.catch {
-      emit(ResponseState.Error(it))
     }
+      .catch {
+        emit(ResponseState.Error(it))
+      }
   }
 
   override suspend fun upsertLevel(level: MelodiesLevel) {
@@ -44,13 +46,14 @@ class MelodiesLocalLevelRepositoryImpl(
         contextLocalRepository.upsertContext(context)
       }
     }
-    val entity = MelodiesLevelDbEntity(
-      id = level.id,
-      name = level.name,
-      config = level.config,
-      contextId = level.context?.id,
-      source = level.source,
-    )
+    val entity =
+      MelodiesLevelDbEntity(
+        id = level.id,
+        name = level.name,
+        config = level.config,
+        contextId = level.context?.id,
+        source = level.source,
+      )
     melodiesLevelDao.upsertLevel(entity)
   }
 

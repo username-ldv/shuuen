@@ -3,8 +3,6 @@ package ldv.shuuen.data.remote
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
-import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -14,6 +12,8 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import ldv.shuuen.core.online.BackendStatus
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class KtorBackendStatusMonitorTest {
@@ -23,11 +23,12 @@ class KtorBackendStatusMonitorTest {
       delay(4_000)
       respond("{}")
     }
-    val monitor = KtorBackendStatusMonitor(
-      client = HttpClient(engine),
-      config = ApiConfig("http://backend.test"),
-      scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
-    )
+    val monitor =
+      KtorBackendStatusMonitor(
+        client = HttpClient(engine),
+        config = ApiConfig("http://backend.test"),
+        scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+      )
     monitor.refresh()
 
     runCurrent()
@@ -46,10 +47,11 @@ class KtorBackendStatusMonitorTest {
       requestReceived.complete(Unit)
       respond("{}")
     }
-    val monitor = KtorBackendStatusMonitor(
-      client = HttpClient(engine),
-      config = ApiConfig("http://backend.test"),
-    )
+    val monitor =
+      KtorBackendStatusMonitor(
+        client = HttpClient(engine),
+        config = ApiConfig("http://backend.test"),
+      )
 
     runCurrent()
     advanceTimeBy(30_000)

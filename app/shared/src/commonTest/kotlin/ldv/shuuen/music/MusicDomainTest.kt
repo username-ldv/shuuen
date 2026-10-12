@@ -1,5 +1,7 @@
 package ldv.shuuen.music
 
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.test.runTest
 import ldv.shuuen.core.music.Chord
 import ldv.shuuen.core.music.ContextDuration
 import ldv.shuuen.core.music.Degree
@@ -15,8 +17,6 @@ import ldv.shuuen.core.music.Sustain
 import ldv.shuuen.core.music.constructSetupMelodyFlow
 import ldv.shuuen.core.music.toChords
 import ldv.shuuen.core.music.withTiming
-import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration.Companion.milliseconds

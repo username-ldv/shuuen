@@ -25,8 +25,7 @@ sealed interface LevelReference {
       require(levelId.isNotEmpty()) { "A course level ID cannot be empty." }
     }
 
-    override val encoded: String =
-      "$RemotePrefix$courseId:${mode.apiName}:${levelId.encodeHex()}"
+    override val encoded: String = "$RemotePrefix$courseId:${mode.apiName}:${levelId.encodeHex()}"
   }
 
   companion object {
@@ -69,10 +68,11 @@ private fun String.decodeHex(): String {
   require(length % 2 == 0 && all { it.digitToIntOrNull(16) != null }) {
     "Malformed course level ID encoding."
   }
-  val bytes = ByteArray(length / 2) { index ->
-    val high = this[index * 2].digitToInt(16)
-    val low = this[index * 2 + 1].digitToInt(16)
-    ((high shl 4) or low).toByte()
-  }
+  val bytes =
+    ByteArray(length / 2) { index ->
+      val high = this[index * 2].digitToInt(16)
+      val low = this[index * 2 + 1].digitToInt(16)
+      ((high shl 4) or low).toByte()
+    }
   return bytes.decodeToString(throwOnInvalidSequence = true)
 }

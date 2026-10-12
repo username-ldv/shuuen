@@ -3,8 +3,6 @@ package ldv.shuuen.features.training.single.setup
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -17,41 +15,43 @@ import ldv.shuuen.core.music.Scale
 import ldv.shuuen.core.music.ScaleType
 import ldv.shuuen.core.music.toNoteRange
 import ldv.shuuen.core.result.ResponseState
-import ldv.shuuen.features.training.single.domain.SinglesLocalLevelRepository
+import ldv.shuuen.features.training.common.asConfigDegreeStates
+import ldv.shuuen.features.training.common.components.TuneInconsistencyRange
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.LevelSource
 import ldv.shuuen.features.training.domain.ScaleConfig
 import ldv.shuuen.features.training.single.domain.SinglesLevel
-import ldv.shuuen.features.training.common.asConfigDegreeStates
-import ldv.shuuen.features.training.common.components.TuneInconsistencyRange
+import ldv.shuuen.features.training.single.domain.SinglesLocalLevelRepository
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 class SinglesSetupScreenViewModel(
-    editLevelId: String,
-    val levelRepository: SinglesLocalLevelRepository,
+  editLevelId: String,
+  val levelRepository: SinglesLocalLevelRepository,
 ) : ViewModel() {
   private val editedLevelId = editLevelId.takeIf { it.isNotBlank() }
   val isEditing = editedLevelId != null
 
   @OptIn(ExperimentalUuidApi::class)
   private val _singlesLevelState =
-      MutableStateFlow(
-          SinglesLevel(
-              id = Uuid.generateV7().toString(),
-              name = "",
-              levelConfig =
-                  LevelConfig.Singles.Relative(
-                      scaleConfig =
-                          ScaleConfig.RelativeScaleConfig(
-                              scaleType = ScaleType.Major,
-                              degreeStates = Scale.major(Pitch.C).asConfigDegreeStates(),
-                          ),
-                  ),
-              context = null,
-              source = LevelSource.User,
-              questionsNumber = 20,
-              range = NoteRange(Note(Pitch.C, 2), Note(Pitch.C, 7)),
-          )
+    MutableStateFlow(
+      SinglesLevel(
+        id = Uuid.generateV7().toString(),
+        name = "",
+        levelConfig =
+          LevelConfig.Singles.Relative(
+            scaleConfig =
+              ScaleConfig.RelativeScaleConfig(
+                scaleType = ScaleType.Major,
+                degreeStates = Scale.major(Pitch.C).asConfigDegreeStates(),
+              )
+          ),
+        context = null,
+        source = LevelSource.User,
+        questionsNumber = 20,
+        range = NoteRange(Note(Pitch.C, 2), Note(Pitch.C, 7)),
       )
+    )
   val screenState = _singlesLevelState.asStateFlow()
 
   init {
@@ -61,7 +61,7 @@ class SinglesSetupScreenViewModel(
           when (response) {
             is ResponseState.Success -> _singlesLevelState.value = response.result
             is ResponseState.Error ->
-                Napier.w(response.throwable) { "Couldn't load singles level for editing" }
+              Napier.w(response.throwable) { "Couldn't load singles level for editing" }
             is ResponseState.Loading -> Unit
           }
         }
@@ -84,20 +84,20 @@ class SinglesSetupScreenViewModel(
   fun changeScale(scaleConfig: ScaleConfig) {
     _singlesLevelState.update {
       val levelConfig =
-          when (scaleConfig) {
-            is ScaleConfig.AbsoluteScaleConfig ->
-                LevelConfig.Singles.Absolute(
-                    scales = listOf(scaleConfig),
-                    tuneInconsistencyCents = it.levelConfig.tuneInconsistencyCents,
-                )
+        when (scaleConfig) {
+          is ScaleConfig.AbsoluteScaleConfig ->
+            LevelConfig.Singles.Absolute(
+              scales = listOf(scaleConfig),
+              tuneInconsistencyCents = it.levelConfig.tuneInconsistencyCents,
+            )
 
-            is ScaleConfig.RelativeScaleConfig ->
-                LevelConfig.Singles.Relative(
-                    scaleConfig = scaleConfig,
-                    rotateEveryQuestions = it.levelConfig.rotateEveryQuestions,
-                    tuneInconsistencyCents = it.levelConfig.tuneInconsistencyCents,
-                )
-          }
+          is ScaleConfig.RelativeScaleConfig ->
+            LevelConfig.Singles.Relative(
+              scaleConfig = scaleConfig,
+              rotateEveryQuestions = it.levelConfig.rotateEveryQuestions,
+              tuneInconsistencyCents = it.levelConfig.tuneInconsistencyCents,
+            )
+        }
       it.copy(levelConfig = levelConfig)
     }
   }
@@ -105,10 +105,10 @@ class SinglesSetupScreenViewModel(
   fun changeRotateEveryQuestions(v: Int?) {
     _singlesLevelState.update {
       val levelConfig =
-          when (val config = it.levelConfig) {
-            is LevelConfig.Singles.Absolute -> config.copy(rotateEveryQuestions = v)
-            is LevelConfig.Singles.Relative -> config.copy(rotateEveryQuestions = v)
-          }
+        when (val config = it.levelConfig) {
+          is LevelConfig.Singles.Absolute -> config.copy(rotateEveryQuestions = v)
+          is LevelConfig.Singles.Relative -> config.copy(rotateEveryQuestions = v)
+        }
       it.copy(levelConfig = levelConfig)
     }
   }
@@ -117,10 +117,10 @@ class SinglesSetupScreenViewModel(
     val cents = v.coerceIn(TuneInconsistencyRange)
     _singlesLevelState.update {
       val levelConfig =
-          when (val config = it.levelConfig) {
-            is LevelConfig.Singles.Absolute -> config.copy(tuneInconsistencyCents = cents)
-            is LevelConfig.Singles.Relative -> config.copy(tuneInconsistencyCents = cents)
-          }
+        when (val config = it.levelConfig) {
+          is LevelConfig.Singles.Absolute -> config.copy(tuneInconsistencyCents = cents)
+          is LevelConfig.Singles.Relative -> config.copy(tuneInconsistencyCents = cents)
+        }
       it.copy(levelConfig = levelConfig)
     }
   }
@@ -129,16 +129,16 @@ class SinglesSetupScreenViewModel(
     val level = screenState.value
     // todo: what should be the default name?
     val levelName =
-        when (val levelConfig = level.levelConfig) {
-          is LevelConfig.Singles.Absolute -> {
-            val scale = levelConfig.scales.first()
-            "${scale.root} ${scale.scaleType}"
-          }
+      when (val levelConfig = level.levelConfig) {
+        is LevelConfig.Singles.Absolute -> {
+          val scale = levelConfig.scales.first()
+          "${scale.root} ${scale.scaleType}"
+        }
 
-          is LevelConfig.Singles.Relative -> {
-            "Random ${levelConfig.scaleConfig.scaleType}"
-          }
-    }
+        is LevelConfig.Singles.Relative -> {
+          "Random ${levelConfig.scaleConfig.scaleType}"
+        }
+      }
     levelRepository.upsertLevel(level.copy(name = levelName))
     Napier.v { "Saved singles level: $level" }
   }

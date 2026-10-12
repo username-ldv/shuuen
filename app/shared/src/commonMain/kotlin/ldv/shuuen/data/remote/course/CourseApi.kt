@@ -6,8 +6,8 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.request.url
 import io.ktor.http.ContentType
-import io.ktor.http.contentType
 import io.ktor.http.appendPathSegments
+import io.ktor.http.contentType
 import ldv.shuuen.data.remote.ApiConfig
 import ldv.shuuen.data.remote.bodyAndClose
 import ldv.shuuen.features.training.common.TrainingFlow
@@ -18,26 +18,32 @@ internal class CourseApi(
   private val config: ApiConfig,
 ) {
   suspend fun listCourses(limit: Int, offset: Int): PageEnvelopeDto<CourseDto> =
-    client.get {
-      url(config.currentBaseUrl())
-      url {
-        appendPathSegments("api", "v1", "courses")
-        parameters.append("limit", limit.toString())
-        parameters.append("offset", offset.toString())
+    client
+      .get {
+        url(config.currentBaseUrl())
+        url {
+          appendPathSegments("api", "v1", "courses")
+          parameters.append("limit", limit.toString())
+          parameters.append("offset", offset.toString())
+        }
       }
-    }.bodyAndClose()
+      .bodyAndClose()
 
   suspend fun getCourse(courseId: Long): DataEnvelopeDto<CourseDto> =
-    client.get {
-      url(config.currentBaseUrl())
-      url { appendPathSegments("api", "v1", "courses", courseId.toString()) }
-    }.bodyAndClose()
+    client
+      .get {
+        url(config.currentBaseUrl())
+        url { appendPathSegments("api", "v1", "courses", courseId.toString()) }
+      }
+      .bodyAndClose()
 
   suspend fun getCourseMode(courseId: Long, mode: TrainingFlow): DataEnvelopeDto<CourseModeDto> =
-    client.get {
-      url(config.currentBaseUrl())
-      url { appendPathSegments("api", "v1", "courses", courseId.toString(), mode.apiName) }
-    }.bodyAndClose()
+    client
+      .get {
+        url(config.currentBaseUrl())
+        url { appendPathSegments("api", "v1", "courses", courseId.toString(), mode.apiName) }
+      }
+      .bodyAndClose()
 
   suspend fun getLevels(
     courseId: Long,
@@ -46,57 +52,63 @@ internal class CourseApi(
     limit: Int,
     offset: Int,
   ): PageEnvelopeDto<CourseLevelDto> =
-    client.get {
-      url(config.currentBaseUrl())
-      url {
-        appendPathSegments("api", "v1", "courses", courseId.toString(), mode.apiName, "levels")
-        parameters.append("group_id", groupId)
-        parameters.append("limit", limit.toString())
-        parameters.append("offset", offset.toString())
+    client
+      .get {
+        url(config.currentBaseUrl())
+        url {
+          appendPathSegments("api", "v1", "courses", courseId.toString(), mode.apiName, "levels")
+          parameters.append("group_id", groupId)
+          parameters.append("limit", limit.toString())
+          parameters.append("offset", offset.toString())
+        }
       }
-    }.bodyAndClose()
+      .bodyAndClose()
 
   suspend fun getLevel(
     courseId: Long,
     mode: TrainingFlow,
     levelId: String,
   ): DataEnvelopeDto<CourseLevelDto> =
-    client.get {
-      url(config.currentBaseUrl())
-      url {
-        appendPathSegments(
-          "api",
-          "v1",
-          "courses",
-          courseId.toString(),
-          mode.apiName,
-          "levels",
-          levelId,
-        )
+    client
+      .get {
+        url(config.currentBaseUrl())
+        url {
+          appendPathSegments(
+            "api",
+            "v1",
+            "courses",
+            courseId.toString(),
+            mode.apiName,
+            "levels",
+            levelId,
+          )
+        }
       }
-    }.bodyAndClose()
+      .bodyAndClose()
 
   suspend fun queryLevels(
     courseId: Long,
     mode: TrainingFlow,
     levelIds: List<String>,
   ): DataEnvelopeDto<List<CourseLevelDto>> =
-    client.post {
-      url(config.currentBaseUrl())
-      url {
-        appendPathSegments(
-          "api",
-          "v1",
-          "courses",
-          courseId.toString(),
-          mode.apiName,
-          "levels",
-          "query",
-        )
+    client
+      .post {
+        url(config.currentBaseUrl())
+        url {
+          appendPathSegments(
+            "api",
+            "v1",
+            "courses",
+            courseId.toString(),
+            mode.apiName,
+            "levels",
+            "query",
+          )
+        }
+        contentType(ContentType.Application.Json)
+        setBody(QueryCourseLevelsRequestDto(levelIds))
       }
-      contentType(ContentType.Application.Json)
-      setBody(QueryCourseLevelsRequestDto(levelIds))
-    }.bodyAndClose()
+      .bodyAndClose()
 
   suspend fun downloadBytes(pathOrUrl: String): ByteArray =
     client.get(config.resolve(pathOrUrl)).bodyAndClose()

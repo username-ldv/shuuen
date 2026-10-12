@@ -211,10 +211,15 @@ private fun CourseTuneInconsistencySection(
       horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
       Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text("Replace level settings", color = ShuuenUi.Text, style = MaterialTheme.typography.titleSmall)
+        Text(
+          "Replace level settings",
+          color = ShuuenUi.Text,
+          style = MaterialTheme.typography.titleSmall,
+        )
         Text(
           if (cents == null) "Each level plays with its own tune inconsistency."
-          else "Every level in this course uses this value instead of its own, on this device only.",
+          else
+            "Every level in this course uses this value instead of its own, on this device only.",
           color = ShuuenUi.Dim,
           style = MaterialTheme.typography.bodySmall,
         )

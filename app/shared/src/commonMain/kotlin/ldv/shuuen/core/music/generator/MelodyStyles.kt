@@ -12,22 +12,26 @@ import ldv.shuuen.core.music.NoteValue.Sixteenth
 object MelodyStyles {
   /**
    * Singable profile shared by the musical presets: seconds and small consonant leaps dominate,
-   * tritones and sevenths are rare, and stable degrees pull more landings than tendency tones.
-   * 3/♭3 and 6/♭6 carry the same weight so the profile fits major and minor scales alike;
-   * out-of-scale degrees never compete anyway because only allowed notes are candidates.
+   * tritones and sevenths are rare, and stable degrees pull more landings than tendency tones. 3/♭3
+   * and 6/♭6 carry the same weight so the profile fits major and minor scales alike; out-of-scale
+   * degrees never compete anyway because only allowed notes are candidates.
    */
   private val Singable =
     NoteWeights(
       intervalWeights =
         listOf(
           2.0, // repeated note
-          5.0, 5.0, // seconds
-          3.0, 3.0, // thirds
+          5.0,
+          5.0, // seconds
+          3.0,
+          3.0, // thirds
           1.6, // fourth
           0.35, // tritone
           1.6, // fifth
-          0.7, 0.7, // sixths
-          0.3, 0.3, // sevenths
+          0.7,
+          0.7, // sixths
+          0.3,
+          0.3, // sevenths
           0.8, // octave
           0.15, // anything wider
         ),
@@ -235,15 +239,23 @@ object MelodyStyles {
         listOf(
           quarter.weighing(2.0),
           figure(
-            Eighth, Eighth, Eighth, Eighth,
-            contour = listOf(1, 1, 1),
-            ladder = FigureLadder.Chord,
-          ).weighing(1.0),
+              Eighth,
+              Eighth,
+              Eighth,
+              Eighth,
+              contour = listOf(1, 1, 1),
+              ladder = FigureLadder.Chord,
+            )
+            .weighing(1.0),
           figure(
-            Eighth, Eighth, Eighth, Eighth,
-            contour = listOf(-1, -1, -1),
-            ladder = FigureLadder.Chord,
-          ).weighing(1.0),
+              Eighth,
+              Eighth,
+              Eighth,
+              Eighth,
+              contour = listOf(-1, -1, -1),
+              ladder = FigureLadder.Chord,
+            )
+            .weighing(1.0),
           figure(Eighth, Eighth, Eighth, Eighth, contour = listOf(1, 1, -1)).weighing(0.7),
           figure(Eighth, Eighth, Eighth, Eighth, contour = listOf(-1, -1, 1)).weighing(0.7),
           figure(DottedQuarter, Eighth).weighing(0.6),

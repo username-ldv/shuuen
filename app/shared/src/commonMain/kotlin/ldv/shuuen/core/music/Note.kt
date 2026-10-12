@@ -1,8 +1,8 @@
 package ldv.shuuen.core.music
 
-import kotlinx.serialization.Serializable
 import kotlin.math.ceil
 import kotlin.random.Random
+import kotlinx.serialization.Serializable
 
 @Serializable
 data class Note(val midiIndex: Int) {
@@ -18,11 +18,12 @@ data class Note(val midiIndex: Int) {
     get() = Pitch.entries[midiIndex.floorMod(12)]
 
   val octave: Int
-    get() = when (pianoKeyNumber) {
-      in 1..3 -> 0
-      in 4..88 -> ceil((pianoKeyNumber.toDouble() - 3.0) / 12.0).toInt()
-      else -> error("Piano key is outside the supported range: $pianoKeyNumber.")
-    }
+    get() =
+      when (pianoKeyNumber) {
+        in 1..3 -> 0
+        in 4..88 -> ceil((pianoKeyNumber.toDouble() - 3.0) / 12.0).toInt()
+        else -> error("Piano key is outside the supported range: $pianoKeyNumber.")
+      }
 
   val name: String
     get() = "$pitch$octave"
@@ -40,11 +41,9 @@ data class Note(val midiIndex: Int) {
 
   operator fun minus(semitones: Int): Note = Note(midiIndex - semitones)
 
-  operator fun rangeTo(to: Note): List<Note> =
-    (midiIndex..to.midiIndex).map(::Note)
+  operator fun rangeTo(to: Note): List<Note> = (midiIndex..to.midiIndex).map(::Note)
 
-  fun rangeUntil(until: Note): List<Note> =
-    (midiIndex until until.midiIndex).map(::Note)
+  fun rangeUntil(until: Note): List<Note> = (midiIndex until until.midiIndex).map(::Note)
 
   fun next(pitch: Pitch): Note {
     val semitonesUp =
@@ -73,17 +72,20 @@ data class Note(val midiIndex: Int) {
       noteRange: NoteRange = NoteRange(Note(Pitch.A, 0), Note(Pitch.C, 8)),
       random: Random = Random.Default,
     ): Note {
-      require(noteRange.from.midiIndex <= noteRange.to.midiIndex) { "From note must be lower than or equal to to note." }
+      require(noteRange.from.midiIndex <= noteRange.to.midiIndex) {
+        "From note must be lower than or equal to to note."
+      }
       return Note(random.nextInt(noteRange.from.midiIndex, noteRange.to.midiIndex + 1))
     }
 
     private fun midiIndexFor(pitch: Pitch, octave: Int): Int {
       require(octave in 0..8) { "Octave must be in 0..8, was $octave." }
-      val midiIndex = if (octave == 0) {
-        MidiOffset + pitch.ordinal - Pitch.A.ordinal
-      } else {
-        3 + MidiOffset + ((octave - 1) * 12) + pitch.ordinal
-      }
+      val midiIndex =
+        if (octave == 0) {
+          MidiOffset + pitch.ordinal - Pitch.A.ordinal
+        } else {
+          3 + MidiOffset + ((octave - 1) * 12) + pitch.ordinal
+        }
       require(midiIndex in MidiMin..MidiMax) {
         "Pitch $pitch$octave is outside the 88-key piano range."
       }

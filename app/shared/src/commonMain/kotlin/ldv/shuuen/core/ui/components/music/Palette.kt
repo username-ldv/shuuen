@@ -14,5 +14,5 @@ enum class Palette(val color: Color) {
   C9(Color(0xff59ff59)),
   C10(Color(0xffff59ac)),
   C11(Color(0xff59ffff)),
-  C12(Color(0xffffac59))
+  C12(Color(0xffffac59)),
 }

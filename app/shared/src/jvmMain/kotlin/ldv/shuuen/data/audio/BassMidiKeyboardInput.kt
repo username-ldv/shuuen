@@ -1,7 +1,6 @@
 package ldv.shuuen.data.audio
 
 import io.github.aakira.napier.Napier
-import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -19,11 +18,12 @@ import ldv.shuuen.bass.Bass
 import ldv.shuuen.core.audio.input.MidiKeyboardEvent
 import ldv.shuuen.core.audio.input.MidiKeyboardInput
 import ldv.shuuen.core.audio.input.MidiMessageParser
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Desktop MIDI keyboard input on top of BASSMIDI's BASS_MIDI_In* API. Polls the device list for
- * plug/unplug (there is no native hot-plug callback) and forwards note events from every device
- * it can open.
+ * plug/unplug (there is no native hot-plug callback) and forwards note events from every device it
+ * can open.
  */
 class BassMidiKeyboardInput : MidiKeyboardInput {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)

@@ -16,9 +16,9 @@ enum class ContextRecipient {
 }
 
 fun ContextRecipient.resultKey() =
-    when (this) {
-      ContextRecipient.SinglesSetup -> SinglesContextResult
-      ContextRecipient.MelodiesSetup -> MelodiesContextResult
-      ContextRecipient.MelodiesLevelOptions -> MelodiesLevelOptionsContextResult
-      ContextRecipient.ChordsSetup -> ChordsContextResult
-    }
+  when (this) {
+    ContextRecipient.SinglesSetup -> SinglesContextResult
+    ContextRecipient.MelodiesSetup -> MelodiesContextResult
+    ContextRecipient.MelodiesLevelOptions -> MelodiesLevelOptionsContextResult
+    ContextRecipient.ChordsSetup -> ChordsContextResult
+  }

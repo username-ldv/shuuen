@@ -16,11 +16,13 @@ internal class LevelSyncApi(private val client: HttpClient) {
     accessToken: String,
     request: LevelSyncRequestDto,
   ): LevelSyncEnvelopeDto<LevelSyncResponseDto> =
-    client.post {
-      url(baseUrl)
-      url { appendPathSegments("api", "v1", "sync", "levels") }
-      bearerAuth(accessToken)
-      contentType(ContentType.Application.Json)
-      setBody(request)
-    }.bodyAndClose()
+    client
+      .post {
+        url(baseUrl)
+        url { appendPathSegments("api", "v1", "sync", "levels") }
+        bearerAuth(accessToken)
+        contentType(ContentType.Application.Json)
+        setBody(request)
+      }
+      .bodyAndClose()
 }

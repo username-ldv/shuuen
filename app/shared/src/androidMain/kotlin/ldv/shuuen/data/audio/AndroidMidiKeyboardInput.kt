@@ -23,8 +23,8 @@ import ldv.shuuen.core.audio.input.MidiMessageParser
 
 /**
  * Android MIDI keyboard input via android.media.midi (BASSMIDI has no MIDI input on Android).
- * Hot-plug comes from [MidiManager]'s device callback; a device's *output* ports are our input.
- * All device bookkeeping runs on the main-looper [handler], so no extra synchronization is needed.
+ * Hot-plug comes from [MidiManager]'s device callback; a device's *output* ports are our input. All
+ * device bookkeeping runs on the main-looper [handler], so no extra synchronization is needed.
  */
 class AndroidMidiKeyboardInput(context: Context) : MidiKeyboardInput {
   private val _connectedDevices = MutableStateFlow<List<String>>(emptyList())
@@ -40,7 +40,11 @@ class AndroidMidiKeyboardInput(context: Context) : MidiKeyboardInput {
   private val handler = Handler(Looper.getMainLooper())
   private val openDevices = mutableMapOf<Int, OpenDevice>()
 
-  private class OpenDevice(val name: String, val device: MidiDevice, val ports: List<MidiOutputPort>)
+  private class OpenDevice(
+    val name: String,
+    val device: MidiDevice,
+    val ports: List<MidiOutputPort>,
+  )
 
   init {
     val manager =
@@ -75,8 +79,7 @@ class AndroidMidiKeyboardInput(context: Context) : MidiKeyboardInput {
           device == null -> Napier.w { "Couldn't open MIDI input device $name" }
 
           // The device may have been unplugged (or opened twice) while the open was in flight.
-          openDevices.containsKey(info.id) || info !in currentDeviceInfos(manager) ->
-            device.close()
+          openDevices.containsKey(info.id) || info !in currentDeviceInfos(manager) -> device.close()
 
           else -> {
             val ports =
@@ -86,7 +89,12 @@ class AndroidMidiKeyboardInput(context: Context) : MidiKeyboardInput {
                   val parser = MidiMessageParser()
                   port.connect(
                     object : MidiReceiver() {
-                      override fun onSend(msg: ByteArray, offset: Int, count: Int, timestamp: Long) {
+                      override fun onSend(
+                        msg: ByteArray,
+                        offset: Int,
+                        count: Int,
+                        timestamp: Long,
+                      ) {
                         parser.feed(msg, offset, count).forEach(_events::tryEmit)
                       }
                     }

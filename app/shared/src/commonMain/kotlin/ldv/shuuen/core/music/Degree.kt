@@ -22,15 +22,12 @@ enum class Degree(val offset: Int, val label: String) {
   fun pitch(tonic: Pitch): Pitch = tonic + offset
 
   companion object {
-    val chromaticOrder: List<Degree> =
-      listOf(D1, DF2, D2, DF3, D3, D4, DS4, D5, DF6, D6, DF7, D7)
+    val chromaticOrder: List<Degree> = listOf(D1, DF2, D2, DF3, D3, D4, DS4, D5, DF6, D6, DF7, D7)
 
     fun fromName(name: String): Degree =
-      entries.firstOrNull { it.label == name }
-        ?: error("Unknown degree name: $name")
+      entries.firstOrNull { it.label == name } ?: error("Unknown degree name: $name")
 
-    fun fromOffset(offset: Int): Degree =
-      entries.first { it.offset == offset.floorMod(12) }
+    fun fromOffset(offset: Int): Degree = entries.first { it.offset == offset.floorMod(12) }
   }
 }
 
@@ -42,6 +39,6 @@ data class DegreeWithOctave(val degree: Degree, val octave: Int) {
   }
 
   override fun toString(): String {
-      return "${degree.label} · $octave"
+    return "${degree.label} · $octave"
   }
 }

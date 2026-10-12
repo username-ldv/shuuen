@@ -33,8 +33,7 @@ data class MidiKey(
 
   /** "E♭ major", "A natural minor", "F lydian", or "F custom" when no name was given. */
   fun displayName(): String {
-    val tonicName =
-      Scale.appropriatePitchName(tonic, tonic, scaleType, accidentalType)
+    val tonicName = Scale.appropriatePitchName(tonic, tonic, scaleType, accidentalType)
     val scale =
       when (scaleType) {
         ScaleType.Major -> "major"

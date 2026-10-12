@@ -1,12 +1,12 @@
 package ldv.shuuen.core.music.generator
 
+import ldv.shuuen.core.music.Note
+import ldv.shuuen.core.music.Pitch
+import ldv.shuuen.features.training.chords.domain.chordRepeatBudget
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import ldv.shuuen.core.music.Note
-import ldv.shuuen.core.music.Pitch
-import ldv.shuuen.features.training.chords.domain.chordRepeatBudget
 
 class NaiveRandomChordGeneratorTest {
   /** C, D, E, G, A over two octaves — five pitch classes, ten notes. */
@@ -65,7 +65,12 @@ class NaiveRandomChordGeneratorTest {
   @Test
   fun unlimitedRepeatsFillLargeChordsFromASmallScale() {
     val generator =
-      NaiveRandomChordGenerator(pentatonicTwoOctaves, minSize = 10, maxSize = 10, random = Random(4))
+      NaiveRandomChordGenerator(
+        pentatonicTwoOctaves,
+        minSize = 10,
+        maxSize = 10,
+        random = Random(4),
+      )
     val chord = generator.next()
     assertEquals(10, chord.size)
     assertEquals(5, chord.distinctBy { it.pitch }.size)

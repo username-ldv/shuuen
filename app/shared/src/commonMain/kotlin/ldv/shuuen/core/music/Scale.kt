@@ -1,7 +1,10 @@
 package ldv.shuuen.core.music
 
 enum class ScaleType(val scaleName: String) {
-  Major("Major"), NaturalMinor("Natural Minor"), Chromatic("Chromatic"), Custom("Custom");
+  Major("Major"),
+  NaturalMinor("Natural Minor"),
+  Chromatic("Chromatic"),
+  Custom("Custom");
 
   override fun toString(): String {
     return this.scaleName
@@ -15,7 +18,8 @@ enum class ScaleType(val scaleName: String) {
 }
 
 enum class ScaleAccidentalType {
-  Sharps, Flats,
+  Sharps,
+  Flats,
 }
 
 private val sharpMajorKeys = List(6) { index -> Pitch.C + 7 * (index + 1) }
@@ -40,13 +44,15 @@ data class Scale(
       return formula.runningReduce { acc, step -> acc + step }.map { Degree.fromOffset(it) }
     }
 
-  fun appropriatePitchNames(accidentalResolutionType: ScaleAccidentalType = ScaleAccidentalType.Sharps): List<String> {
+  fun appropriatePitchNames(
+    accidentalResolutionType: ScaleAccidentalType = ScaleAccidentalType.Sharps
+  ): List<String> {
     return pitches.map { pitch ->
       appropriatePitchName(
         root,
         pitch,
         type,
-        accidentalResolutionType
+        accidentalResolutionType,
       )
     }
   }
@@ -82,18 +88,27 @@ data class Scale(
       type: ScaleType,
       accidentalResolutionType: ScaleAccidentalType = ScaleAccidentalType.Sharps,
     ): String {
-      val useSharps = when (type) {
-        ScaleType.Major -> if (accidentalResolutionType == ScaleAccidentalType.Sharps) (root in sharpMajorKeys) else (root !in flatMajorKeys)
-        ScaleType.NaturalMinor -> if (accidentalResolutionType == ScaleAccidentalType.Sharps) (root in sharpMinorKeys) else (root !in flatMinorKeys)
-        ScaleType.Chromatic, ScaleType.Custom -> accidentalResolutionType == ScaleAccidentalType.Sharps
-      }
+      val useSharps =
+        when (type) {
+          ScaleType.Major ->
+            if (accidentalResolutionType == ScaleAccidentalType.Sharps) (root in sharpMajorKeys)
+            else (root !in flatMajorKeys)
+          ScaleType.NaturalMinor ->
+            if (accidentalResolutionType == ScaleAccidentalType.Sharps) (root in sharpMinorKeys)
+            else (root !in flatMinorKeys)
+          ScaleType.Chromatic,
+          ScaleType.Custom -> accidentalResolutionType == ScaleAccidentalType.Sharps
+        }
       val appropriateName = if (useSharps) pitch.toString() else pitch.toFlatString()
-//      if (pitch == Pitch.ASharp) Napier.v { "Appropriate pitch name root: $root, name: $appropriateName, type: $type, useSharps: $useSharps" }
+      //      if (pitch == Pitch.ASharp) Napier.v { "Appropriate pitch name root: $root, name:
+      // $appropriateName, type: $type, useSharps: $useSharps" }
       return appropriateName
     }
 
     private fun fromFormula(
-      root: Pitch, formula: List<Int>, type: ScaleType = ScaleType.Custom
+      root: Pitch,
+      formula: List<Int>,
+      type: ScaleType = ScaleType.Custom,
     ): Scale {
       require(formula.isNotEmpty()) { "Scale formula must not be empty." }
       val pitches = formula.runningReduce { acc, step -> acc + step }.map { root + it }

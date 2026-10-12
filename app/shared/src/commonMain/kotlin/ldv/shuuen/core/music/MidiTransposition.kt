@@ -1,7 +1,7 @@
 package ldv.shuuen.core.music
 
-import kotlin.random.Random
 import kotlinx.serialization.Serializable
+import kotlin.random.Random
 
 const val MinimumMidiTransposition = -6
 const val MaximumMidiTransposition = 6

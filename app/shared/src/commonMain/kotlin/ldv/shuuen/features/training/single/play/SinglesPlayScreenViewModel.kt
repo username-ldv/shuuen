@@ -4,12 +4,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.ExperimentalTime
-import kotlin.time.TimeSource
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.BufferOverflow
@@ -26,14 +20,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import ldv.shuuen.core.result.ResponseState
-import ldv.shuuen.features.training.common.DegreeContextPlayer
-import ldv.shuuen.features.training.common.LevelPresetController
-import ldv.shuuen.features.training.common.TrainingFlow
-import ldv.shuuen.features.training.level_end.domain.QuestionResult
-import ldv.shuuen.features.training.level_end.domain.TrainingSession
-import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
-import ldv.shuuen.features.training.level_end.domain.longestCleanRun
 import ldv.shuuen.core.audio.engine.MidiEngine
 import ldv.shuuen.core.audio.engine.MidiEngineStatus
 import ldv.shuuen.core.audio.input.MidiKeyboardEvent
@@ -42,14 +28,28 @@ import ldv.shuuen.core.music.Degree
 import ldv.shuuen.core.music.DegreeContext
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.Pitch
+import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.InputMode
 import ldv.shuuen.core.settings.MusicLabelSettings
 import ldv.shuuen.core.settings.SettingsRepository
-import ldv.shuuen.features.training.common.components.KeyFlashRequest
-import ldv.shuuen.features.training.single.domain.SinglesLevel
-import ldv.shuuen.features.training.course.domain.TrainingLevelResolver
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
+import ldv.shuuen.features.training.common.DegreeContextPlayer
+import ldv.shuuen.features.training.common.LevelPresetController
+import ldv.shuuen.features.training.common.TrainingFlow
+import ldv.shuuen.features.training.common.components.KeyFlashRequest
+import ldv.shuuen.features.training.course.domain.TrainingLevelResolver
+import ldv.shuuen.features.training.level_end.domain.QuestionResult
+import ldv.shuuen.features.training.level_end.domain.TrainingSession
+import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
+import ldv.shuuen.features.training.level_end.domain.longestCleanRun
+import ldv.shuuen.features.training.single.domain.SinglesLevel
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.ExperimentalTime
+import kotlin.time.TimeSource
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 enum class AnswerColors(val color: Color) {
   Correct(Color(0xff32cc73)),
@@ -69,20 +69,20 @@ sealed interface QuizPhase {
 }
 
 data class SinglesPlayScreenState(
-    val levelData: ResponseState<SinglesLevel> = ResponseState.Loading,
-    val phase: QuizPhase = QuizPhase.LoadingContext,
-    val quizState: QuizState? = null,
+  val levelData: ResponseState<SinglesLevel> = ResponseState.Loading,
+  val phase: QuizPhase = QuizPhase.LoadingContext,
+  val quizState: QuizState? = null,
 )
 
 val playNoteDuration = 1500.milliseconds
 
 class SinglesPlayScreenViewModel(
-    levelId: String,
-    levelResolver: TrainingLevelResolver,
-    val midiEngine: MidiEngine,
-    settingsRepository: SettingsRepository,
-    private val trainingSessionRepository: TrainingSessionRepository,
-    midiKeyboardInput: MidiKeyboardInput,
+  levelId: String,
+  levelResolver: TrainingLevelResolver,
+  val midiEngine: MidiEngine,
+  settingsRepository: SettingsRepository,
+  private val trainingSessionRepository: TrainingSessionRepository,
+  midiKeyboardInput: MidiKeyboardInput,
 ) : ViewModel() {
   private val _state = MutableStateFlow(SinglesPlayScreenState())
   val state = _state.asStateFlow()
@@ -91,26 +91,26 @@ class SinglesPlayScreenViewModel(
 
   /** Whether any channel has alternative instruments, i.e. whether the shuffle button is useful. */
   val canShufflePresets: StateFlow<Boolean> =
-      settingsRepository.settings
-          .map { it.presets.hasChoices }
-          .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    settingsRepository.settings
+      .map { it.presets.hasChoices }
+      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
   /** The input component + interpretation mode chosen in settings. */
   val inputMethod: StateFlow<InputMethod> =
-      settingsRepository.settings
-          .map { it.inputMethod }
-          .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InputMethod())
+    settingsRepository.settings
+      .map { it.inputMethod }
+      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InputMethod())
 
   val musicLabels: StateFlow<MusicLabelSettings> =
-      settingsRepository.settings
-          .map { it.musicLabels }
-          .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MusicLabelSettings())
+    settingsRepository.settings
+      .map { it.musicLabels }
+      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MusicLabelSettings())
 
   // Read at the moment a MIDI key lands, so it must always hold the latest value: Eagerly.
   private val midiRespectOctaves: StateFlow<Boolean> =
-      settingsRepository.settings
-          .map { it.midiRespectOctaves }
-          .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    settingsRepository.settings
+      .map { it.midiRespectOctaves }
+      .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
   private var degreeContextPlayer: DegreeContextPlayer? = null
 
@@ -135,19 +135,19 @@ class SinglesPlayScreenViewModel(
   // Setup-melody highlights and answer feedback are both transient flashes driven by the screen
   // through PianoKeyboardState. The VM only emits which key/color to flash as the melody plays.
   private val _setupMelodyFlashes =
-      MutableSharedFlow<KeyFlashRequest>(
-          extraBufferCapacity = 8,
-          onBufferOverflow = BufferOverflow.DROP_OLDEST,
-      )
+    MutableSharedFlow<KeyFlashRequest>(
+      extraBufferCapacity = 8,
+      onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
   val setupMelodyFlashes: SharedFlow<KeyFlashRequest> = _setupMelodyFlashes.asSharedFlow()
 
   // Answer feedback for MIDI keyboard guesses: the screen flashes the input item matching the
   // played key's pitch class, exactly like it does for its own taps.
   private val _midiGuessFlashes =
-      MutableSharedFlow<KeyFlashRequest>(
-          extraBufferCapacity = 8,
-          onBufferOverflow = BufferOverflow.DROP_OLDEST,
-      )
+    MutableSharedFlow<KeyFlashRequest>(
+      extraBufferCapacity = 8,
+      onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
   val midiGuessFlashes: SharedFlow<KeyFlashRequest> = _midiGuessFlashes.asSharedFlow()
 
   init {
@@ -168,14 +168,16 @@ class SinglesPlayScreenViewModel(
         is MidiEngineStatus.Failed -> error("Failed MidiEngine audio initializition")
       }
 
-      val level =
-        runCatching { levelResolver.resolveSingles(levelId) }
-          .getOrElse { error ->
-            _state.update { it.copy(levelData = ResponseState.Error(error)) }
-            return@launch
-          }
+      val level = runCatching {
+        levelResolver.resolveSingles(levelId)
+      }
+        .getOrElse { error ->
+          _state.update { it.copy(levelData = ResponseState.Error(error)) }
+          return@launch
+        }
       _state.update { it.copy(levelData = ResponseState.Success(level)) }
-      val allowSevenAccidentalKeys = settingsRepository.settings.map { it.allowSevenAccidentalKeys }.first()
+      val allowSevenAccidentalKeys =
+        settingsRepository.settings.map { it.allowSevenAccidentalKeys }.first()
       presets.begin()
       quizzer = SinglesLevelQuizzer(level, allowSevenAccidentalKeys)
 
@@ -198,7 +200,9 @@ class SinglesPlayScreenViewModel(
         // The level's opening instruments were rolled in begin(); question 1 keeps them.
         if (quizState.currentQuestionNumber > 1) presets.onQuestion()
 
-        if (degreeContextPlayer?.isChangingNode(quizState.currentQuestionNumber, isNewRoot) ?: false) {
+        if (
+          degreeContextPlayer?.isChangingNode(quizState.currentQuestionNumber, isNewRoot) ?: false
+        ) {
           Napier.v { "cancelling the currently playing note BECAUSE of the new node starting..." }
           playNoteJob?.cancelAndJoin()
         }
@@ -246,10 +250,10 @@ class SinglesPlayScreenViewModel(
   fun userGuessed(index: Int, mode: InputMode): Boolean? {
     val quizzer = quizzer ?: return null
     val pitch =
-        when (mode) {
-          InputMode.Absolute -> Pitch.fromOrdinal(index)
-          InputMode.Relative -> Degree.fromOffset(index).pitch(quizzer.quizState.value.root)
-        }
+      when (mode) {
+        InputMode.Absolute -> Pitch.fromOrdinal(index)
+        InputMode.Relative -> Degree.fromOffset(index).pitch(quizzer.quizState.value.root)
+      }
     return userGuessed(pitch)
   }
 
@@ -264,8 +268,8 @@ class SinglesPlayScreenViewModel(
     // Correctness must be read before check() advances the question.
     val currentNote = quizzer.quizState.value.currentNote
     val isCorrect =
-        currentNote.pitch == pitch &&
-            (exactMidiIndex == null || currentNote.midiIndex == exactMidiIndex)
+      currentNote.pitch == pitch &&
+        (exactMidiIndex == null || currentNote.midiIndex == exactMidiIndex)
     if (isCorrect) {
       // Time to answer counts wrong tries and repeats: it runs from the first time the question's
       // note sounded until the correct answer landed.
@@ -278,8 +282,8 @@ class SinglesPlayScreenViewModel(
 
   /**
    * A key pressed on a connected MIDI keyboard answers like a tap on the input item of the key's
-   * pitch class, regardless of the on-screen input method. With the respect-octaves setting on,
-   * the exact key (octave included) must match the asked note.
+   * pitch class, regardless of the on-screen input method. With the respect-octaves setting on, the
+   * exact key (octave included) must match the asked note.
    */
   private fun midiKeyPressed(midiIndex: Int) {
     if (_state.value.phase != QuizPhase.AwaitingAnswer) return
@@ -308,8 +312,8 @@ class SinglesPlayScreenViewModel(
   }
 
   /**
-   * Gathers the session's statistics, saves them, and flips the phase to [QuizPhase.Complete].
-   * A session with no answered questions is not worth a results screen — it completes with a null
+   * Gathers the session's statistics, saves them, and flips the phase to [QuizPhase.Complete]. A
+   * session with no answered questions is not worth a results screen — it completes with a null
    * session id and the screen simply navigates back.
    */
   @OptIn(ExperimentalTime::class, ExperimentalUuidApi::class)
@@ -329,36 +333,37 @@ class SinglesPlayScreenViewModel(
     // so it doesn't count as an answered (missed) question.
     val missedQuestions =
       quizState.incorrectAnswers.map { it.questionNumber }.filter { it <= answered }.toSet()
-    val session = TrainingSession(
-      id = Uuid.generateV7().toString(),
-      flow = TrainingFlow.Singles,
-      levelId = level.id,
-      levelName = level.name,
-      completedAtEpochMillis = Clock.System.now().toEpochMilliseconds(),
-      finishedEarly = finishedEarly,
-      questionsAnswered = answered,
-      notesTotal = answered,
-      correctNotes = quizState.correctAnswers,
-      missedNotes = missedQuestions.size,
-      replays = replayCount,
-      durationMillis = sessionStartMark?.elapsedNow()?.inWholeMilliseconds ?: 0L,
-      avgAnswerMillis =
-        answerTimesMillis.takeIf { it.isNotEmpty() }?.let { it.sum() / it.size },
-      avgDeltaMillis = null,
-      bestStreak = longestCleanRun(answered, missedQuestions.map { it - 1 }.toSet()),
-      keysPracticed = rootsPracticed.size,
-      questionResults =
-        (1..answered).map { q -> QuestionResult(q, 1, if (q in missedQuestions) 1 else 0) },
-    )
-    val savedId =
-      runCatching { trainingSessionRepository.saveSession(session) }
-        .fold(
-          onSuccess = { session.id },
-          onFailure = {
-            Napier.w(it) { "Failed to save the training session" }
-            null
-          },
-        )
+    val session =
+      TrainingSession(
+        id = Uuid.generateV7().toString(),
+        flow = TrainingFlow.Singles,
+        levelId = level.id,
+        levelName = level.name,
+        completedAtEpochMillis = Clock.System.now().toEpochMilliseconds(),
+        finishedEarly = finishedEarly,
+        questionsAnswered = answered,
+        notesTotal = answered,
+        correctNotes = quizState.correctAnswers,
+        missedNotes = missedQuestions.size,
+        replays = replayCount,
+        durationMillis = sessionStartMark?.elapsedNow()?.inWholeMilliseconds ?: 0L,
+        avgAnswerMillis = answerTimesMillis.takeIf { it.isNotEmpty() }?.let { it.sum() / it.size },
+        avgDeltaMillis = null,
+        bestStreak = longestCleanRun(answered, missedQuestions.map { it - 1 }.toSet()),
+        keysPracticed = rootsPracticed.size,
+        questionResults =
+          (1..answered).map { q -> QuestionResult(q, 1, if (q in missedQuestions) 1 else 0) },
+      )
+    val savedId = runCatching {
+      trainingSessionRepository.saveSession(session)
+    }
+      .fold(
+        onSuccess = { session.id },
+        onFailure = {
+          Napier.w(it) { "Failed to save the training session" }
+          null
+        },
+      )
     _state.update { it.copy(phase = QuizPhase.Complete(sessionId = savedId)) }
   }
 
@@ -396,8 +401,8 @@ class SinglesPlayScreenViewModel(
     readyStatusJob = viewModelScope.launch {
       player.ready.collect { ready ->
         Napier.v { "ready state: $ready" }
-//        if (!ready) {
-//        }
+        //        if (!ready) {
+        //        }
         _state.update {
           it.copy(phase = if (ready) QuizPhase.AwaitingAnswer else QuizPhase.LoadingContext)
         }
@@ -412,7 +417,7 @@ class SinglesPlayScreenViewModel(
         Napier.v { "got setup melody note $note" }
         if (note != null) {
           _setupMelodyFlashes.emit(
-              KeyFlashRequest(note.pitch, PianoKeyboardDefaults.MonochromePressedColor)
+            KeyFlashRequest(note.pitch, PianoKeyboardDefaults.MonochromePressedColor)
           )
         }
       }

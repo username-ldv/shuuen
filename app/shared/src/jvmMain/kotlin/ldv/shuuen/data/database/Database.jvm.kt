@@ -8,7 +8,5 @@ import kotlinx.io.files.Path
 fun getDatabaseBuilder(filesPath: Path): RoomDatabase.Builder<AppDatabase> {
   val dbFilePath = Path(filesPath, "shuuen.db").toString()
   Napier.v { "Desktop database path $dbFilePath" }
-  return Room.databaseBuilder<AppDatabase>(
-    name = dbFilePath,
-  ).fallbackToDestructiveMigration()
+  return Room.databaseBuilder<AppDatabase>(name = dbFilePath).fallbackToDestructiveMigration()
 }

@@ -18,6 +18,7 @@ import ldv.shuuen.features.training.course.domain.ProgressionGroup
 
 sealed interface CourseSourceSelection {
   data object MyLevels : CourseSourceSelection
+
   data class Course(val courseId: Long) : CourseSourceSelection
 }
 
@@ -46,14 +47,25 @@ data class CourseLevelBrowserState<T : Any>(
   val isLoadingMore: Boolean = false,
   val levelsError: String? = null,
 ) {
-  val groups: List<ProgressionGroup> get() = mode?.groups.orEmpty()
-  val isRemote: Boolean get() = selection is CourseSourceSelection.Course
+  val groups: List<ProgressionGroup>
+    get() = mode?.groups.orEmpty()
+
+  val isRemote: Boolean
+    get() = selection is CourseSourceSelection.Course
+
   val canLoadMore: Boolean
-    get() = isRemote && !isLoadingLevels && !isLoadingMore && levelsError == null &&
-      levels.size.toLong() < total && nextOffset < total
+    get() =
+      isRemote &&
+        !isLoadingLevels &&
+        !isLoadingMore &&
+        levelsError == null &&
+        levels.size.toLong() < total &&
+        nextOffset < total
 }
 
-/** Owns cancellable metadata/group selection and group-scoped paging for one level-select screen. */
+/**
+ * Owns cancellable metadata/group selection and group-scoped paging for one level-select screen.
+ */
 class CourseLevelBrowser<T : Any>(
   private val mode: TrainingFlow,
   private val repository: CourseRepository,
@@ -85,13 +97,15 @@ class CourseLevelBrowser<T : Any>(
           if (page.courses.isEmpty() || next <= offset) break
           offset = next
         }
-        val courses = discovered.values
-          .filter { it.contains(mode) }
-          .sortedWith(compareBy(CourseSummary::sortOrder, CourseSummary::name, CourseSummary::id))
+        val courses =
+          discovered.values
+            .filter { it.contains(mode) }
+            .sortedWith(compareBy(CourseSummary::sortOrder, CourseSummary::name, CourseSummary::id))
         _state.update { current ->
           val selected = current.selection as? CourseSourceSelection.Course
-          val selection = selected?.takeIf { choice -> courses.any { it.id == choice.courseId } }
-            ?: CourseSourceSelection.MyLevels
+          val selection =
+            selected?.takeIf { choice -> courses.any { it.id == choice.courseId } }
+              ?: CourseSourceSelection.MyLevels
           current.copy(
             courses = courses,
             isDiscoveringCourses = false,
@@ -155,8 +169,8 @@ class CourseLevelBrowser<T : Any>(
         val metadata = repository.getCourseMode(courseId, mode)
         if (requestGeneration != generation) return@launch
         val remembered = selectedGroupByCourse[courseId]
-        val selectedGroup = metadata.groups.firstOrNull { it.id == remembered }
-          ?: metadata.groups.firstOrNull()
+        val selectedGroup =
+          metadata.groups.firstOrNull { it.id == remembered } ?: metadata.groups.firstOrNull()
         selectedGroup?.let { selectedGroupByCourse[courseId] = it.id }
         _state.update {
           it.copy(
@@ -215,7 +229,10 @@ class CourseLevelBrowser<T : Any>(
       } catch (error: Throwable) {
         if (requestGeneration == generation) {
           _state.update {
-            it.copy(isLoadingLevels = false, levelsError = error.message ?: "Couldn't load the group.")
+            it.copy(
+              isLoadingLevels = false,
+              levelsError = error.message ?: "Couldn't load the group.",
+            )
           }
         }
       }
@@ -232,7 +249,13 @@ class CourseLevelBrowser<T : Any>(
     pagingJob = scope.launch {
       _state.update { it.copy(isLoadingMore = true) }
       try {
-        fetchPage(selection.courseId, groupId, current.nextOffset, requestGeneration, initial = false)
+        fetchPage(
+          selection.courseId,
+          groupId,
+          current.nextOffset,
+          requestGeneration,
+          initial = false,
+        )
       } catch (error: CancellationException) {
         throw error
       } catch (error: Throwable) {
@@ -257,7 +280,11 @@ class CourseLevelBrowser<T : Any>(
     val requestedGeneration = generation
     while (requestedGeneration == generation) {
       val current = _state.value
-      current.levels.firstOrNull { it.reference !in attemptedLevelIds }?.let { return it.reference }
+      current.levels
+        .firstOrNull { it.reference !in attemptedLevelIds }
+        ?.let {
+          return it.reference
+        }
 
       val allLevelsLoaded = current.levels.size.toLong() >= current.total
       if (allLevelsLoaded) return current.levels.lastOrNull()?.reference
@@ -302,7 +329,12 @@ class CourseLevelBrowser<T : Any>(
         throw error
       } catch (error: Throwable) {
         if (requestGeneration == generation) {
-          _state.update { it.copy(isLoadingLevels = false, levelsError = error.message ?: "Couldn't load the group.") }
+          _state.update {
+            it.copy(
+              isLoadingLevels = false,
+              levelsError = error.message ?: "Couldn't load the group.",
+            )
+          }
         }
       }
     }
@@ -333,8 +365,9 @@ class CourseLevelBrowser<T : Any>(
   }
 
   private fun presentation(item: CourseLevelItem): LevelSelectItem<T> {
-    val level = extract(item.playable)
-      ?: error("The backend returned ${item.mode} content to the ${mode.name} level browser.")
+    val level =
+      extract(item.playable)
+        ?: error("The backend returned ${item.mode} content to the ${mode.name} level browser.")
     return LevelSelectItem(
       reference = item.reference.encoded,
       playableLevel = level,

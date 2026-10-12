@@ -8,6 +8,8 @@ fun getDatabaseBuilder(context: Context): RoomDatabase.Builder<AppDatabase> {
   val appContext = context.applicationContext
   val dbFile = appContext.getDatabasePath("shuuen.db")
   return Room.databaseBuilder<AppDatabase>(
-    context = appContext, name = dbFile.absolutePath
-  ).fallbackToDestructiveMigration()
+      context = appContext,
+      name = dbFile.absolutePath,
+    )
+    .fallbackToDestructiveMigration()
 }

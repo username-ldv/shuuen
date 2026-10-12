@@ -40,6 +40,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ldv.shuuen.core.ui.components.PillControl
+import ldv.shuuen.core.ui.components.ShuuenTopAppBar
+import ldv.shuuen.core.ui.components.ShuuenTopAppBarType
+import ldv.shuuen.core.ui.components.ShuuenUi
+import ldv.shuuen.core.ui.components.StaticScreenFrame
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.exp
@@ -48,11 +53,6 @@ import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.round
 import kotlin.math.sin
-import ldv.shuuen.core.ui.components.PillControl
-import ldv.shuuen.core.ui.components.ShuuenTopAppBar
-import ldv.shuuen.core.ui.components.ShuuenTopAppBarType
-import ldv.shuuen.core.ui.components.ShuuenUi
-import ldv.shuuen.core.ui.components.StaticScreenFrame
 
 @Composable
 fun PitchSlideScreen(
@@ -77,10 +77,8 @@ fun PitchSlideScreen(
     }
 
     Box(
-      modifier = Modifier
-        .fillMaxWidth()
-        .weight(1f)
-        .pointerInput(Unit) {
+      modifier =
+        Modifier.fillMaxWidth().weight(1f).pointerInput(Unit) {
           awaitEachGesture {
             val down = awaitFirstDown()
             down.consume()
@@ -91,7 +89,7 @@ fun PitchSlideScreen(
             }
             viewModel.slideReleased()
           }
-        },
+        }
     ) {
       PitchWave(
         hz = state.currentHz,
@@ -103,10 +101,11 @@ fun PitchSlideScreen(
       Text(
         text = "ROUND ${state.round}",
         color = ShuuenUi.Muted,
-        style = MaterialTheme.typography.labelLarge.copy(
-          letterSpacing = ShuuenUi.labelSpacing,
-          fontWeight = FontWeight.SemiBold,
-        ),
+        style =
+          MaterialTheme.typography.labelLarge.copy(
+            letterSpacing = ShuuenUi.labelSpacing,
+            fontWeight = FontWeight.SemiBold,
+          ),
         modifier = Modifier.align(Alignment.TopStart).padding(top = 6.dp),
       )
 
@@ -140,10 +139,11 @@ fun PitchSlideScreen(
         Text(
           text = "TARGET",
           color = ShuuenUi.Muted,
-          style = MaterialTheme.typography.labelLarge.copy(
-            letterSpacing = ShuuenUi.labelSpacing,
-            fontWeight = FontWeight.SemiBold,
-          ),
+          style =
+            MaterialTheme.typography.labelLarge.copy(
+              letterSpacing = ShuuenUi.labelSpacing,
+              fontWeight = FontWeight.SemiBold,
+            ),
         )
         Text(
           text = if (state.revealed) "${state.targetHz.format(2)} Hz" else "· · ·",
@@ -157,7 +157,10 @@ fun PitchSlideScreen(
         )
       }
       Spacer(modifier = Modifier.weight(1f))
-      Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+      Column(
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+      ) {
         PillControl(
           text = "HEAR TARGET",
           selected = state.isTargetPlaying,
@@ -165,11 +168,10 @@ fun PitchSlideScreen(
           onClick = viewModel::playTarget,
         )
         Box(
-          modifier = Modifier
-            .size(58.dp)
-            .clip(CircleShape)
-            .background(ShuuenUi.Inverse)
-            .clickable { if (state.revealed) viewModel.nextRound() else viewModel.check() },
+          modifier =
+            Modifier.size(58.dp).clip(CircleShape).background(ShuuenUi.Inverse).clickable {
+              if (state.revealed) viewModel.nextRound() else viewModel.check()
+            },
           contentAlignment = Alignment.Center,
         ) {
           Icon(
@@ -190,9 +192,9 @@ private val StrandColors =
 
 /**
  * The dialed-style vertical wave ribbon: intertwined strands whose spatial density follows the
- * current frequency (higher pitch = tighter wiggles) while their movement runs on wall-clock
- * time. A white handle marks the tone's position on the log-frequency axis (top = high); after
- * the reveal a green line marks where the target actually was.
+ * current frequency (higher pitch = tighter wiggles) while their movement runs on wall-clock time.
+ * A white handle marks the tone's position on the log-frequency axis (top = high); after the reveal
+ * a green line marks where the target actually was.
  */
 @Composable
 private fun PitchWave(
@@ -201,15 +203,16 @@ private fun PitchWave(
   sounding: Boolean,
   modifier: Modifier = Modifier,
 ) {
-  val time by produceState(0f) {
-    var start = 0L
-    while (true) {
-      withFrameNanos { nanos ->
-        if (start == 0L) start = nanos
-        value = (nanos - start) / 1e9f
+  val time by
+    produceState(0f) {
+      var start = 0L
+      while (true) {
+        withFrameNanos { nanos ->
+          if (start == 0L) start = nanos
+          value = (nanos - start) / 1e9f
+        }
       }
     }
-  }
 
   val handleLineColor = ShuuenUi.Ink.copy(alpha = 0.25f)
   val handleColor = ShuuenUi.Ink
@@ -244,10 +247,11 @@ private fun PitchWave(
           path = path,
           color = color,
           alpha = if (echo == 0) alphaBase else alphaBase * 0.3f,
-          style = Stroke(
-            width = if (echo == 0) 2.dp.toPx() else 1.dp.toPx(),
-            cap = StrokeCap.Round,
-          ),
+          style =
+            Stroke(
+              width = if (echo == 0) 2.dp.toPx() else 1.dp.toPx(),
+              cap = StrokeCap.Round,
+            ),
         )
       }
     }

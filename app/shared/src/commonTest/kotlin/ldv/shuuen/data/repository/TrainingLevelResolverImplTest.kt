@@ -1,7 +1,5 @@
 package ldv.shuuen.data.repository
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
@@ -40,6 +38,8 @@ import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
 import ldv.shuuen.features.training.melodies.domain.MelodiesLocalLevelRepository
 import ldv.shuuen.features.training.single.domain.SinglesLevel
 import ldv.shuuen.features.training.single.domain.SinglesLocalLevelRepository
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class TrainingLevelResolverImplTest {
   @Test
@@ -73,7 +73,8 @@ class TrainingLevelResolverImplTest {
             singleReference to
               PlayableTrainingLevel.Singles(single(singleReference.encoded, tuneCents = 10)),
           ),
-        settings = AppSettings(courseOverrides = mapOf(5L to CourseOverrides(tuneInconsistencyCents = 40))),
+        settings =
+          AppSettings(courseOverrides = mapOf(5L to CourseOverrides(tuneInconsistencyCents = 40))),
       )
 
     val melodyConfig = resolver.resolveMelodies(melodyReference.encoded).config
@@ -88,8 +89,11 @@ class TrainingLevelResolverImplTest {
     val resolver =
       resolver(
         courseLevels =
-          mapOf(reference to PlayableTrainingLevel.Singles(single(reference.encoded, tuneCents = 25))),
-        settings = AppSettings(courseOverrides = mapOf(5L to CourseOverrides(tuneInconsistencyCents = 0))),
+          mapOf(
+            reference to PlayableTrainingLevel.Singles(single(reference.encoded, tuneCents = 25))
+          ),
+        settings =
+          AppSettings(courseOverrides = mapOf(5L to CourseOverrides(tuneInconsistencyCents = 0))),
       )
 
     assertEquals(0, resolver.resolveSingles(reference.encoded).levelConfig.tuneInconsistencyCents)
@@ -104,9 +108,10 @@ class TrainingLevelResolverImplTest {
         courseLevels =
           mapOf(
             otherCourseReference to
-              PlayableTrainingLevel.Melodies(melody(otherCourseReference.encoded, tuneCents = 15)),
+              PlayableTrainingLevel.Melodies(melody(otherCourseReference.encoded, tuneCents = 15))
           ),
-        settings = AppSettings(courseOverrides = mapOf(5L to CourseOverrides(tuneInconsistencyCents = 40))),
+        settings =
+          AppSettings(courseOverrides = mapOf(5L to CourseOverrides(tuneInconsistencyCents = 40))),
       )
 
     val localConfig = resolver.resolveMelodies("local-id").config
@@ -117,7 +122,8 @@ class TrainingLevelResolverImplTest {
 }
 
 private fun resolver(
-  melodiesRepository: MelodiesLocalLevelRepository = FakeMelodiesLocalRepository(melody("local-id")),
+  melodiesRepository: MelodiesLocalLevelRepository =
+    FakeMelodiesLocalRepository(melody("local-id")),
   courseLevels: Map<LevelReference.Remote, PlayableTrainingLevel>,
   settings: AppSettings = AppSettings(),
 ) =
@@ -176,36 +182,52 @@ private fun single(id: String, tuneCents: Int) =
 private class FakeMelodiesLocalRepository(private val level: MelodiesLevel) :
   MelodiesLocalLevelRepository {
   var requestedId: String? = null
+
   override fun getLevels(): Flow<ResponseState<List<MelodiesLevel>>> =
     flowOf(ResponseState.Success(listOf(level)))
+
   override fun getLevelById(id: String): Flow<ResponseState<MelodiesLevel>> {
     requestedId = id
     return flowOf(ResponseState.Success(level))
   }
+
   override suspend fun upsertLevel(level: MelodiesLevel) = Unit
+
   override suspend fun deleteLevel(id: String) = Unit
 }
 
 private object EmptySinglesRepository : SinglesLocalLevelRepository {
-  override fun getLevels(): Flow<ResponseState<List<SinglesLevel>>> = flowOf(ResponseState.Success(emptyList()))
+  override fun getLevels(): Flow<ResponseState<List<SinglesLevel>>> =
+    flowOf(ResponseState.Success(emptyList()))
+
   override fun getLevelById(id: String): Flow<ResponseState<SinglesLevel>> = error("not used")
+
   override suspend fun upsertLevel(level: SinglesLevel) = Unit
+
   override suspend fun deleteLevel(id: String) = Unit
 }
 
 private object EmptyChordsRepository : ChordsLocalLevelRepository {
-  override fun getLevels(): Flow<ResponseState<List<ChordsLevel>>> = flowOf(ResponseState.Success(emptyList()))
+  override fun getLevels(): Flow<ResponseState<List<ChordsLevel>>> =
+    flowOf(ResponseState.Success(emptyList()))
+
   override fun getLevelById(id: String): Flow<ResponseState<ChordsLevel>> = error("not used")
+
   override suspend fun upsertLevel(level: ChordsLevel) = Unit
+
   override suspend fun deleteLevel(id: String) = Unit
 }
 
 private class ResolverCourseRepository(
-  private val levels: Map<LevelReference.Remote, PlayableTrainingLevel>,
+  private val levels: Map<LevelReference.Remote, PlayableTrainingLevel>
 ) : CourseRepository {
   override suspend fun listCourses(limit: Int, offset: Int): CoursePage = error("not used")
+
   override suspend fun getCourse(courseId: Long): CourseSummary = error("not used")
-  override suspend fun getCourseMode(courseId: Long, mode: TrainingFlow): CourseMode = error("not used")
+
+  override suspend fun getCourseMode(courseId: Long, mode: TrainingFlow): CourseMode =
+    error("not used")
+
   override suspend fun getLevels(
     courseId: Long,
     mode: TrainingFlow,
@@ -213,6 +235,7 @@ private class ResolverCourseRepository(
     limit: Int,
     offset: Int,
   ): CourseLevelPage = error("not used")
+
   override suspend fun getLevel(reference: LevelReference.Remote): CourseLevelItem =
     CourseLevelItem(
       reference = reference,
@@ -223,6 +246,7 @@ private class ResolverCourseRepository(
       sourceCourseId = reference.courseId,
       mode = reference.mode,
     )
+
   override suspend fun queryLevels(
     courseId: Long,
     mode: TrainingFlow,
@@ -232,27 +256,50 @@ private class ResolverCourseRepository(
 
 private class FixedSettingsRepository(initial: AppSettings) : SettingsRepository {
   override val settings: Flow<AppSettings> = MutableStateFlow(initial)
+
   override suspend fun setBackendUrl(url: String?) = Unit
+
   override suspend fun setSoundFontPath(path: String?) = Unit
+
   override suspend fun setPresetChoices(channel: MidiChannel, presets: List<Preset>) = Unit
+
   override suspend fun setPresetShuffleMode(channel: MidiChannel, mode: PresetShuffleMode) = Unit
+
   override suspend fun setPresetVolume(preset: Preset, percent: Int) = Unit
+
   override suspend fun setPresetCutoff(preset: Preset, cutoff: Int) = Unit
+
   override suspend fun setPresetCutoffScope(preset: Preset, scope: PresetCutoffScope) = Unit
+
   override suspend fun setPerNoteShuffleOnImportedMelodies(value: Boolean) = Unit
+
   override suspend fun setVolume(channel: MidiChannel, value: Int) = Unit
+
   override suspend fun setMelodyOriginalVolumeBoost(value: Int) = Unit
+
   override suspend fun setBackingTrackVolume(value: Int) = Unit
+
   override suspend fun setBackingTrackMutesMelody(value: Boolean) = Unit
+
   override suspend fun setMidiLevelOptions(options: MidiLevelOptions) = Unit
+
   override suspend fun setCourseTuneInconsistency(courseId: Long, cents: Int?) = Unit
+
   override suspend fun setInputMethod(inputMethod: InputMethod) = Unit
+
   override suspend fun setTheme(theme: ThemeSettings) = Unit
+
   override suspend fun setMidiRespectOctaves(value: Boolean) = Unit
+
   override suspend fun setAllowSevenAccidentalKeys(value: Boolean) = Unit
+
   override suspend fun setLevelStatsWindow(value: Int) = Unit
+
   override suspend fun setNoteNames(names: List<String>) = Unit
+
   override suspend fun setDegreeNames(names: List<String>) = Unit
+
   override suspend fun setCustomNoteNamesPreset(names: List<String>) = Unit
+
   override suspend fun setCustomDegreeNamesPreset(names: List<String>) = Unit
 }

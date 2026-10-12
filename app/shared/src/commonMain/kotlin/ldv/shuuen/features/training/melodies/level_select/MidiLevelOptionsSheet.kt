@@ -28,7 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import kotlin.math.roundToInt
 import ldv.shuuen.core.music.MaximumMidiTransposition
 import ldv.shuuen.core.music.MidiTransposition
 import ldv.shuuen.core.music.MidiTranspositionMode
@@ -38,6 +37,7 @@ import ldv.shuuen.core.ui.components.PrimaryCta
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.features.training.common.LevelAccuracyStats
 import ldv.shuuen.features.training.common.components.LevelSettingsSheet
+import kotlin.math.roundToInt
 
 /**
  * Level settings for an imported MIDI melody. Transposition and context are one shared setting
@@ -59,7 +59,8 @@ internal fun MidiLevelOptionsSheet(
   onDismiss: () -> Unit,
 ) {
   var mode by rememberSaveable(levelReference) { mutableStateOf(options.transposition.mode) }
-  var semitones by rememberSaveable(levelReference) { mutableIntStateOf(options.transposition.semitones) }
+  var semitones by
+    rememberSaveable(levelReference) { mutableIntStateOf(options.transposition.semitones) }
 
   LevelSettingsSheet(
     levelName = levelName,
@@ -114,10 +115,12 @@ internal fun MidiLevelOptionsSheet(
               value = semitones.toFloat(),
               onValueChange = {
                 semitones =
-                  it.roundToInt().coerceIn(
-                    MinimumMidiTransposition,
-                    MaximumMidiTransposition,
-                  )
+                  it
+                    .roundToInt()
+                    .coerceIn(
+                      MinimumMidiTransposition,
+                      MaximumMidiTransposition,
+                    )
               },
               valueRange = MinimumMidiTransposition.toFloat()..MaximumMidiTransposition.toFloat(),
               steps = MaximumMidiTransposition - MinimumMidiTransposition - 1,
@@ -153,8 +156,15 @@ internal fun MidiLevelOptionsSheet(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
           ) {
-            Icon(Icons.Rounded.MusicNote, contentDescription = null, modifier = Modifier.size(18.dp))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Icon(
+              Icons.Rounded.MusicNote,
+              contentDescription = null,
+              modifier = Modifier.size(18.dp),
+            )
+            Column(
+              modifier = Modifier.weight(1f),
+              verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
               Text(
                 text = context?.let { it.name ?: it.id } ?: "No context",
                 style = MaterialTheme.typography.titleSmall,
@@ -186,9 +196,7 @@ internal fun MidiLevelOptionsSheet(
     PrimaryCta(
       text = "START LEVEL",
       onClick = {
-        onStart(
-          options.copy(transposition = MidiTransposition(mode = mode, semitones = semitones))
-        )
+        onStart(options.copy(transposition = MidiTransposition(mode = mode, semitones = semitones)))
       },
     )
   }

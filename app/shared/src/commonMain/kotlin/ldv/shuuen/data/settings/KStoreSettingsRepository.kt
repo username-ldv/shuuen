@@ -17,9 +17,7 @@ import ldv.shuuen.core.settings.ThemeSettings
 import ldv.shuuen.core.settings.coerceLevelStatsWindow
 import org.koin.core.annotation.Named
 
-class KStoreSettingsRepository(
-  @Named("files") path: Path
-) : SettingsRepository {
+class KStoreSettingsRepository(@Named("files") path: Path) : SettingsRepository {
   val store = storeOf(file = Path(path, "settings.json"), default = AppSettings())
   override val settings: Flow<AppSettings> = store.updates.map { it ?: AppSettings() }
 
@@ -57,11 +55,12 @@ class KStoreSettingsRepository(
   override suspend fun setVolume(channel: MidiChannel, value: Int) {
     store.update {
       it?.copy(
-        volumes = when (channel) {
-          MidiChannel.Notes -> it.volumes.copy(notes = value)
-          MidiChannel.Drone -> it.volumes.copy(drone = value)
-          MidiChannel.Cadence -> it.volumes.copy(cadence = value)
-        },
+        volumes =
+          when (channel) {
+            MidiChannel.Notes -> it.volumes.copy(notes = value)
+            MidiChannel.Drone -> it.volumes.copy(drone = value)
+            MidiChannel.Cadence -> it.volumes.copy(cadence = value)
+          }
       )
     }
   }
@@ -94,7 +93,9 @@ class KStoreSettingsRepository(
     store.update { settings ->
       settings ?: return@update null
       val overrides =
-        (settings.courseOverrides[courseId] ?: CourseOverrides()).copy(tuneInconsistencyCents = cents)
+        (settings.courseOverrides[courseId] ?: CourseOverrides()).copy(
+          tuneInconsistencyCents = cents
+        )
       settings.copy(
         courseOverrides =
           if (overrides == CourseOverrides()) settings.courseOverrides - courseId

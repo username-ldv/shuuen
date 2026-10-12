@@ -9,14 +9,14 @@ const val FullPresetVolume = 100
  * A loudness trim per instrument, independent of everything else: soundfont presets are not
  * mastered to a common level, so a violin may need to sit at 70% where a piano sits at 100%.
  *
- * The trim belongs to the preset itself, not to a channel — the same instrument is trimmed the
- * same wherever it plays — and it survives whether that preset is currently chosen or not. It
- * scales the channel volume rather than replacing it: the channel slider stays the master.
+ * The trim belongs to the preset itself, not to a channel — the same instrument is trimmed the same
+ * wherever it plays — and it survives whether that preset is currently chosen or not. It scales the
+ * channel volume rather than replacing it: the channel slider stays the master.
  */
 @Serializable
 data class PresetVolumes(
   /** Packed (bank, id) → percent of the channel volume. Absent means [FullPresetVolume]. */
-  val percents: Map<Int, Int> = emptyMap(),
+  val percents: Map<Int, Int> = emptyMap()
 ) {
   fun forPreset(preset: Preset): Int =
     percents[preset.toPacked()]?.coerceIn(0, FullPresetVolume) ?: FullPresetVolume

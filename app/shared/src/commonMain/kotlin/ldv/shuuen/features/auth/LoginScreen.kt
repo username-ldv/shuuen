@@ -60,7 +60,7 @@ fun LoginScreen(
         statusContent = { BackendStatusBadge() },
         type = ShuuenTopAppBarType.Simple,
       )
-    },
+    }
   ) {
     // Each section takes only the values it draws, so typing a password doesn't recompose the
     // backend row and a status change doesn't recompose the form.

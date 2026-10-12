@@ -19,24 +19,24 @@ val mainMenuNavigationModule = module {
     val navigator = LocalAppNavigator.current
     val backendStatusMonitor = koinInject<BackendStatusMonitor>()
     MainMenuScreen(
-        viewModel = koinViewModel(),
-        onStartLevel = { flow, levelReference ->
-          navigator.add(
-            when (flow) {
-              TrainingFlow.Singles -> AppRoute.SinglesPlay(levelReference)
-              TrainingFlow.Melodies -> AppRoute.MelodiesPlay(levelReference)
-              TrainingFlow.Chords -> AppRoute.ChordsPlay(levelReference)
-            }
-          )
-        },
-        onOpenFreePlay = { navigator.add(AppRoute.FreePlay) },
-        onOpenMelodies = { navigator.add(AppRoute.MelodiesLevelSelect) },
-        onOpenSingles = { navigator.add(AppRoute.SinglesLevelSelect) },
-        onOpenChords = { navigator.add(AppRoute.ChordsLevelSelect) },
-        onOpenPitchSlide = { navigator.add(AppRoute.PitchSlide) },
-        onOpenSettings = { navigator.add(AppRoute.Settings) },
-        onOpenAccount = { navigator.add(AppRoute.Login) },
-        onRefreshBackend = backendStatusMonitor::refresh,
+      viewModel = koinViewModel(),
+      onStartLevel = { flow, levelReference ->
+        navigator.add(
+          when (flow) {
+            TrainingFlow.Singles -> AppRoute.SinglesPlay(levelReference)
+            TrainingFlow.Melodies -> AppRoute.MelodiesPlay(levelReference)
+            TrainingFlow.Chords -> AppRoute.ChordsPlay(levelReference)
+          }
+        )
+      },
+      onOpenFreePlay = { navigator.add(AppRoute.FreePlay) },
+      onOpenMelodies = { navigator.add(AppRoute.MelodiesLevelSelect) },
+      onOpenSingles = { navigator.add(AppRoute.SinglesLevelSelect) },
+      onOpenChords = { navigator.add(AppRoute.ChordsLevelSelect) },
+      onOpenPitchSlide = { navigator.add(AppRoute.PitchSlide) },
+      onOpenSettings = { navigator.add(AppRoute.Settings) },
+      onOpenAccount = { navigator.add(AppRoute.Login) },
+      onRefreshBackend = backendStatusMonitor::refresh,
     )
   }
 }

@@ -8,38 +8,53 @@ import androidx.compose.ui.unit.sp
 import ldv.shuuen.core.ui.theme.LocalShuuenPalette
 
 /**
- * Design tokens for the monotone look: neutrals carry the whole UI and
- * selection/primary states are rendered by inversion (background-opposite fill,
- * flipped content). [Correct]/[Incorrect] answer feedback is the only colored
- * exception. The color values resolve against the active theme variant via
- * [LocalShuuenPalette], so the same token reads correctly in every theme.
+ * Design tokens for the monotone look: neutrals carry the whole UI and selection/primary states are
+ * rendered by inversion (background-opposite fill, flipped content). [Correct]/[Incorrect] answer
+ * feedback is the only colored exception. The color values resolve against the active theme variant
+ * via [LocalShuuenPalette], so the same token reads correctly in every theme.
  */
 object ShuuenUi {
   // Typography / iconography
-  val Text: Color @Composable get() = LocalShuuenPalette.current.text
-  val Muted: Color @Composable get() = LocalShuuenPalette.current.muted
-  val Dim: Color @Composable get() = LocalShuuenPalette.current.dim
+  val Text: Color
+    @Composable get() = LocalShuuenPalette.current.text
+
+  val Muted: Color
+    @Composable get() = LocalShuuenPalette.current.muted
+
+  val Dim: Color
+    @Composable get() = LocalShuuenPalette.current.dim
 
   // Borderless surfaces over the background
-  val Surface: Color @Composable get() = LocalShuuenPalette.current.surface
-  val SurfaceHigh: Color @Composable get() = LocalShuuenPalette.current.surfaceHigh
+  val Surface: Color
+    @Composable get() = LocalShuuenPalette.current.surface
+
+  val SurfaceHigh: Color
+    @Composable get() = LocalShuuenPalette.current.surfaceHigh
 
   // Hairlines instead of borders
-  val Hairline: Color @Composable get() = LocalShuuenPalette.current.hairline
-  val HairlineStrong: Color @Composable get() = LocalShuuenPalette.current.hairlineStrong
+  val Hairline: Color
+    @Composable get() = LocalShuuenPalette.current.hairline
+
+  val HairlineStrong: Color
+    @Composable get() = LocalShuuenPalette.current.hairlineStrong
 
   // Inverted selection (background-opposite chip, flipped content)
-  val Inverse: Color @Composable get() = LocalShuuenPalette.current.inverse
-  val OnInverse: Color @Composable get() = LocalShuuenPalette.current.onInverse
+  val Inverse: Color
+    @Composable get() = LocalShuuenPalette.current.inverse
+
+  val OnInverse: Color
+    @Composable get() = LocalShuuenPalette.current.onInverse
 
   /**
-   * Base for translucent chrome drawn as `Ink.copy(alpha = x)` over the
-   * background: white on dark variants, black on light ones.
+   * Base for translucent chrome drawn as `Ink.copy(alpha = x)` over the background: white on dark
+   * variants, black on light ones.
    */
-  val Ink: Color @Composable get() = LocalShuuenPalette.current.ink
+  val Ink: Color
+    @Composable get() = LocalShuuenPalette.current.ink
 
   /** True while a dark variant is active; for brightness-specific values. */
-  val IsDark: Boolean @Composable get() = LocalShuuenPalette.current.isDark
+  val IsDark: Boolean
+    @Composable get() = LocalShuuenPalette.current.isDark
 
   // Answer feedback — the only colored exception to the monotone rule.
   // Theme independent (also read from non-composable contexts).

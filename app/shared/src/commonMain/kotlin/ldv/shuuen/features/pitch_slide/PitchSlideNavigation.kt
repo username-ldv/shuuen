@@ -15,8 +15,8 @@ val pitchSlideNavigationModule = module {
   navigation<AppRoute.PitchSlide> {
     val navigator = LocalAppNavigator.current
     PitchSlideScreen(
-        viewModel = koinViewModel(),
-        onNavigateBack = { navigator.goBack() },
+      viewModel = koinViewModel(),
+      onNavigateBack = { navigator.goBack() },
     )
   }
 }

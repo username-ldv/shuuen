@@ -32,15 +32,15 @@ private val PreviewGap = Timing(PreviewTempo).eighth()
 private val EndlessStepPreviewDuration = Timing(PreviewTempo).half()
 
 private data class PlayingNodePreview(
-    val number: Int,
-    val chord: Chord,
-    val channel: MidiChannel,
+  val number: Int,
+  val chord: Chord,
+  val channel: MidiChannel,
 )
 
 class ContextViewModel(
-    contextId: String,
-    private val midiEngine: MidiEngine,
-    private val contextRepository: ContextLocalRepository,
+  contextId: String,
+  private val midiEngine: MidiEngine,
+  private val contextRepository: ContextLocalRepository,
 ) : ViewModel() {
   private val initialContextId = contextId.takeIf { it.isNotBlank() }
   private var audioReady = false
@@ -98,16 +98,16 @@ class ContextViewModel(
 
       val node = nodes[number - 1]
       val channel =
-          when (node.sustain) {
-            is Sustain.Endless -> MidiChannel.Drone
-            is Sustain.Finite -> MidiChannel.Cadence
-          }
+        when (node.sustain) {
+          is Sustain.Endless -> MidiChannel.Drone
+          is Sustain.Finite -> MidiChannel.Cadence
+        }
       val preview =
-          PlayingNodePreview(
-              number = number,
-              chord = nodes.toChords(PreviewRoot)[number - 1],
-              channel = channel,
-          )
+        PlayingNodePreview(
+          number = number,
+          chord = nodes.toChords(PreviewRoot)[number - 1],
+          channel = channel,
+        )
 
       activeNodePreview = preview
       _playingNodeNumber.value = number
@@ -208,21 +208,21 @@ class ContextViewModel(
   }
 
   private fun playNodeChord(
-      number: Int,
-      node: DegreeContextNode,
-      chord: Chord,
+    number: Int,
+    node: DegreeContextNode,
+    chord: Chord,
   ): PlayingNodePreview {
     val channel =
-        when (node.sustain) {
-          is Sustain.Endless -> MidiChannel.Drone
-          is Sustain.Finite -> MidiChannel.Cadence
-        }
+      when (node.sustain) {
+        is Sustain.Endless -> MidiChannel.Drone
+        is Sustain.Finite -> MidiChannel.Cadence
+      }
     val preview =
-        PlayingNodePreview(
-            number = number,
-            chord = chord,
-            channel = channel,
-        )
+      PlayingNodePreview(
+        number = number,
+        chord = chord,
+        channel = channel,
+      )
 
     activeNodePreview = preview
     _playingNodeNumber.value = number

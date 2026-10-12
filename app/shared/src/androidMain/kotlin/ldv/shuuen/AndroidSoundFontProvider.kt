@@ -6,13 +6,12 @@ import com.un4seen.bass.BASS
 import com.un4seen.bass.BASSMIDI
 import ldv.shuuen.core.audio.engine.SoundFontProvider
 
-internal class AndroidSoundFontProvider(
-  private val context: Context,
-) : SoundFontProvider {
+internal class AndroidSoundFontProvider(private val context: Context) : SoundFontProvider {
   override suspend fun loadSoundFont(location: String): Int {
     val descriptor = runCatching {
       context.contentResolver.openFileDescriptor(Uri.parse(location), "r")
-    }.getOrNull()
+    }
+      .getOrNull()
     return if (descriptor == null) {
       BASSMIDI.BASS_MIDI_FontInit(location, 0)
     } else {

@@ -15,8 +15,8 @@ val freePlayNavigationModule = module {
   navigation<AppRoute.FreePlay> {
     val navigator = LocalAppNavigator.current
     FreePlayScreen(
-        viewModel = koinViewModel(),
-        onNavigateBack = { navigator.goBack() },
+      viewModel = koinViewModel(),
+      onNavigateBack = { navigator.goBack() },
     )
   }
 }

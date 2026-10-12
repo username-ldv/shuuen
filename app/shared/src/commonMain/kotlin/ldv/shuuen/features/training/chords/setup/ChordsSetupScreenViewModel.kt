@@ -3,8 +3,6 @@ package ldv.shuuen.features.training.chords.setup
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -26,37 +24,39 @@ import ldv.shuuen.features.training.common.asConfigDegreeStates
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.LevelSource
 import ldv.shuuen.features.training.domain.ScaleConfig
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 class ChordsSetupScreenViewModel(
-    editLevelId: String,
-    val levelRepository: ChordsLocalLevelRepository,
+  editLevelId: String,
+  val levelRepository: ChordsLocalLevelRepository,
 ) : ViewModel() {
   private val editedLevelId = editLevelId.takeIf { it.isNotBlank() }
   val isEditing = editedLevelId != null
 
   @OptIn(ExperimentalUuidApi::class)
   private val _chordsLevelState =
-      MutableStateFlow(
-          ChordsLevel(
-              id = Uuid.generateV7().toString(),
-              name = "",
-              levelConfig =
-                  LevelConfig.Chords.Relative(
-                      scaleConfig =
-                          ScaleConfig.RelativeScaleConfig(
-                              scaleType = ScaleType.Major,
-                              degreeStates = Scale.major(Pitch.C).asConfigDegreeStates(),
-                          ),
-                  ),
-              context = null,
-              source = LevelSource.User,
-              questionsNumber = 20,
-              range = NoteRange(Note(Pitch.C, 2), Note(Pitch.C, 7)),
-              chordSize = ChordSizeRange(min = 2, max = 3),
-              sustainNotes = true,
-              answerOrder = ChordAnswerOrder.Any,
-          )
+    MutableStateFlow(
+      ChordsLevel(
+        id = Uuid.generateV7().toString(),
+        name = "",
+        levelConfig =
+          LevelConfig.Chords.Relative(
+            scaleConfig =
+              ScaleConfig.RelativeScaleConfig(
+                scaleType = ScaleType.Major,
+                degreeStates = Scale.major(Pitch.C).asConfigDegreeStates(),
+              )
+          ),
+        context = null,
+        source = LevelSource.User,
+        questionsNumber = 20,
+        range = NoteRange(Note(Pitch.C, 2), Note(Pitch.C, 7)),
+        chordSize = ChordSizeRange(min = 2, max = 3),
+        sustainNotes = true,
+        answerOrder = ChordAnswerOrder.Any,
       )
+    )
   val screenState = _chordsLevelState.asStateFlow()
 
   init {
@@ -66,7 +66,7 @@ class ChordsSetupScreenViewModel(
           when (response) {
             is ResponseState.Success -> _chordsLevelState.value = response.result
             is ResponseState.Error ->
-                Napier.w(response.throwable) { "Couldn't load chords level for editing" }
+              Napier.w(response.throwable) { "Couldn't load chords level for editing" }
             is ResponseState.Loading -> Unit
           }
         }
@@ -112,10 +112,10 @@ class ChordsSetupScreenViewModel(
   fun changeChordStyle(v: ChordStyle) {
     _chordsLevelState.update {
       val levelConfig =
-          when (val config = it.levelConfig) {
-            is LevelConfig.Chords.Absolute -> config.copy(chordStyle = v)
-            is LevelConfig.Chords.Relative -> config.copy(chordStyle = v)
-          }
+        when (val config = it.levelConfig) {
+          is LevelConfig.Chords.Absolute -> config.copy(chordStyle = v)
+          is LevelConfig.Chords.Relative -> config.copy(chordStyle = v)
+        }
       it.copy(levelConfig = levelConfig)
     }
   }
@@ -123,20 +123,20 @@ class ChordsSetupScreenViewModel(
   fun changeScale(scaleConfig: ScaleConfig) {
     _chordsLevelState.update {
       val levelConfig =
-          when (scaleConfig) {
-            is ScaleConfig.AbsoluteScaleConfig ->
-                LevelConfig.Chords.Absolute(
-                    scales = listOf(scaleConfig),
-                    chordStyle = it.levelConfig.chordStyle,
-                )
+        when (scaleConfig) {
+          is ScaleConfig.AbsoluteScaleConfig ->
+            LevelConfig.Chords.Absolute(
+              scales = listOf(scaleConfig),
+              chordStyle = it.levelConfig.chordStyle,
+            )
 
-            is ScaleConfig.RelativeScaleConfig ->
-                LevelConfig.Chords.Relative(
-                    scaleConfig = scaleConfig,
-                    rotateEveryQuestions = it.levelConfig.rotateEveryQuestions,
-                    chordStyle = it.levelConfig.chordStyle,
-                )
-          }
+          is ScaleConfig.RelativeScaleConfig ->
+            LevelConfig.Chords.Relative(
+              scaleConfig = scaleConfig,
+              rotateEveryQuestions = it.levelConfig.rotateEveryQuestions,
+              chordStyle = it.levelConfig.chordStyle,
+            )
+        }
       it.copy(levelConfig = levelConfig)
     }
   }
@@ -144,10 +144,10 @@ class ChordsSetupScreenViewModel(
   fun changeRotateEveryQuestions(v: Int?) {
     _chordsLevelState.update {
       val levelConfig =
-          when (val config = it.levelConfig) {
-            is LevelConfig.Chords.Absolute -> config.copy(rotateEveryQuestions = v)
-            is LevelConfig.Chords.Relative -> config.copy(rotateEveryQuestions = v)
-          }
+        when (val config = it.levelConfig) {
+          is LevelConfig.Chords.Absolute -> config.copy(rotateEveryQuestions = v)
+          is LevelConfig.Chords.Relative -> config.copy(rotateEveryQuestions = v)
+        }
       it.copy(levelConfig = levelConfig)
     }
   }
@@ -155,16 +155,16 @@ class ChordsSetupScreenViewModel(
   suspend fun upsertLevel() {
     val level = screenState.value
     val scaleName =
-        when (val levelConfig = level.levelConfig) {
-          is LevelConfig.Chords.Absolute -> {
-            val scale = levelConfig.scales.first()
-            "${scale.root} ${scale.scaleType}"
-          }
+      when (val levelConfig = level.levelConfig) {
+        is LevelConfig.Chords.Absolute -> {
+          val scale = levelConfig.scales.first()
+          "${scale.root} ${scale.scaleType}"
+        }
 
-          is LevelConfig.Chords.Relative -> {
-            "Random ${levelConfig.scaleConfig.scaleType}"
-          }
-    }
+        is LevelConfig.Chords.Relative -> {
+          "Random ${levelConfig.scaleConfig.scaleType}"
+        }
+      }
     val levelName = "$scaleName · ${level.chordSize} notes"
     levelRepository.upsertLevel(level.copy(name = levelName))
     Napier.v { "Saved chords level: $level" }

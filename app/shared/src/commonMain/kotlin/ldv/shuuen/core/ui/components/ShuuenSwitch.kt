@@ -14,12 +14,13 @@ fun ShuuenSwitch(
   Switch(
     checked = checked,
     onCheckedChange = onCheckedChange,
-    colors = SwitchDefaults.colors(
-      checkedThumbColor = ldv.shuuen.core.ui.components.ShuuenUi.OnInverse,
-      checkedTrackColor = ldv.shuuen.core.ui.components.ShuuenUi.Inverse,
-      uncheckedThumbColor = ldv.shuuen.core.ui.components.ShuuenUi.Muted,
-      uncheckedTrackColor = ShuuenUi.Ink.copy(alpha = 0.07f),
-      uncheckedBorderColor = Color.Transparent,
-    ),
+    colors =
+      SwitchDefaults.colors(
+        checkedThumbColor = ldv.shuuen.core.ui.components.ShuuenUi.OnInverse,
+        checkedTrackColor = ldv.shuuen.core.ui.components.ShuuenUi.Inverse,
+        uncheckedThumbColor = ldv.shuuen.core.ui.components.ShuuenUi.Muted,
+        uncheckedTrackColor = ShuuenUi.Ink.copy(alpha = 0.07f),
+        uncheckedBorderColor = Color.Transparent,
+      ),
   )
 }

@@ -1,6 +1,11 @@
 package ldv.shuuen.features.training.single
 
 import androidx.compose.runtime.LaunchedEffect
+import ldv.shuuen.app.navigation.AppRoute
+import ldv.shuuen.app.navigation.LocalAppNavigator
+import ldv.shuuen.app.navigation.result.ContextRecipient
+import ldv.shuuen.app.navigation.result.LocalNavResultStore
+import ldv.shuuen.app.navigation.result.NavResultKeys.SinglesContextResult
 import ldv.shuuen.features.training.level_end.LevelCompleteScreen
 import ldv.shuuen.features.training.single.level_select.SinglesLevelSelectScreen
 import ldv.shuuen.features.training.single.level_select.SinglesLevelSelectScreenViewModel
@@ -8,11 +13,6 @@ import ldv.shuuen.features.training.single.play.SinglesPlayScreen
 import ldv.shuuen.features.training.single.play.SinglesPlayScreenViewModel
 import ldv.shuuen.features.training.single.setup.SinglesSetupScreen
 import ldv.shuuen.features.training.single.setup.SinglesSetupScreenViewModel
-import ldv.shuuen.app.navigation.AppRoute
-import ldv.shuuen.app.navigation.LocalAppNavigator
-import ldv.shuuen.app.navigation.result.ContextRecipient
-import ldv.shuuen.app.navigation.result.LocalNavResultStore
-import ldv.shuuen.app.navigation.result.NavResultKeys.SinglesContextResult
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.annotation.KoinExperimentalAPI
 import org.koin.core.parameter.parametersOf
@@ -39,9 +39,10 @@ val singlesTrainingNavigationModule = module {
 
   navigation<AppRoute.SinglesSetup> { route ->
     val navigator = LocalAppNavigator.current
-    val viewModel = koinViewModel<SinglesSetupScreenViewModel> {
-      parametersOf(route.levelId.orEmpty())
-    }
+    val viewModel =
+      koinViewModel<SinglesSetupScreenViewModel> {
+        parametersOf(route.levelId.orEmpty())
+      }
     val resultStore = LocalNavResultStore.current
     val result = resultStore.peek(SinglesContextResult)
     LaunchedEffect(result) {

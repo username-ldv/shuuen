@@ -6,17 +6,16 @@ import kotlinx.serialization.Serializable
 @Serializable
 sealed interface ChordFigure {
   /**
-   * Uniformly random distinct notes, sized by the level's chord-size range — the original,
-   * fully random drill.
+   * Uniformly random distinct notes, sized by the level's chord-size range — the original, fully
+   * random drill.
    */
-  @Serializable
-  data object FreePick : ChordFigure
+  @Serializable data object FreePick : ChordFigure
 
   /**
-   * A stacked shape: offsets in ladder steps from a randomly chosen bass note, where the ladder
-   * is every note the level's scale and range allow. Over a full seven-note scale, [0, 2, 4]
-   * builds diatonic root-position triads, [0, 2, 5] and [0, 3, 5] their inversions,
-   * [0, 2, 4, 6] seventh chords, and so on for any custom shape.
+   * A stacked shape: offsets in ladder steps from a randomly chosen bass note, where the ladder is
+   * every note the level's scale and range allow. Over a full seven-note scale, [0, 2, 4] builds
+   * diatonic root-position triads, [0, 2, 5] and [0, 3, 5] their inversions, [0, 2, 4, 6] seventh
+   * chords, and so on for any custom shape.
    */
   @Serializable
   data class Stacked(val ladderSteps: List<Int>) : ChordFigure {
@@ -39,11 +38,11 @@ data class WeightedChordFigure(val figure: ChordFigure, val weight: Double) {
 
 /**
  * How random chords are shaped: weighted chord figures, from strictly diatonic stacks to free
- * random picks. Levels store the whole style rather than a preset id, so saved levels keep
- * their exact behavior as presets evolve and a future style editor can produce custom instances.
+ * random picks. Levels store the whole style rather than a preset id, so saved levels keep their
+ * exact behavior as presets evolve and a future style editor can produce custom instances.
  *
- * Figures whose size falls outside the level's chord-size range are skipped at generation time;
- * a style with no usable figure falls back to the free pick.
+ * Figures whose size falls outside the level's chord-size range are skipped at generation time; a
+ * style with no usable figure falls back to the free pick.
  */
 @Serializable
 data class ChordStyle(

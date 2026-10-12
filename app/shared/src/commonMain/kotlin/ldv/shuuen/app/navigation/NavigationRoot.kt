@@ -18,10 +18,10 @@ import org.koin.compose.navigation3.koinEntryProvider
 import org.koin.core.annotation.KoinExperimentalAPI
 
 data class Transitions(
-    val transitionSpec: AnimatedContentTransitionScope<Scene<AppRoute>>.() -> ContentTransform,
-    val popTransitionSpec: AnimatedContentTransitionScope<Scene<AppRoute>>.() -> ContentTransform,
-    val predictivePopTransitionSpec:
-        AnimatedContentTransitionScope<Scene<AppRoute>>.(Int) -> ContentTransform,
+  val transitionSpec: AnimatedContentTransitionScope<Scene<AppRoute>>.() -> ContentTransform,
+  val popTransitionSpec: AnimatedContentTransitionScope<Scene<AppRoute>>.() -> ContentTransform,
+  val predictivePopTransitionSpec:
+    AnimatedContentTransitionScope<Scene<AppRoute>>.(Int) -> ContentTransform,
 )
 
 expect val transitions: Transitions
@@ -34,31 +34,28 @@ fun NavigationRoot() {
   val entryProvider = koinEntryProvider<AppRoute>()
   val navResultStore = rememberNavResultStore()
 
-
   CompositionLocalProvider(
-      LocalAppNavigator provides navigator,
-      LocalNavResultStore provides navResultStore,
+    LocalAppNavigator provides navigator,
+    LocalNavResultStore provides navResultStore,
   ) {
     NavDisplay(
-        entryProvider = entryProvider,
-        backStack = backStack,
-        onBack = { navigator.goBack() },
-        entryDecorators =
-            listOf(
-                rememberSaveableStateHolderNavEntryDecorator(),
-                rememberViewModelStoreNavEntryDecorator(),
-            ),
-        transitionSpec = transitions.transitionSpec,
-        popTransitionSpec = transitions.popTransitionSpec,
-        predictivePopTransitionSpec = transitions.predictivePopTransitionSpec,
+      entryProvider = entryProvider,
+      backStack = backStack,
+      onBack = { navigator.goBack() },
+      entryDecorators =
+        listOf(
+          rememberSaveableStateHolderNavEntryDecorator(),
+          rememberViewModelStoreNavEntryDecorator(),
+        ),
+      transitionSpec = transitions.transitionSpec,
+      popTransitionSpec = transitions.popTransitionSpec,
+      predictivePopTransitionSpec = transitions.predictivePopTransitionSpec,
     )
   }
 }
 
 @Composable
-private fun rememberAppNavBackStack(
-    vararg elements: AppRoute,
-): NavBackStack<AppRoute> =
-    rememberSerializable(serializer = serializer()) {
-      NavBackStack(*elements)
-    }
+private fun rememberAppNavBackStack(vararg elements: AppRoute): NavBackStack<AppRoute> =
+  rememberSerializable(serializer = serializer()) {
+    NavBackStack(*elements)
+  }

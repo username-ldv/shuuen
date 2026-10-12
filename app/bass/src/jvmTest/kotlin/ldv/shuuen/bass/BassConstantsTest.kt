@@ -53,16 +53,20 @@ class BassConstantsTest {
 }
 
 private fun moduleRoot(): Path =
-  sequenceOf(Path.of("."), Path.of("bass"))
-    .first { it.resolve("src/androidMain/java/com/un4seen/bass/BASS.java").exists() }
+  sequenceOf(Path.of("."), Path.of("bass")).first {
+    it.resolve("src/androidMain/java/com/un4seen/bass/BASS.java").exists()
+  }
 
 private fun javaIntConstants(file: Path): Map<String, Int> {
   val constant = Regex("""public static final int\s+(\w+)\s*=\s*([^;]+);""")
-  return constant.findAll(file.readText()).mapNotNull { match ->
-    val name = match.groupValues[1]
-    val value = match.groupValues[2].trim()
-    value.toIntLiteralOrNull()?.let { name to it }
-  }.toMap()
+  return constant
+    .findAll(file.readText())
+    .mapNotNull { match ->
+      val name = match.groupValues[1]
+      val value = match.groupValues[2].trim()
+      value.toIntLiteralOrNull()?.let { name to it }
+    }
+    .toMap()
 }
 
 private fun String.toIntLiteralOrNull(): Int? =

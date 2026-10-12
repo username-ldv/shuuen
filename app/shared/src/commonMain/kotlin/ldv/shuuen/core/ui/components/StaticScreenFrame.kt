@@ -49,20 +49,21 @@ fun StaticScreenFrame(
         contentAlignment = Alignment.TopCenter,
       ) {
         val scrollState = rememberScrollState()
-        var columnModifier = Modifier.widthIn(max = maxWidth).fillMaxWidth().fillMaxHeight()
-          .navigationBarsPadding()
+        var columnModifier =
+          Modifier.widthIn(max = maxWidth).fillMaxWidth().fillMaxHeight().navigationBarsPadding()
 
         if (scrollable) {
           columnModifier = columnModifier.verticalScroll(scrollState)
         }
 
         Column(
-          modifier = columnModifier.padding(
-            horizontalPadding,
-            topPadding,
-            horizontalPadding,
-            bottomPadding
-          ),
+          modifier =
+            columnModifier.padding(
+              horizontalPadding,
+              topPadding,
+              horizontalPadding,
+              bottomPadding,
+            ),
           verticalArrangement = Arrangement.spacedBy(verticalSpacing),
           content = content,
         )

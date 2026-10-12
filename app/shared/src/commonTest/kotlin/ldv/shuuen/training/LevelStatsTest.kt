@@ -1,13 +1,13 @@
 package ldv.shuuen.training
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
 import ldv.shuuen.core.settings.DefaultLevelStatsWindow
 import ldv.shuuen.core.settings.MaxLevelStatsWindow
 import ldv.shuuen.core.settings.MinLevelStatsWindow
 import ldv.shuuen.core.settings.coerceLevelStatsWindow
 import ldv.shuuen.features.training.common.LevelAccuracySample
 import ldv.shuuen.features.training.common.levelAccuracyStats
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class LevelStatsTest {
   @Test

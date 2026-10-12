@@ -42,8 +42,8 @@ interface MidiEngine {
   fun setPitchBendRange(channel: MidiChannel, semitones: Int): Boolean
 
   /**
-   * Moves the channel's pitch wheel to [semitones] away from center, bending any sounding notes
-   * in real time. Clamped to the range configured by [setPitchBendRange] (±2 by MIDI default).
+   * Moves the channel's pitch wheel to [semitones] away from center, bending any sounding notes in
+   * real time. Clamped to the range configured by [setPitchBendRange] (±2 by MIDI default).
    */
   fun setPitchBend(channel: MidiChannel, semitones: Double): Boolean
 

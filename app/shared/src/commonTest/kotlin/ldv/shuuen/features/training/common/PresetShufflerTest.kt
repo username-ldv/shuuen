@@ -1,15 +1,15 @@
 package ldv.shuuen.features.training.common
 
-import kotlin.random.Random
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNotEquals
-import kotlin.test.assertTrue
 import ldv.shuuen.core.audio.midi.ChannelPresets
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.settings.PresetShuffleMode
 import ldv.shuuen.core.settings.PresetShuffleSettings
+import kotlin.random.Random
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
 
 class PresetShufflerTest {
   private fun preset(id: Int) = Preset(bank = 0, id = id)
@@ -49,7 +49,10 @@ class PresetShufflerTest {
   @Test
   fun `a per-level channel never rolls again`() {
     val shuffler =
-      shuffler(presets(notes = listOf(1, 2)), PresetShuffleSettings(notes = PresetShuffleMode.PerLevel))
+      shuffler(
+        presets(notes = listOf(1, 2)),
+        PresetShuffleSettings(notes = PresetShuffleMode.PerLevel),
+      )
     shuffler.atLevelStart()
 
     assertEquals(emptyMap(), shuffler.atQuestion())

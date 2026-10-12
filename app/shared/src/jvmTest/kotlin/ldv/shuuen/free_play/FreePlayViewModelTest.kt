@@ -20,15 +20,15 @@ import ldv.shuuen.core.audio.input.MidiKeyboardInput
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.audio.midi.PresetCutoffScope
-import ldv.shuuen.core.settings.AppSettings
-import ldv.shuuen.core.settings.InputMethod
-import ldv.shuuen.core.settings.PresetShuffleMode
-import ldv.shuuen.core.settings.MidiLevelOptions
-import ldv.shuuen.core.settings.SettingsRepository
-import ldv.shuuen.core.settings.ThemeSettings
 import ldv.shuuen.core.music.Chord
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.Pitch
+import ldv.shuuen.core.settings.AppSettings
+import ldv.shuuen.core.settings.InputMethod
+import ldv.shuuen.core.settings.MidiLevelOptions
+import ldv.shuuen.core.settings.PresetShuffleMode
+import ldv.shuuen.core.settings.SettingsRepository
+import ldv.shuuen.core.settings.ThemeSettings
 import ldv.shuuen.features.free_play.FreePlayAction
 import ldv.shuuen.features.free_play.FreePlayViewModel
 import kotlin.test.AfterTest
@@ -52,52 +52,65 @@ class FreePlayViewModelTest {
   }
 
   @Test
-  fun pressingEnabledKeyEmitsMidiNote() = runTest(dispatcher) {
-    val engine = FakeMidiEngine()
-    val viewModel =
-      FreePlayViewModel(engine, FakeSettingsRepository(), FakeMidiKeyboardInput(), initialTonic = Pitch.C)
-    advanceUntilIdle()
+  fun pressingEnabledKeyEmitsMidiNote() =
+    runTest(dispatcher) {
+      val engine = FakeMidiEngine()
+      val viewModel =
+        FreePlayViewModel(
+          engine,
+          FakeSettingsRepository(),
+          FakeMidiKeyboardInput(),
+          initialTonic = Pitch.C,
+        )
+      advanceUntilIdle()
 
-    viewModel.onAction(FreePlayAction.PressPitch(Pitch.C.ordinal))
-    viewModel.onAction(FreePlayAction.ReleasePitch(Pitch.C.ordinal))
+      viewModel.onAction(FreePlayAction.PressPitch(Pitch.C.ordinal))
+      viewModel.onAction(FreePlayAction.ReleasePitch(Pitch.C.ordinal))
 
-    assertEquals(listOf(Note(Pitch.C, 4) to MidiChannel.Notes), engine.playedNotes)
-    assertEquals(listOf(Note(Pitch.C, 4) to MidiChannel.Notes), engine.stoppedNotes)
-    assertTrue(viewModel.state.value.audioReady)
-  }
-
-  @Test
-  fun togglingDroneStartsAndStopsDroneChannel() = runTest(dispatcher) {
-    val engine = FakeMidiEngine()
-    val viewModel =
-      FreePlayViewModel(engine, FakeSettingsRepository(), FakeMidiKeyboardInput(), initialTonic = Pitch.C)
-    advanceUntilIdle()
-
-    viewModel.onAction(FreePlayAction.ToggleDrone(7))
-    viewModel.onAction(FreePlayAction.ToggleDrone(7))
-
-    assertEquals(listOf(Note(Pitch.G, 2) to MidiChannel.Drone), engine.playedNotes)
-    assertEquals(listOf(Note(Pitch.G, 2) to MidiChannel.Drone), engine.stoppedNotes)
-  }
+      assertEquals(listOf(Note(Pitch.C, 4) to MidiChannel.Notes), engine.playedNotes)
+      assertEquals(listOf(Note(Pitch.C, 4) to MidiChannel.Notes), engine.stoppedNotes)
+      assertTrue(viewModel.state.value.audioReady)
+    }
 
   @Test
-  fun midiKeyboardKeysPressAndReleaseLikeOnScreenKeys() = runTest(dispatcher) {
-    val engine = FakeMidiEngine()
-    val keyboard = FakeMidiKeyboardInput()
-    val viewModel =
-      FreePlayViewModel(engine, FakeSettingsRepository(), keyboard, initialTonic = Pitch.C)
-    advanceUntilIdle()
+  fun togglingDroneStartsAndStopsDroneChannel() =
+    runTest(dispatcher) {
+      val engine = FakeMidiEngine()
+      val viewModel =
+        FreePlayViewModel(
+          engine,
+          FakeSettingsRepository(),
+          FakeMidiKeyboardInput(),
+          initialTonic = Pitch.C,
+        )
+      advanceUntilIdle()
 
-    // G5 = MIDI 79; free play folds it to the pitch-class key (G is in the enabled C minor
-    // scale) and sounds that key's default octave.
-    keyboard.emit(MidiKeyboardEvent.NoteOn(79, 100))
-    advanceUntilIdle()
-    keyboard.emit(MidiKeyboardEvent.NoteOff(79))
-    advanceUntilIdle()
+      viewModel.onAction(FreePlayAction.ToggleDrone(7))
+      viewModel.onAction(FreePlayAction.ToggleDrone(7))
 
-    assertEquals(listOf(Note(Pitch.G, 4) to MidiChannel.Notes), engine.playedNotes)
-    assertEquals(listOf(Note(Pitch.G, 4) to MidiChannel.Notes), engine.stoppedNotes)
-  }
+      assertEquals(listOf(Note(Pitch.G, 2) to MidiChannel.Drone), engine.playedNotes)
+      assertEquals(listOf(Note(Pitch.G, 2) to MidiChannel.Drone), engine.stoppedNotes)
+    }
+
+  @Test
+  fun midiKeyboardKeysPressAndReleaseLikeOnScreenKeys() =
+    runTest(dispatcher) {
+      val engine = FakeMidiEngine()
+      val keyboard = FakeMidiKeyboardInput()
+      val viewModel =
+        FreePlayViewModel(engine, FakeSettingsRepository(), keyboard, initialTonic = Pitch.C)
+      advanceUntilIdle()
+
+      // G5 = MIDI 79; free play folds it to the pitch-class key (G is in the enabled C minor
+      // scale) and sounds that key's default octave.
+      keyboard.emit(MidiKeyboardEvent.NoteOn(79, 100))
+      advanceUntilIdle()
+      keyboard.emit(MidiKeyboardEvent.NoteOff(79))
+      advanceUntilIdle()
+
+      assertEquals(listOf(Note(Pitch.G, 4) to MidiChannel.Notes), engine.playedNotes)
+      assertEquals(listOf(Note(Pitch.G, 4) to MidiChannel.Notes), engine.stoppedNotes)
+    }
 }
 
 private class FakeMidiKeyboardInput : MidiKeyboardInput {
@@ -171,7 +184,12 @@ private class FakeMidiEngine : MidiEngine {
 
   override suspend fun initialize(): MidiEngineStatus = MidiEngineStatus.Ready
 
-  override fun playNote(note: Note, channel: MidiChannel, velocity: Int, detuneCents: Int): Boolean {
+  override fun playNote(
+    note: Note,
+    channel: MidiChannel,
+    velocity: Int,
+    detuneCents: Int,
+  ): Boolean {
     playedNotes += note to channel
     return true
   }

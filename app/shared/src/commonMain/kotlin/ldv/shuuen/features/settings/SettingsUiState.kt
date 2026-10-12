@@ -4,8 +4,8 @@ import ldv.shuuen.core.audio.midi.ChannelPresets
 import ldv.shuuen.core.audio.midi.ChannelVolumes
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
-import ldv.shuuen.core.audio.midi.PresetCutoffs
 import ldv.shuuen.core.audio.midi.PresetCutoffScope
+import ldv.shuuen.core.audio.midi.PresetCutoffs
 import ldv.shuuen.core.audio.midi.PresetVolumes
 import ldv.shuuen.core.online.BackendStatus
 import ldv.shuuen.core.settings.DefaultLevelStatsWindow
@@ -20,7 +20,8 @@ data class Soundbank(
   val bank: Int,
   val presets: List<Preset>,
 ) {
-  val label: String get() = soundbankLabel(bank)
+  val label: String
+    get() = soundbankLabel(bank)
 }
 
 data class SettingsUiState(
@@ -57,8 +58,8 @@ data class SettingsUiState(
   /** The category whose picker sheet is currently open, or null when closed. */
   val openPickerChannel: MidiChannel? = null,
   /**
-   * The preset the open sheet last auditioned. It is what the channel is actually sounding, so
-   * the channel's volume slider scales by this one's trim until the sheet closes.
+   * The preset the open sheet last auditioned. It is what the channel is actually sounding, so the
+   * channel's volume slider scales by this one's trim until the sheet closes.
    */
   val auditioningPreset: Preset? = null,
   /** The channel whose change-instrument sheet is open, or null when closed. */
@@ -70,14 +71,15 @@ data class SettingsUiState(
 
   /** The preset [channel] is currently sounding: an audition in the open sheet, else its base. */
   fun activePreset(channel: MidiChannel): Preset =
-    auditioningPreset?.takeIf { openPickerChannel == channel } ?: selectedPresets.forChannel(channel)
+    auditioningPreset?.takeIf { openPickerChannel == channel }
+      ?: selectedPresets.forChannel(channel)
+
   /**
-   * Persisted presets carry no name (only bank/id), so resolve against the
-   * loaded soundbanks to show the real instrument name where possible.
+   * Persisted presets carry no name (only bank/id), so resolve against the loaded soundbanks to
+   * show the real instrument name where possible.
    */
   fun resolvePreset(preset: Preset): Preset =
-    soundbanks.firstOrNull { it.bank == preset.bank }
-      ?.presets?.firstOrNull { it.id == preset.id }
+    soundbanks.firstOrNull { it.bank == preset.bank }?.presets?.firstOrNull { it.id == preset.id }
       ?: preset
 
   /** Every preset chosen for [channel], named where the soundbanks know them. */
@@ -112,21 +114,30 @@ sealed interface SettingsAction {
   data class CommitLevelStatsWindow(val value: Int) : SettingsAction
 
   data class OpenLabelEditor(val editor: LabelEditor) : SettingsAction
+
   data object CloseLabelEditor : SettingsAction
+
   data class SetNoteName(val index: Int, val value: String) : SettingsAction
+
   data class SetDegreeName(val index: Int, val value: String) : SettingsAction
+
   data class SetNoteNames(val values: List<String>) : SettingsAction
+
   data class SetDegreeNames(val values: List<String>) : SettingsAction
+
   data class SaveCustomNoteNamesPreset(val values: List<String>) : SettingsAction
+
   data class SaveCustomDegreeNamesPreset(val values: List<String>) : SettingsAction
 
   data class OpenPicker(val channel: MidiChannel) : SettingsAction
+
   data object ClosePicker : SettingsAction
 
   /** Adds [preset] to the channel's choices, or drops it; dropping the last one is refused. */
   data class TogglePreset(val channel: MidiChannel, val preset: Preset) : SettingsAction
 
   data class OpenShuffleModePicker(val channel: MidiChannel) : SettingsAction
+
   data object CloseShuffleModePicker : SettingsAction
 
   data class SetPresetShuffleMode(

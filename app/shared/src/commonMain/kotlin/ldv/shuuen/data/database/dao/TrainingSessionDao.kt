@@ -15,8 +15,7 @@ data class TrainingSessionScoreProjection(
 
 @Dao
 interface TrainingSessionDao {
-  @Query("select * from training_sessions")
-  suspend fun getAll(): List<TrainingSessionDbEntity>
+  @Query("select * from training_sessions") suspend fun getAll(): List<TrainingSessionDbEntity>
 
   @Query("select * from training_sessions where id = :id")
   suspend fun getById(id: String): TrainingSessionDbEntity?
@@ -31,7 +30,9 @@ interface TrainingSessionDao {
   )
   fun observeLatest(): Flow<TrainingSessionDbEntity?>
 
-  @Query("select * from training_sessions where levelId = :levelId order by completedAtEpochMillis desc")
+  @Query(
+    "select * from training_sessions where levelId = :levelId order by completedAtEpochMillis desc"
+  )
   suspend fun getByLevelId(levelId: String): List<TrainingSessionDbEntity>
 
   @Query(
@@ -53,9 +54,7 @@ interface TrainingSessionDao {
   @Query("select distinct levelId from training_sessions where flow = :flow")
   fun observeAttemptedLevelIds(flow: TrainingFlow): Flow<List<String>>
 
-  @Query(
-    "select distinct levelId from training_sessions where flow = :flow and finishedEarly = 0"
-  )
+  @Query("select distinct levelId from training_sessions where flow = :flow and finishedEarly = 0")
   fun observeCompletedLevelIds(flow: TrainingFlow): Flow<List<String>>
 
   @Query(
@@ -78,17 +77,14 @@ interface TrainingSessionDao {
   @Query("delete from training_sessions where levelId like :courseReferencePrefix || '%'")
   suspend fun deleteAllByCourseReferencePrefix(courseReferencePrefix: String)
 
-  @Query("delete from training_sessions where id = :id")
-  suspend fun deleteById(id: String)
+  @Query("delete from training_sessions where id = :id") suspend fun deleteById(id: String)
 
   @Query("delete from training_sessions where id in (:ids)")
   suspend fun deleteByIds(ids: List<String>)
 
-  @Upsert
-  suspend fun upsertSession(session: TrainingSessionDbEntity)
+  @Upsert suspend fun upsertSession(session: TrainingSessionDbEntity)
 
-  @Upsert
-  suspend fun upsertSessions(sessions: List<TrainingSessionDbEntity>)
+  @Upsert suspend fun upsertSessions(sessions: List<TrainingSessionDbEntity>)
 
   /** Applies a remote page atomically so observers see one coherent history update. */
   @Transaction

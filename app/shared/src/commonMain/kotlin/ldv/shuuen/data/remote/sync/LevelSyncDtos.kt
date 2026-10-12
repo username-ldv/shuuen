@@ -39,12 +39,11 @@ internal data class LevelSyncResponseDto(
   val changes: List<LevelSyncChangeDto>,
 )
 
-@Serializable
-internal data class LevelSyncEnvelopeDto<T>(val data: T)
+@Serializable internal data class LevelSyncEnvelopeDto<T>(val data: T)
 
 @Serializable
 internal data class StoredLevelSyncRegistry(
-  val accounts: Map<String, StoredLevelSyncAccount> = emptyMap(),
+  val accounts: Map<String, StoredLevelSyncAccount> = emptyMap()
 )
 
 @Serializable

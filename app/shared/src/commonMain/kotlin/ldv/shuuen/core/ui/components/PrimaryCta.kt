@@ -47,10 +47,11 @@ fun PrimaryCta(
       )
       Text(
         text = text,
-        style = MaterialTheme.typography.titleMedium.copy(
-          letterSpacing = 4.sp,
-          fontWeight = FontWeight.Bold,
-        ),
+        style =
+          MaterialTheme.typography.titleMedium.copy(
+            letterSpacing = 4.sp,
+            fontWeight = FontWeight.Bold,
+          ),
       )
     }
   }

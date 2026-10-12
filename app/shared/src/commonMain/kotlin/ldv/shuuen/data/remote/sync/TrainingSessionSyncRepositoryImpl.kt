@@ -7,7 +7,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.io.files.Path
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import ldv.shuuen.core.auth.AuthRepository
 import ldv.shuuen.core.sync.TrainingSessionSyncException
@@ -53,11 +52,13 @@ internal class TrainingSessionSyncRepositoryImpl(
         val pending = findPendingMutations(local, account).take(MaxChangesPerRequest)
         val response =
           try {
-            api.sync(
-              baseUrl = authSession.backendUrl,
-              accessToken = authSession.accessToken,
-              request = TrainingSessionSyncRequestDto(account.revision, pending),
-            ).data
+            api
+              .sync(
+                baseUrl = authSession.backendUrl,
+                accessToken = authSession.accessToken,
+                request = TrainingSessionSyncRequestDto(account.revision, pending),
+              )
+              .data
           } catch (error: ResponseException) {
             if (error.response.status == HttpStatusCode.Conflict && !resetStaleCursor) {
               resetStaleCursor = true
@@ -95,14 +96,14 @@ internal class TrainingSessionSyncRepositoryImpl(
     } catch (error: TrainingSessionSyncException) {
       throw error
     } catch (error: ResponseException) {
-      val serverMessage =
-        runCatching { error.response.bodyAndClose<ApiErrorDto>().error }
-          .getOrNull()
-          ?.takeIf { it.isNotBlank() }
+      val serverMessage = runCatching {
+        error.response.bodyAndClose<ApiErrorDto>().error
+      }.getOrNull()?.takeIf { it.isNotBlank() }
       val message =
         when (error.response.status) {
           HttpStatusCode.Unauthorized -> "Your session has expired. Sign in again."
-          HttpStatusCode.BadRequest, HttpStatusCode.Conflict ->
+          HttpStatusCode.BadRequest,
+          HttpStatusCode.Conflict ->
             serverMessage ?: "The backend rejected the training-session changes."
           else -> serverMessage ?: "The backend couldn't sync the training sessions."
         }
@@ -142,36 +143,39 @@ internal class TrainingSessionSyncRepositoryImpl(
 
   private suspend fun applyRemoteChanges(changes: List<TrainingSessionSyncChangeDto>) {
     val desired = linkedMapOf<String, TrainingSessionDbEntity?>()
-    changes.sortedBy { it.revision }.forEach { change ->
-      if (change.deleted) {
-        desired[change.id] = null
-        return@forEach
+    changes
+      .sortedBy { it.revision }
+      .forEach { change ->
+        if (change.deleted) {
+          desired[change.id] = null
+          return@forEach
+        }
+        val flow =
+          TrainingFlow.entries.firstOrNull { it.apiName == change.flow }
+            ?: throw TrainingSessionSyncException(
+              "The backend returned an unknown training flow '${change.flow}'."
+            )
+        desired[change.id] =
+          TrainingSessionDbEntity(
+            id = change.id,
+            flow = flow,
+            levelId = change.levelId,
+            levelName = change.levelName,
+            completedAtEpochMillis = change.completedAtEpochMillis,
+            finishedEarly = change.finishedEarly,
+            questionsAnswered = change.questionsAnswered,
+            notesTotal = change.notesTotal,
+            correctNotes = change.correctNotes,
+            missedNotes = change.missedNotes,
+            replays = change.replays,
+            durationMillis = change.durationMillis,
+            avgAnswerMillis = change.avgAnswerMillis,
+            avgDeltaMillis = change.avgDeltaMillis,
+            bestStreak = change.bestStreak,
+            keysPracticed = change.keysPracticed,
+            questionResults = change.questionResults.map { it.toDomain() },
+          )
       }
-      val flow = TrainingFlow.entries.firstOrNull { it.apiName == change.flow }
-        ?: throw TrainingSessionSyncException(
-          "The backend returned an unknown training flow '${change.flow}'."
-        )
-      desired[change.id] =
-        TrainingSessionDbEntity(
-          id = change.id,
-          flow = flow,
-          levelId = change.levelId,
-          levelName = change.levelName,
-          completedAtEpochMillis = change.completedAtEpochMillis,
-          finishedEarly = change.finishedEarly,
-          questionsAnswered = change.questionsAnswered,
-          notesTotal = change.notesTotal,
-          correctNotes = change.correctNotes,
-          missedNotes = change.missedNotes,
-          replays = change.replays,
-          durationMillis = change.durationMillis,
-          avgAnswerMillis = change.avgAnswerMillis,
-          avgDeltaMillis = change.avgDeltaMillis,
-          bestStreak = change.bestStreak,
-          keysPracticed = change.keysPracticed,
-          questionResults = change.questionResults.map { it.toDomain() },
-        )
-    }
     trainingSessionDao.applySyncChanges(
       deletedIds = desired.filterValues { it == null }.keys.toList(),
       sessions = desired.values.filterNotNull(),

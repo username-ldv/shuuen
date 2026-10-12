@@ -60,11 +60,11 @@ fun <T : StylePreset> StylePickerSheet(
     dragHandle = { SheetDragHandle() },
   ) {
     Column(
-      modifier = Modifier
-        .fillMaxWidth()
-        .verticalScroll(rememberScrollState())
-        .padding(horizontal = 20.dp)
-        .padding(bottom = 16.dp),
+      modifier =
+        Modifier.fillMaxWidth()
+          .verticalScroll(rememberScrollState())
+          .padding(horizontal = 20.dp)
+          .padding(bottom = 16.dp),
       verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
       Row(
@@ -76,10 +76,11 @@ fun <T : StylePreset> StylePickerSheet(
         Text(
           text = title.uppercase(),
           color = ShuuenUi.Text,
-          style = MaterialTheme.typography.titleMedium.copy(
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = ShuuenUi.titlesSpacing,
-          ),
+          style =
+            MaterialTheme.typography.titleMedium.copy(
+              fontWeight = FontWeight.SemiBold,
+              letterSpacing = ShuuenUi.titlesSpacing,
+            ),
         )
       }
       Text(
@@ -95,10 +96,11 @@ fun <T : StylePreset> StylePickerSheet(
         Text(
           text = tier.label.uppercase(),
           color = ShuuenUi.Muted,
-          style = MaterialTheme.typography.labelLarge.copy(
-            letterSpacing = ShuuenUi.labelSpacing,
-            fontWeight = FontWeight.SemiBold,
-          ),
+          style =
+            MaterialTheme.typography.labelLarge.copy(
+              letterSpacing = ShuuenUi.labelSpacing,
+              fontWeight = FontWeight.SemiBold,
+            ),
           modifier = Modifier.padding(top = 8.dp),
         )
         tierPresets.forEach { preset ->
@@ -120,12 +122,12 @@ private fun StyleRow(
   onClick: () -> Unit,
 ) {
   Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .clip(ShuuenUi.ControlShape)
-      .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
-      .clickable(onClick = onClick)
-      .padding(horizontal = 14.dp, vertical = 12.dp),
+    modifier =
+      Modifier.fillMaxWidth()
+        .clip(ShuuenUi.ControlShape)
+        .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
+        .clickable(onClick = onClick)
+        .padding(horizontal = 14.dp, vertical = 12.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
@@ -136,9 +138,10 @@ private fun StyleRow(
       Text(
         text = preset.name,
         color = if (selected) ShuuenUi.OnInverse else ShuuenUi.Text,
-        style = MaterialTheme.typography.titleSmall.copy(
-          fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-        ),
+        style =
+          MaterialTheme.typography.titleSmall.copy(
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+          ),
       )
       Text(
         text = preset.description,
@@ -164,10 +167,10 @@ private fun SheetDragHandle() {
     contentAlignment = Alignment.Center,
   ) {
     Box(
-      modifier = Modifier
-        .size(width = 36.dp, height = 4.dp)
-        .clip(RoundedCornerShape(50))
-        .background(ShuuenUi.HairlineStrong),
+      modifier =
+        Modifier.size(width = 36.dp, height = 4.dp)
+          .clip(RoundedCornerShape(50))
+          .background(ShuuenUi.HairlineStrong)
     )
   }
 }

@@ -40,7 +40,6 @@ enum class AuthFailure {
 
   /** Too many attempts from this address; the backend rate-limits authentication. */
   RateLimited,
-
   Server,
 }
 

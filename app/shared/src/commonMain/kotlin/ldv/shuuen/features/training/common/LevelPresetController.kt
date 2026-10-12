@@ -14,9 +14,9 @@ import ldv.shuuen.core.settings.PresetShuffleSettings
 import ldv.shuuen.core.settings.SettingsRepository
 
 /**
- * Owns a play session's MIDI presets: rolls them through a [PresetShuffler] and routes each roll
- * to whatever is making the sound. The settings are read once, when the level starts — a level
- * keeps the instruments it began with.
+ * Owns a play session's MIDI presets: rolls them through a [PresetShuffler] and routes each roll to
+ * whatever is making the sound. The settings are read once, when the level starts — a level keeps
+ * the instruments it began with.
  *
  * The engine is shared with the rest of the app, so a level's rolls must not outlive it: [restore]
  * puts the channels back on the presets chosen in settings and belongs in the ViewModel's
@@ -27,8 +27,8 @@ class LevelPresetController(
   private val settingsRepository: SettingsRepository,
 ) {
   /**
-   * Where the Notes channel's preset goes. Imported melodies sound on the file player's own
-   * stream rather than the live engine, so that screen redirects it — the file player applies the
+   * Where the Notes channel's preset goes. Imported melodies sound on the file player's own stream
+   * rather than the live engine, so that screen redirects it — the file player applies the
    * instrument's own loudness trim itself.
    */
   var notesSink: (Preset) -> Unit = { sound(MidiChannel.Notes, it) }

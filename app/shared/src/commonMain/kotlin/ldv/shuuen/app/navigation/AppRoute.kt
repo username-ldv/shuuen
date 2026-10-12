@@ -17,7 +17,8 @@ sealed interface AppRoute : NavKey {
   /** The optional backend account: sign in, or review and drop the current session. */
   @Serializable data object Login : AppRoute
 
-  @Serializable data class Context(
+  @Serializable
+  data class Context(
     val recipient: ContextRecipient,
     val contextId: String? = null,
   ) : AppRoute
@@ -28,12 +29,14 @@ sealed interface AppRoute : NavKey {
 
   @Serializable data object ChordsLevelSelect : AppRoute
 
-  @Serializable data class SinglesLevelComplete(val levelId: String, val sessionId: String) : AppRoute
+  @Serializable
+  data class SinglesLevelComplete(val levelId: String, val sessionId: String) : AppRoute
 
   @Serializable
   data class MelodiesLevelComplete(val levelId: String, val sessionId: String) : AppRoute
 
-  @Serializable data class ChordsLevelComplete(val levelId: String, val sessionId: String) : AppRoute
+  @Serializable
+  data class ChordsLevelComplete(val levelId: String, val sessionId: String) : AppRoute
 
   @Serializable data class SinglesSetup(val levelId: String? = null) : AppRoute
 

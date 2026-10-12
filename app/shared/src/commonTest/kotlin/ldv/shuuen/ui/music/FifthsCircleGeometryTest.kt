@@ -1,18 +1,16 @@
 package ldv.shuuen.ui.music
 
-import kotlin.math.PI
-import kotlin.math.abs
 import ldv.shuuen.core.ui.components.music.inputs.accidentalPrefixLeftCardinalNudgePx
 import ldv.shuuen.core.ui.components.music.inputs.accidentalPrefixLeftDiagonalRadiusNudgePx
 import ldv.shuuen.core.ui.components.music.inputs.accidentalPrefixParts
+import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixParts
 import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixRightCardinalNudgePx
 import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixRightDiagonalRadiusNudgePx
 import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixRightLowerDiagonalRadiusNudgePx
 import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixRightSideRadiusNudgePx
-import ldv.shuuen.core.ui.components.music.inputs.accidentalSuffixParts
 import ldv.shuuen.core.ui.components.music.inputs.cardinalAxisFactor
-import ldv.shuuen.core.ui.components.music.inputs.fifthsCircleRingRadiusPx
 import ldv.shuuen.core.ui.components.music.inputs.fifthsCircleLabelRadiusPx
+import ldv.shuuen.core.ui.components.music.inputs.fifthsCircleRingRadiusPx
 import ldv.shuuen.core.ui.components.music.inputs.leftCardinalAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.leftDiagonalAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.radialHalfExtentPx
@@ -21,6 +19,8 @@ import ldv.shuuen.core.ui.components.music.inputs.rightDiagonalAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.rightLowerDiagonalAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.rightSideAxisFactor
 import ldv.shuuen.core.ui.components.music.inputs.verticalCardinalAxisFactor
+import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -55,15 +55,16 @@ class FifthsCircleGeometryTest {
 
   @Test
   fun labelRadiusMovesWideDiagonalLabelsInward() {
-    val radius = fifthsCircleLabelRadiusPx(
-      ringRadiusPx = 200f,
-      minimumInsetPx = 24f,
-      labelWidthPx = 44f,
-      labelHeightPx = 30f,
-      angleRadians = 5.0 * PI / 6.0,
-      dotRadiusPx = 10f,
-      dotGapPx = 8f,
-    )
+    val radius =
+      fifthsCircleLabelRadiusPx(
+        ringRadiusPx = 200f,
+        minimumInsetPx = 24f,
+        labelWidthPx = 44f,
+        labelHeightPx = 30f,
+        angleRadians = 5.0 * PI / 6.0,
+        dotRadiusPx = 10f,
+        dotGapPx = 8f,
+      )
 
     assertTrue(radius < 176f)
   }
@@ -92,24 +93,26 @@ class FifthsCircleGeometryTest {
     val narrowHalfWidth = 12f
     val wideHalfWidth = 24f
 
-    val narrowRadius = fifthsCircleLabelRadiusPx(
-      ringRadiusPx = ringRadius,
-      minimumInsetPx = 24f,
-      labelWidthPx = narrowHalfWidth * 2f,
-      labelHeightPx = 30f,
-      angleRadians = 0.0,
-      dotRadiusPx = dotRadius,
-      dotGapPx = dotGap,
-    )
-    val wideRadius = fifthsCircleLabelRadiusPx(
-      ringRadiusPx = ringRadius,
-      minimumInsetPx = 24f,
-      labelWidthPx = wideHalfWidth * 2f,
-      labelHeightPx = 30f,
-      angleRadians = PI,
-      dotRadiusPx = dotRadius,
-      dotGapPx = dotGap,
-    )
+    val narrowRadius =
+      fifthsCircleLabelRadiusPx(
+        ringRadiusPx = ringRadius,
+        minimumInsetPx = 24f,
+        labelWidthPx = narrowHalfWidth * 2f,
+        labelHeightPx = 30f,
+        angleRadians = 0.0,
+        dotRadiusPx = dotRadius,
+        dotGapPx = dotGap,
+      )
+    val wideRadius =
+      fifthsCircleLabelRadiusPx(
+        ringRadiusPx = ringRadius,
+        minimumInsetPx = 24f,
+        labelWidthPx = wideHalfWidth * 2f,
+        labelHeightPx = 30f,
+        angleRadians = PI,
+        dotRadiusPx = dotRadius,
+        dotGapPx = dotGap,
+      )
 
     assertEquals(dotGap, ringRadius - dotRadius - narrowRadius - narrowHalfWidth)
     assertEquals(dotGap, ringRadius - dotRadius - wideRadius - wideHalfWidth)
@@ -122,24 +125,26 @@ class FifthsCircleGeometryTest {
     val narrowHalfWidth = 7f
     val wideHalfWidth = 17f
 
-    val narrowRadius = fifthsCircleLabelRadiusPx(
-      ringRadiusPx = ringRadius,
-      minimumInsetPx = 24f,
-      labelWidthPx = narrowHalfWidth * 2f,
-      labelHeightPx = 30f,
-      angleRadians = 0.0,
-      dotRadiusPx = dotRadius,
-      dotGapPx = 0f,
-    )
-    val wideRadius = fifthsCircleLabelRadiusPx(
-      ringRadiusPx = ringRadius,
-      minimumInsetPx = 24f,
-      labelWidthPx = wideHalfWidth * 2f,
-      labelHeightPx = 30f,
-      angleRadians = PI,
-      dotRadiusPx = dotRadius,
-      dotGapPx = 0f,
-    )
+    val narrowRadius =
+      fifthsCircleLabelRadiusPx(
+        ringRadiusPx = ringRadius,
+        minimumInsetPx = 24f,
+        labelWidthPx = narrowHalfWidth * 2f,
+        labelHeightPx = 30f,
+        angleRadians = 0.0,
+        dotRadiusPx = dotRadius,
+        dotGapPx = 0f,
+      )
+    val wideRadius =
+      fifthsCircleLabelRadiusPx(
+        ringRadiusPx = ringRadius,
+        minimumInsetPx = 24f,
+        labelWidthPx = wideHalfWidth * 2f,
+        labelHeightPx = 30f,
+        angleRadians = PI,
+        dotRadiusPx = dotRadius,
+        dotGapPx = 0f,
+      )
 
     assertEquals(0f, ringRadius - dotRadius - narrowRadius - narrowHalfWidth)
     assertEquals(0f, ringRadius - dotRadius - wideRadius - wideHalfWidth)
@@ -152,46 +157,50 @@ class FifthsCircleGeometryTest {
     val height = 30f
     val dotRadius = 10f
 
-    val cardinalUntucked = fifthsCircleLabelRadiusPx(
-      ringRadiusPx = ringRadius,
-      minimumInsetPx = 24f,
-      labelWidthPx = width,
-      labelHeightPx = height,
-      angleRadians = 0.0,
-      dotRadiusPx = dotRadius,
-      dotGapPx = 0f,
-      cardinalTuckPx = 0f,
-    )
-    val cardinalTucked = fifthsCircleLabelRadiusPx(
-      ringRadiusPx = ringRadius,
-      minimumInsetPx = 24f,
-      labelWidthPx = width,
-      labelHeightPx = height,
-      angleRadians = 0.0,
-      dotRadiusPx = dotRadius,
-      dotGapPx = 0f,
-      cardinalTuckPx = 2f,
-    )
-    val diagonalUntucked = fifthsCircleLabelRadiusPx(
-      ringRadiusPx = ringRadius,
-      minimumInsetPx = 24f,
-      labelWidthPx = width,
-      labelHeightPx = height,
-      angleRadians = PI / 6.0,
-      dotRadiusPx = dotRadius,
-      dotGapPx = 0f,
-      cardinalTuckPx = 0f,
-    )
-    val diagonalTucked = fifthsCircleLabelRadiusPx(
-      ringRadiusPx = ringRadius,
-      minimumInsetPx = 24f,
-      labelWidthPx = width,
-      labelHeightPx = height,
-      angleRadians = PI / 6.0,
-      dotRadiusPx = dotRadius,
-      dotGapPx = 0f,
-      cardinalTuckPx = 2f,
-    )
+    val cardinalUntucked =
+      fifthsCircleLabelRadiusPx(
+        ringRadiusPx = ringRadius,
+        minimumInsetPx = 24f,
+        labelWidthPx = width,
+        labelHeightPx = height,
+        angleRadians = 0.0,
+        dotRadiusPx = dotRadius,
+        dotGapPx = 0f,
+        cardinalTuckPx = 0f,
+      )
+    val cardinalTucked =
+      fifthsCircleLabelRadiusPx(
+        ringRadiusPx = ringRadius,
+        minimumInsetPx = 24f,
+        labelWidthPx = width,
+        labelHeightPx = height,
+        angleRadians = 0.0,
+        dotRadiusPx = dotRadius,
+        dotGapPx = 0f,
+        cardinalTuckPx = 2f,
+      )
+    val diagonalUntucked =
+      fifthsCircleLabelRadiusPx(
+        ringRadiusPx = ringRadius,
+        minimumInsetPx = 24f,
+        labelWidthPx = width,
+        labelHeightPx = height,
+        angleRadians = PI / 6.0,
+        dotRadiusPx = dotRadius,
+        dotGapPx = 0f,
+        cardinalTuckPx = 0f,
+      )
+    val diagonalTucked =
+      fifthsCircleLabelRadiusPx(
+        ringRadiusPx = ringRadius,
+        minimumInsetPx = 24f,
+        labelWidthPx = width,
+        labelHeightPx = height,
+        angleRadians = PI / 6.0,
+        dotRadiusPx = dotRadius,
+        dotGapPx = 0f,
+        cardinalTuckPx = 2f,
+      )
 
     assertEquals(2f, cardinalTucked - cardinalUntucked)
     assertEquals(diagonalUntucked, diagonalTucked)
@@ -342,15 +351,16 @@ class FifthsCircleGeometryTest {
 
     val radialHalfExtent = radialHalfExtentPx(width, height, angle)
     val rectangleRayHalfExtent = height / (2f * kotlin.math.sin(angle).toFloat())
-    val radius = fifthsCircleLabelRadiusPx(
-      ringRadiusPx = ringRadius,
-      minimumInsetPx = 24f,
-      labelWidthPx = width,
-      labelHeightPx = height,
-      angleRadians = angle,
-      dotRadiusPx = dotRadius,
-      dotGapPx = dotGap,
-    )
+    val radius =
+      fifthsCircleLabelRadiusPx(
+        ringRadiusPx = ringRadius,
+        minimumInsetPx = 24f,
+        labelWidthPx = width,
+        labelHeightPx = height,
+        angleRadians = angle,
+        dotRadiusPx = dotRadius,
+        dotGapPx = dotGap,
+      )
 
     assertTrue(radialHalfExtent < rectangleRayHalfExtent)
     assertTrue(abs(dotGap - (ringRadius - dotRadius - radius - radialHalfExtent)) < 0.001f)

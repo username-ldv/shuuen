@@ -6,15 +6,11 @@ import ldv.shuuen.features.training.chords.domain.ChordSizeRange
 import ldv.shuuen.features.training.domain.LevelConfig
 
 class ChordsLevelTypeConverter {
-  @TypeConverter
-  fun levelConfigToString(l: LevelConfig.Chords): String = RoomJson.encode(l)
+  @TypeConverter fun levelConfigToString(l: LevelConfig.Chords): String = RoomJson.encode(l)
 
-  @TypeConverter
-  fun stringToLevelConfig(l: String): LevelConfig.Chords = RoomJson.decode(l)
+  @TypeConverter fun stringToLevelConfig(l: String): LevelConfig.Chords = RoomJson.decode(l)
 
-  @TypeConverter
-  fun chordSizeRangeToString(r: ChordSizeRange): String = RoomJson.encode(r)
+  @TypeConverter fun chordSizeRangeToString(r: ChordSizeRange): String = RoomJson.encode(r)
 
-  @TypeConverter
-  fun stringToChordSizeRange(r: String): ChordSizeRange = RoomJson.decode(r)
+  @TypeConverter fun stringToChordSizeRange(r: String): ChordSizeRange = RoomJson.decode(r)
 }

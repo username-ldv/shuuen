@@ -37,9 +37,13 @@ data class LoginUiState(
 
 sealed interface LoginAction {
   data class SetUsername(val value: String) : LoginAction
+
   data class SetPassword(val value: String) : LoginAction
+
   data object TogglePasswordVisibility : LoginAction
+
   data object SignIn : LoginAction
+
   data object SignOut : LoginAction
 }
 

@@ -54,7 +54,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import ldv.shuuen.core.audio.midi.FullPresetVolume
 import ldv.shuuen.core.audio.midi.MaximumPresetCutoff
@@ -64,17 +63,18 @@ import ldv.shuuen.core.audio.midi.PresetCutoffScope
 import ldv.shuuen.core.audio.midi.PresetCutoffs
 import ldv.shuuen.core.audio.midi.PresetVolumes
 import ldv.shuuen.core.ui.components.ShuuenUi
+import kotlin.math.roundToInt
 
 /**
- * Combined soundbank + preset picker. The soundbank chips scope a searchable,
- * scrollable preset list; tapping a preset adds it to (or drops it from) the channel's choices,
- * which take effect immediately. One sheet handles both dimensions because a preset is only
- * meaningful as a (bank, id) pair.
+ * Combined soundbank + preset picker. The soundbank chips scope a searchable, scrollable preset
+ * list; tapping a preset adds it to (or drops it from) the channel's choices, which take effect
+ * immediately. One sheet handles both dimensions because a preset is only meaningful as a (bank,
+ * id) pair.
  *
  * Every row also carries its instrument's own settings: a loudness trim and optional brightness
  * compensation for velocity-dependent SoundFont filtering. They are editable on sliders the row
- * unfolds and auditionable on the spot. The settings belong to the preset — they are kept even
- * when it is not chosen and are independent of how many presets are selected.
+ * unfolds and auditionable on the spot. The settings belong to the preset — they are kept even when
+ * it is not chosen and are independent of how many presets are selected.
  *
  * [selectedPresets] is never empty and its first entry is the channel's base instrument; the last
  * remaining choice cannot be dropped.
@@ -149,7 +149,7 @@ private fun ColumnScope.PresetPickerContent(
   var selectedBank: Int? by rememberSaveable {
     mutableStateOf(
       selectedPresets.firstOrNull()?.bank?.takeIf { bank -> soundbanks.any { it.bank == bank } }
-        ?: soundbanks.firstOrNull()?.bank,
+        ?: soundbanks.firstOrNull()?.bank
     )
   }
   val selectedPacked = remember(selectedPresets) { selectedPresets.map { it.toPacked() }.toSet() }
@@ -160,34 +160,34 @@ private fun ColumnScope.PresetPickerContent(
   val listState = rememberLazyListState()
   val scope = rememberCoroutineScope()
 
-  val visiblePresets = remember(query, selectedBank, soundbanks, pinned) {
-    val scoped = when (val bank = selectedBank) {
-      null -> soundbanks.flatMap { it.presets }
-      else -> soundbanks.firstOrNull { it.bank == bank }?.presets.orEmpty()
-    }
-    val trimmed = query.trim()
-    val matching =
-      if (trimmed.isEmpty()) {
-        scoped
-      } else {
-        scoped.filter { preset ->
-          presetName(preset).contains(trimmed, ignoreCase = true) ||
-            presetNumber(preset).contains(trimmed) ||
-            preset.id.toString() == trimmed
+  val visiblePresets =
+    remember(query, selectedBank, soundbanks, pinned) {
+      val scoped =
+        when (val bank = selectedBank) {
+          null -> soundbanks.flatMap { it.presets }
+          else -> soundbanks.firstOrNull { it.bank == bank }?.presets.orEmpty()
         }
-      }
-    // A stable sort on nothing but "is it chosen", so both halves keep the soundbank's own order:
-    // the chosen ones rise to the top still in ascending preset number, and one dropped here lands
-    // back in its numbered slot.
-    matching.sortedBy { if (it.toPacked() in pinned) 0 else 1 }
-  }
+      val trimmed = query.trim()
+      val matching =
+        if (trimmed.isEmpty()) {
+          scoped
+        } else {
+          scoped.filter { preset ->
+            presetName(preset).contains(trimmed, ignoreCase = true) ||
+              presetNumber(preset).contains(trimmed) ||
+              preset.id.toString() == trimmed
+          }
+        }
+      // A stable sort on nothing but "is it chosen", so both halves keep the soundbank's own order:
+      // the chosen ones rise to the top still in ascending preset number, and one dropped here
+      // lands
+      // back in its numbered slot.
+      matching.sortedBy { if (it.toPacked() in pinned) 0 else 1 }
+    }
 
   Column(
-    modifier = Modifier
-      .fillMaxWidth()
-      .imePadding()
-      .padding(horizontal = 20.dp)
-      .padding(bottom = 12.dp),
+    modifier =
+      Modifier.fillMaxWidth().imePadding().padding(horizontal = 20.dp).padding(bottom = 12.dp),
     verticalArrangement = Arrangement.spacedBy(14.dp),
   ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -200,10 +200,11 @@ private fun ColumnScope.PresetPickerContent(
         Text(
           text = title.uppercase(),
           color = ShuuenUi.Text,
-          style = MaterialTheme.typography.titleMedium.copy(
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = ShuuenUi.titlesSpacing,
-          ),
+          style =
+            MaterialTheme.typography.titleMedium.copy(
+              fontWeight = FontWeight.SemiBold,
+              letterSpacing = ShuuenUi.titlesSpacing,
+            ),
           modifier = Modifier.weight(1f),
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
@@ -246,7 +247,8 @@ private fun ColumnScope.PresetPickerContent(
 
     if (visiblePresets.isEmpty()) {
       Text(
-        text = if (soundbanks.isEmpty()) "No presets available." else "No presets match \"$query\".",
+        text =
+          if (soundbanks.isEmpty()) "No presets available." else "No presets match \"$query\".",
         color = ShuuenUi.Dim,
         style = MaterialTheme.typography.bodyMedium,
         modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
@@ -285,12 +287,15 @@ private fun ColumnScope.PresetPickerContent(
 /** Shared by the picker sheets in this package. */
 @Composable
 internal fun PickerDragHandle() {
-  Box(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), contentAlignment = Alignment.Center) {
+  Box(
+    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+    contentAlignment = Alignment.Center,
+  ) {
     Box(
-      modifier = Modifier
-        .size(width = 36.dp, height = 4.dp)
-        .clip(RoundedCornerShape(50))
-        .background(ShuuenUi.HairlineStrong),
+      modifier =
+        Modifier.size(width = 36.dp, height = 4.dp)
+          .clip(RoundedCornerShape(50))
+          .background(ShuuenUi.HairlineStrong)
     )
   }
 }
@@ -298,11 +303,11 @@ internal fun PickerDragHandle() {
 @Composable
 private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
   Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .clip(ShuuenUi.ControlShape)
-      .background(ShuuenUi.Ink.copy(alpha = 0.05f))
-      .padding(horizontal = 12.dp, vertical = 11.dp),
+    modifier =
+      Modifier.fillMaxWidth()
+        .clip(ShuuenUi.ControlShape)
+        .background(ShuuenUi.Ink.copy(alpha = 0.05f))
+        .padding(horizontal = 12.dp, vertical = 11.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(8.dp),
   ) {
@@ -343,11 +348,11 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
 @Composable
 private fun BankChip(label: String, selected: Boolean, onClick: () -> Unit) {
   Row(
-    modifier = Modifier
-      .clip(ShuuenUi.PillShape)
-      .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
-      .clickable(onClick = onClick)
-      .padding(horizontal = 14.dp, vertical = 8.dp),
+    modifier =
+      Modifier.clip(ShuuenUi.PillShape)
+        .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
+        .clickable(onClick = onClick)
+        .padding(horizontal = 14.dp, vertical = 8.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Text(
@@ -386,19 +391,19 @@ private fun PresetRow(
   val quiet = if (selected) ShuuenUi.OnInverse.copy(alpha = 0.55f) else ShuuenUi.Dim
 
   Column(
-    modifier = Modifier
-      .fillMaxWidth()
-      .clip(ShuuenUi.ControlShape)
-      .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f)),
+    modifier =
+      Modifier.fillMaxWidth()
+        .clip(ShuuenUi.ControlShape)
+        .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
   ) {
     // Instrument names are long and the trailing controls are fixed, so the row gives them every
     // dp it can: tight gaps, no check mark (the inverted fill already says "chosen"), and a
     // second line where a name still won't fit on one.
     Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .clickable(onClick = onClick)
-        .padding(start = 12.dp, end = 4.dp, top = 5.dp, bottom = 5.dp),
+      modifier =
+        Modifier.fillMaxWidth()
+          .clickable(onClick = onClick)
+          .padding(start = 12.dp, end = 4.dp, top = 5.dp, bottom = 5.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -411,9 +416,10 @@ private fun PresetRow(
       Text(
         text = name,
         color = content,
-        style = MaterialTheme.typography.titleSmall.copy(
-          fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-        ),
+        style =
+          MaterialTheme.typography.titleSmall.copy(
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+          ),
         modifier = Modifier.weight(1f),
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
@@ -474,11 +480,11 @@ private fun HeaderIconButton(
   onClick: () -> Unit,
 ) {
   Box(
-    modifier = Modifier
-      .size(36.dp)
-      .clip(ShuuenUi.PillShape)
-      .background(ShuuenUi.Ink.copy(alpha = 0.06f))
-      .clickable(onClick = onClick),
+    modifier =
+      Modifier.size(36.dp)
+        .clip(ShuuenUi.PillShape)
+        .background(ShuuenUi.Ink.copy(alpha = 0.06f))
+        .clickable(onClick = onClick),
     contentAlignment = Alignment.Center,
   ) {
     Icon(
@@ -501,7 +507,12 @@ private fun RowIconButton(
     modifier = Modifier.size(32.dp).clip(CircleShape).clickable(onClick = onClick),
     contentAlignment = Alignment.Center,
   ) {
-    Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(18.dp))
+    Icon(
+      icon,
+      contentDescription = contentDescription,
+      tint = tint,
+      modifier = Modifier.size(18.dp),
+    )
   }
 }
 
@@ -542,19 +553,20 @@ private fun PresetVolumeSlider(
         onCommit(value.roundToInt())
       },
       valueRange = 0f..FullPresetVolume.toFloat(),
-      colors = SliderDefaults.colors(
-        thumbColor = tint,
-        activeTrackColor = tint.copy(alpha = 0.75f),
-        inactiveTrackColor = tint.copy(alpha = 0.18f),
-      ),
+      colors =
+        SliderDefaults.colors(
+          thumbColor = tint,
+          activeTrackColor = tint.copy(alpha = 0.75f),
+          inactiveTrackColor = tint.copy(alpha = 0.18f),
+        ),
       modifier = Modifier.weight(1f),
     )
   }
 }
 
 /**
- * Optional CC74 compensation for a preset's velocity-dependent low-pass filter. The neutral end
- * is displayed as OFF because it removes the persisted override rather than storing a value.
+ * Optional CC74 compensation for a preset's velocity-dependent low-pass filter. The neutral end is
+ * displayed as OFF because it removes the persisted override rather than storing a value.
  */
 @Composable
 private fun PresetCutoffSlider(
@@ -589,15 +601,17 @@ private fun PresetCutoffSlider(
         onCommit(value.roundToInt())
       },
       valueRange = NeutralPresetCutoff.toFloat()..MaximumPresetCutoff.toFloat(),
-      colors = SliderDefaults.colors(
-        thumbColor = tint,
-        activeTrackColor = tint.copy(alpha = 0.75f),
-        inactiveTrackColor = tint.copy(alpha = 0.18f),
-      ),
+      colors =
+        SliderDefaults.colors(
+          thumbColor = tint,
+          activeTrackColor = tint.copy(alpha = 0.75f),
+          inactiveTrackColor = tint.copy(alpha = 0.18f),
+        ),
       modifier = Modifier.weight(1f),
     )
     Text(
-      text = if (value.roundToInt() == NeutralPresetCutoff) "OFF" else value.roundToInt().toString(),
+      text =
+        if (value.roundToInt() == NeutralPresetCutoff) "OFF" else value.roundToInt().toString(),
       color = tint.copy(alpha = 0.7f),
       style = MaterialTheme.typography.labelSmall,
       textAlign = TextAlign.End,
@@ -647,13 +661,14 @@ private fun PresetCutoffScopeOption(
   Text(
     text = label,
     color = if (selected) tint else tint.copy(alpha = 0.55f),
-    style = MaterialTheme.typography.labelSmall.copy(
-      fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-    ),
-    modifier = Modifier
-      .clip(ShuuenUi.PillShape)
-      .background(if (selected) tint.copy(alpha = 0.14f) else Color.Transparent)
-      .clickable(onClick = onClick)
-      .padding(horizontal = 9.dp, vertical = 6.dp),
+    style =
+      MaterialTheme.typography.labelSmall.copy(
+        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+      ),
+    modifier =
+      Modifier.clip(ShuuenUi.PillShape)
+        .background(if (selected) tint.copy(alpha = 0.14f) else Color.Transparent)
+        .clickable(onClick = onClick)
+        .padding(horizontal = 9.dp, vertical = 6.dp),
   )
 }

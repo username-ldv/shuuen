@@ -31,8 +31,12 @@ data class FreePlayState(
 
 sealed interface FreePlayAction {
   data class PressPitch(val pitchIndex: Int) : FreePlayAction
+
   data class ReleasePitch(val pitchIndex: Int) : FreePlayAction
+
   data class ToggleDrone(val fifthsIndex: Int) : FreePlayAction
+
   data object StopAll : FreePlayAction
+
   data object DismissError : FreePlayAction
 }

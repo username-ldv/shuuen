@@ -15,9 +15,7 @@ import ldv.shuuen.app.navigation.result.NavResultStore.Companion.SavedNavResults
 class NavResultStore(private val state: MutableState<SavedNavResults>) {
   fun <T : Any> send(key: NavResultKey<T>, result: T) {
     val payload = Json.encodeToJsonElement(key.serializer, result)
-    state.value = state.value.copy(
-      pending = state.value.pending + (key.id to payload)
-    )
+    state.value = state.value.copy(pending = state.value.pending + (key.id to payload))
   }
 
   fun <T : Any> peek(key: NavResultKey<T>): T? {
@@ -32,14 +30,14 @@ class NavResultStore(private val state: MutableState<SavedNavResults>) {
 
   companion object {
     val SavedNavResultsStateSaver =
-        Saver<NavResultStore, String>(
-            save = { store ->
-              Json.encodeToString(store.state.value)
-            },
-            restore = { encoded ->
-              NavResultStore(mutableStateOf(Json.decodeFromString<SavedNavResults>(encoded)))
-            },
-        )
+      Saver<NavResultStore, String>(
+        save = { store ->
+          Json.encodeToString(store.state.value)
+        },
+        restore = { encoded ->
+          NavResultStore(mutableStateOf(Json.decodeFromString<SavedNavResults>(encoded)))
+        },
+      )
   }
 }
 
@@ -51,10 +49,10 @@ class NavResultKey<T>(
 @Serializable data class SavedNavResults(val pending: Map<String, JsonElement> = emptyMap())
 
 val LocalNavResultStore =
-    staticCompositionLocalOf<NavResultStore> { error("LocalNavResultStore was not provided") }
+  staticCompositionLocalOf<NavResultStore> { error("LocalNavResultStore was not provided") }
 
 @Composable
 fun rememberNavResultStore() =
-    rememberSaveable(saver = SavedNavResultsStateSaver) {
-      NavResultStore(mutableStateOf(SavedNavResults()))
-    }
+  rememberSaveable(saver = SavedNavResultsStateSaver) {
+    NavResultStore(mutableStateOf(SavedNavResults()))
+  }

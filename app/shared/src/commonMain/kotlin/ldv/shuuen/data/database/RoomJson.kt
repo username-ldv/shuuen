@@ -9,9 +9,7 @@ object RoomJson {
     classDiscriminator = "type"
   }
 
-  inline fun <reified T> encode(value: T): String =
-    json.encodeToString(value)
+  inline fun <reified T> encode(value: T): String = json.encodeToString(value)
 
-  inline fun <reified T> decode(value: String): T =
-    json.decodeFromString(value)
+  inline fun <reified T> decode(value: String): T = json.decodeFromString(value)
 }

@@ -30,7 +30,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -43,11 +42,9 @@ import ldv.shuuen.core.music.stepLabels
 import ldv.shuuen.core.ui.components.ShuuenUi
 
 /**
- * Building blocks for editing degree sequences (context nodes, setup melodies).
- * Pure UI: callers own the sequence state.
+ * Building blocks for editing degree sequences (context nodes, setup melodies). Pure UI: callers
+ * own the sequence state.
  */
-
-
 @Composable
 fun DegreeChip(
   label: String,
@@ -59,26 +56,30 @@ fun DegreeChip(
   val shape = ShuuenUi.ControlShape
   val currentOnClick by rememberUpdatedState(onClick)
   Box(
-    modifier = modifier.height(34.dp).widthIn(min = 38.dp).clip(shape)
-      .background(if (inverted) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
-      .then(
-        if (selected) {
-          Modifier.border(
-            width = 1.dp,
-            color = if (inverted) ShuuenUi.OnInverse.copy(alpha = 0.28f) else ShuuenUi.Text,
-            shape = shape,
-          )
-        } else {
-          Modifier
-        }
-      )
-      .then(
-        if (onClick != null) {
-          Modifier.clickable { currentOnClick?.invoke() }
-        } else {
-          Modifier
-        }
-      ),
+    modifier =
+      modifier
+        .height(34.dp)
+        .widthIn(min = 38.dp)
+        .clip(shape)
+        .background(if (inverted) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
+        .then(
+          if (selected) {
+            Modifier.border(
+              width = 1.dp,
+              color = if (inverted) ShuuenUi.OnInverse.copy(alpha = 0.28f) else ShuuenUi.Text,
+              shape = shape,
+            )
+          } else {
+            Modifier
+          }
+        )
+        .then(
+          if (onClick != null) {
+            Modifier.clickable { currentOnClick?.invoke() }
+          } else {
+            Modifier
+          }
+        ),
     contentAlignment = Alignment.Center,
   ) {
     Text(
@@ -113,8 +114,8 @@ fun DegreePalette(
 }
 
 /**
- * The built sequence rendered as inverted chips, with an optional backspace control.
- * When [selectedIndex] is set, only that chip is inverted so editors can show replacement focus.
+ * The built sequence rendered as inverted chips, with an optional backspace control. When
+ * [selectedIndex] is set, only that chip is inverted so editors can show replacement focus.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -180,9 +181,11 @@ private fun SequenceIconButton(
 ) {
   val currentOnClick by rememberUpdatedState(onClick)
   Box(
-    modifier = Modifier.size(34.dp).clip(ShuuenUi.ControlShape)
-      .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
-      .clickable { currentOnClick() },
+    modifier =
+      Modifier.size(34.dp)
+        .clip(ShuuenUi.ControlShape)
+        .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
+        .clickable { currentOnClick() },
     contentAlignment = Alignment.Center,
   ) {
     Icon(
@@ -195,8 +198,8 @@ private fun SequenceIconButton(
 }
 
 /**
- * Inline editor for a plain degree sequence (e.g. a node's setup melody):
- * current chips on top, palette below to append.
+ * Inline editor for a plain degree sequence (e.g. a node's setup melody): current chips on top,
+ * palette below to append.
  */
 @Composable
 fun DegreeSequenceEditor(
@@ -218,9 +221,9 @@ fun DegreeSequenceEditor(
 }
 
 /**
- * Inline editor for a directed degree sequence (setup melodies that can move up and down).
- * The ↑/↓ toggle picks the direction applied to newly added degrees or updates the selected step.
- * The first step is the anchor and has no direction.
+ * Inline editor for a directed degree sequence (setup melodies that can move up and down). The ↑/↓
+ * toggle picks the direction applied to newly added degrees or updates the selected step. The first
+ * step is the anchor and has no direction.
  */
 @Composable
 fun DirectedDegreeSequenceEditor(
@@ -234,9 +237,11 @@ fun DirectedDegreeSequenceEditor(
   val labels = steps?.stepLabels() ?: listOf()
   val selectedStepIndex = selectedIndex?.takeIf { it in labels.indices }
   val selectedDirection =
-    selectedStepIndex?.takeIf { it > 0 }?.let { index ->
-      steps?.extraDegrees?.getOrNull(index - 1)?.direction
-    }
+    selectedStepIndex
+      ?.takeIf { it > 0 }
+      ?.let { index ->
+        steps?.extraDegrees?.getOrNull(index - 1)?.direction
+      }
 
   Column(
     modifier = modifier.fillMaxWidth(),
@@ -269,7 +274,7 @@ fun DirectedDegreeSequenceEditor(
                     melody.extraDegrees.toMutableList().also { it.removeAt(selected - 1) }
                 )
               else -> melody.copy(extraDegrees = melody.extraDegrees.dropLast(1))
-          }
+            }
           onChange(updated)
           selectedIndex = selectedIndex?.coerceAtMost((updated?.extraDegrees?.size ?: 0))
           insertAfterSelected = false
@@ -347,7 +352,7 @@ fun DirectedDegreeSequenceEditor(
               insertAfterSelected = false
             }
           }
-        },
+        }
       )
     }
   }
@@ -362,8 +367,8 @@ fun OctaveStepper(
   range: IntRange = 0..8,
 ) {
   Row(
-    modifier = modifier.height(34.dp).clip(ShuuenUi.PillShape)
-      .background(ShuuenUi.Ink.copy(alpha = 0.05f)),
+    modifier =
+      modifier.height(34.dp).clip(ShuuenUi.PillShape).background(ShuuenUi.Ink.copy(alpha = 0.05f)),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     StepperPiece("−") { if (value > range.first) onChange(value - 1) }

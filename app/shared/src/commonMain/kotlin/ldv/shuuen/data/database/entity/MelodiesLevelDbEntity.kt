@@ -8,12 +8,17 @@ import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.LevelSource
 
 @Entity(
-  tableName = "levels_melodies", foreignKeys = [ForeignKey(
-    entity = ContextDbEntity::class,
-    parentColumns = ["id"],
-    childColumns = ["contextId"],
-    onDelete = ForeignKey.SET_NULL
-  )], indices = [Index("contextId")]
+  tableName = "levels_melodies",
+  foreignKeys =
+    [
+      ForeignKey(
+        entity = ContextDbEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["contextId"],
+        onDelete = ForeignKey.SET_NULL,
+      )
+    ],
+  indices = [Index("contextId")],
 )
 data class MelodiesLevelDbEntity(
   @PrimaryKey val id: String,

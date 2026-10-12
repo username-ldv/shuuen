@@ -5,25 +5,28 @@ import ldv.shuuen.core.music.DegreeContext
 
 @Serializable
 sealed interface AppNavResult {
-  @Serializable
-  data class ContextPickedResult(val context: DegreeContext) : AppNavResult
+  @Serializable data class ContextPickedResult(val context: DegreeContext) : AppNavResult
 }
 
 object NavResultKeys {
-  val SinglesContextResult = NavResultKey(
-    "singles-context",
-    AppNavResult.ContextPickedResult.serializer(),
-  )
-  val MelodiesContextResult = NavResultKey(
-    id = "melodies-context",
-    serializer = AppNavResult.ContextPickedResult.serializer(),
-  )
-  val MelodiesLevelOptionsContextResult = NavResultKey(
-    id = "melodies-level-options-context",
-    serializer = AppNavResult.ContextPickedResult.serializer(),
-  )
-  val ChordsContextResult = NavResultKey(
-    id = "chords-context",
-    serializer = AppNavResult.ContextPickedResult.serializer(),
-  )
+  val SinglesContextResult =
+    NavResultKey(
+      "singles-context",
+      AppNavResult.ContextPickedResult.serializer(),
+    )
+  val MelodiesContextResult =
+    NavResultKey(
+      id = "melodies-context",
+      serializer = AppNavResult.ContextPickedResult.serializer(),
+    )
+  val MelodiesLevelOptionsContextResult =
+    NavResultKey(
+      id = "melodies-level-options-context",
+      serializer = AppNavResult.ContextPickedResult.serializer(),
+    )
+  val ChordsContextResult =
+    NavResultKey(
+      id = "chords-context",
+      serializer = AppNavResult.ContextPickedResult.serializer(),
+    )
 }

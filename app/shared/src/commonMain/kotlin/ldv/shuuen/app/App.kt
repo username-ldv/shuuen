@@ -6,8 +6,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import kotlinx.coroutines.flow.map
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.map
 import ldv.shuuen.app.di.commonModule
 import ldv.shuuen.app.di.platformModule
 import ldv.shuuen.app.navigation.NavigationRoot
@@ -37,13 +37,15 @@ fun App() {
 @Composable
 private fun ThemedApp() {
   val settingsRepository = koinInject<SettingsRepository>()
-  val theme by remember(settingsRepository) { settingsRepository.settings.map { it.theme } }
-    .collectAsStateWithLifecycle(ThemeSettings())
-  val darkTheme = when (theme.appearance) {
-    ThemeAppearance.System -> isSystemInDarkTheme()
-    ThemeAppearance.Dark -> true
-    ThemeAppearance.Light -> false
-  }
+  val theme by
+    remember(settingsRepository) { settingsRepository.settings.map { it.theme } }
+      .collectAsStateWithLifecycle(ThemeSettings())
+  val darkTheme =
+    when (theme.appearance) {
+      ThemeAppearance.System -> isSystemInDarkTheme()
+      ThemeAppearance.Dark -> true
+      ThemeAppearance.Light -> false
+    }
   ShuuenTheme(
     modifier = Modifier.fillMaxSize(),
     style = theme.style,

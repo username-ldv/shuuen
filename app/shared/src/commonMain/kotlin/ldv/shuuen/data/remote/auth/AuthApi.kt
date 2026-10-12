@@ -20,18 +20,22 @@ internal class AuthApi(private val client: HttpClient) {
     username: String,
     password: String,
   ): AuthEnvelopeDto<AuthResultDto> =
-    client.post {
-      url(baseUrl)
-      url { appendPathSegments("api", "v1", "auth", "login") }
-      contentType(ContentType.Application.Json)
-      setBody(LoginRequestDto(username, password))
-    }.bodyAndClose()
+    client
+      .post {
+        url(baseUrl)
+        url { appendPathSegments("api", "v1", "auth", "login") }
+        contentType(ContentType.Application.Json)
+        setBody(LoginRequestDto(username, password))
+      }
+      .bodyAndClose()
 
   /** Trades a still-valid token for a fresh one, which also re-reads the account. */
   suspend fun refresh(baseUrl: String, accessToken: String): AuthEnvelopeDto<AuthResultDto> =
-    client.post {
-      url(baseUrl)
-      url { appendPathSegments("api", "v1", "auth", "refresh") }
-      bearerAuth(accessToken)
-    }.bodyAndClose()
+    client
+      .post {
+        url(baseUrl)
+        url { appendPathSegments("api", "v1", "auth", "refresh") }
+        bearerAuth(accessToken)
+      }
+      .bodyAndClose()
 }

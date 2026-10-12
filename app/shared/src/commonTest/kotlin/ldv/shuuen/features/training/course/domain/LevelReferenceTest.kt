@@ -1,10 +1,10 @@
 package ldv.shuuen.features.training.course.domain
 
+import ldv.shuuen.features.training.common.TrainingFlow
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
-import ldv.shuuen.features.training.common.TrainingFlow
 
 class LevelReferenceTest {
   @Test
@@ -25,7 +25,9 @@ class LevelReferenceTest {
 
   @Test
   fun malformedRemoteReferencesAreNotMistakenForLocalIds() {
-    assertFailsWith<IllegalArgumentException> { LevelReference.decode("course:not-an-id:melodies:00") }
+    assertFailsWith<IllegalArgumentException> {
+      LevelReference.decode("course:not-an-id:melodies:00")
+    }
   }
 
   @Test

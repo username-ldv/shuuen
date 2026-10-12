@@ -17,9 +17,7 @@ fun LinearTrainingProgress(
   color: Color = ldv.shuuen.core.ui.components.ShuuenUi.Text,
   trackColor: Color = ldv.shuuen.core.ui.components.ShuuenUi.Ink.copy(alpha = 0.10f),
 ) {
-  Canvas(
-    modifier = modifier.fillMaxWidth().height(4.dp),
-  ) {
+  Canvas(modifier = modifier.fillMaxWidth().height(4.dp)) {
     val stroke = size.height
     val y = size.height / 2f
     drawLine(

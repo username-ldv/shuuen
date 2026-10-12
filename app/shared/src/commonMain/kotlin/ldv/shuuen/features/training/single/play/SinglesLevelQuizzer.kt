@@ -1,7 +1,6 @@
 package ldv.shuuen.features.training.single.play
 
 import io.github.aakira.napier.Napier
-import kotlin.random.Random
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,6 +15,7 @@ import ldv.shuuen.core.music.generator.NaiveRandomNoteGenerator
 import ldv.shuuen.core.music.generator.NoteGenerator
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.single.domain.SinglesLevel
+import kotlin.random.Random
 
 data class IncorrectSinglesAnswer(val questionNumber: Int, val correctPitch: Pitch)
 
@@ -67,23 +67,26 @@ class SinglesLevelQuizzer(
 
       is LevelConfig.Singles.Absolute -> {
         root = c.scales.first().root
-        generator = NaiveRandomNoteGenerator(
-          range = level.range,
-          allowedPitches = c.scales.first().pitchStates.filter { it.active }.map { it.pitch })
+        generator =
+          NaiveRandomNoteGenerator(
+            range = level.range,
+            allowedPitches = c.scales.first().pitchStates.filter { it.active }.map { it.pitch },
+          )
       }
     }
-    _quizState = MutableStateFlow(
-      QuizState(
-        root,
-        currentQuestionNumber = 1,
-        currentNote = generator.next(),
-        correctAnswers = 0,
-        incorrectAnswers = listOf(),
-        questionsNumber = level.questionsNumber,
-        accidentalType = accidentalTypeFor(root),
-        detuneCents = rollDetune(),
+    _quizState =
+      MutableStateFlow(
+        QuizState(
+          root,
+          currentQuestionNumber = 1,
+          currentNote = generator.next(),
+          correctAnswers = 0,
+          incorrectAnswers = listOf(),
+          questionsNumber = level.questionsNumber,
+          accidentalType = accidentalTypeFor(root),
+          detuneCents = rollDetune(),
+        )
       )
-    )
     quizState = _quizState.asStateFlow()
   }
 
@@ -93,7 +96,9 @@ class SinglesLevelQuizzer(
     return if (delta > 0) random.nextInt(-delta, delta + 1) else 0
   }
 
-  /** Sharp/flat orientation for [root], re-rolled (randomly for ambiguous keys) on each root change. */
+  /**
+   * Sharp/flat orientation for [root], re-rolled (randomly for ambiguous keys) on each root change.
+   */
   private fun accidentalTypeFor(root: Pitch): ScaleAccidentalType =
     decideAccidentalType(root.ordinal, scaleType, allowSevenAccidentalKeys, random)
 
@@ -105,7 +110,8 @@ class SinglesLevelQuizzer(
   fun check(pitch: Pitch, exactMidiIndex: Int? = null): Boolean {
     val currentNote = quizState.value.currentNote
     val correctNow =
-      currentNote.pitch == pitch && (exactMidiIndex == null || currentNote.midiIndex == exactMidiIndex)
+      currentNote.pitch == pitch &&
+        (exactMidiIndex == null || currentNote.midiIndex == exactMidiIndex)
     if (correctNow) {
       val current = quizState.value
       val nextQuestionNumber = current.currentQuestionNumber + 1
@@ -119,7 +125,11 @@ class SinglesLevelQuizzer(
       Napier.v { "AccidentalType: $nextAccidentalType" }
       _quizState.update { quizState ->
         val count =
-          if (quizState.incorrectAnswers.any { it.questionNumber == quizState.currentQuestionNumber }) 0 else 1
+          if (
+            quizState.incorrectAnswers.any { it.questionNumber == quizState.currentQuestionNumber }
+          )
+            0
+          else 1
         quizState.copy(
           root = nextRoot,
           correctAnswers = quizState.correctAnswers + count,
@@ -136,9 +146,12 @@ class SinglesLevelQuizzer(
         Napier.v { "isDupe: $isDupe, incorrectAnswers: ${it.incorrectAnswers}" }
         if (!isDupe) {
           it.copy(
-            incorrectAnswers = it.incorrectAnswers + IncorrectSinglesAnswer(
-              it.currentQuestionNumber, it.currentNote.pitch
-            )
+            incorrectAnswers =
+              it.incorrectAnswers +
+                IncorrectSinglesAnswer(
+                  it.currentQuestionNumber,
+                  it.currentNote.pitch,
+                )
           )
         } else it
       }

@@ -4,9 +4,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.navigation3.runtime.NavBackStack
 import io.github.aakira.napier.Napier
 
-class AppNavigator(
-  private val backStack: NavBackStack<AppRoute>,
-) {
+class AppNavigator(private val backStack: NavBackStack<AppRoute>) {
 
   fun add(destination: AppRoute) {
     Napier.v { "Navigate happened" }
@@ -24,6 +22,7 @@ class AppNavigator(
   }
 }
 
-val LocalAppNavigator = staticCompositionLocalOf<AppNavigator> {
-  error("AppNavigator is not available outside NavigationRoot")
-}
+val LocalAppNavigator =
+  staticCompositionLocalOf<AppNavigator> {
+    error("AppNavigator is not available outside NavigationRoot")
+  }

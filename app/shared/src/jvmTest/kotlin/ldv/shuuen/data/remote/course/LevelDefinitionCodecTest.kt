@@ -1,8 +1,5 @@
 package ldv.shuuen.data.remote.course
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertIs
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import ldv.shuuen.core.music.Note
@@ -23,6 +20,9 @@ import ldv.shuuen.features.training.domain.LevelSource
 import ldv.shuuen.features.training.domain.ScaleConfig
 import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
 import ldv.shuuen.features.training.single.domain.SinglesLevel
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 class LevelDefinitionCodecTest {
   private val codec = LevelDefinitionCodec(ApiJson)
@@ -89,34 +89,37 @@ class LevelDefinitionCodecTest {
 
     val decodedSingles =
       assertIs<PlayableTrainingLevel.Singles>(
-        codec.decode(
-          TrainingFlow.Singles,
-          singles.id,
-          singles.name,
-          singles.source,
-          codec.encode(singles),
+          codec.decode(
+            TrainingFlow.Singles,
+            singles.id,
+            singles.name,
+            singles.source,
+            codec.encode(singles),
+          )
         )
-      ).level
+        .level
     val decodedMelodies =
       assertIs<PlayableTrainingLevel.Melodies>(
-        codec.decode(
-          TrainingFlow.Melodies,
-          melodies.id,
-          melodies.name,
-          melodies.source,
-          codec.encode(melodies),
+          codec.decode(
+            TrainingFlow.Melodies,
+            melodies.id,
+            melodies.name,
+            melodies.source,
+            codec.encode(melodies),
+          )
         )
-      ).level
+        .level
     val decodedChords =
       assertIs<PlayableTrainingLevel.Chords>(
-        codec.decode(
-          TrainingFlow.Chords,
-          chords.id,
-          chords.name,
-          chords.source,
-          codec.encode(chords),
+          codec.decode(
+            TrainingFlow.Chords,
+            chords.id,
+            chords.name,
+            chords.source,
+            codec.encode(chords),
+          )
         )
-      ).level
+        .level
 
     assertEquals(singles, decodedSingles)
     assertEquals(melodies, decodedMelodies)
@@ -152,19 +155,25 @@ class LevelDefinitionCodecTest {
 
     val definition = codec.encode(level)
     val pitchStates =
-      definition.jsonObject.getValue("config").jsonObject
-        .getValue("scale_config").jsonObject
-        .getValue("pitch_states").jsonArray
+      definition.jsonObject
+        .getValue("config")
+        .jsonObject
+        .getValue("scale_config")
+        .jsonObject
+        .getValue("pitch_states")
+        .jsonArray
     val decoded =
       assertIs<PlayableTrainingLevel.Melodies>(
-        codec.decode(
-          TrainingFlow.Melodies,
-          level.id,
-          level.name,
-          level.source,
-          definition,
+          codec.decode(
+            TrainingFlow.Melodies,
+            level.id,
+            level.name,
+            level.source,
+            definition,
+          )
         )
-      ).level.config as LevelConfig.Melodies.Random
+        .level
+        .config as LevelConfig.Melodies.Random
     val decodedScale = decoded.scaleConfig as ScaleConfig.AbsoluteScaleConfig
 
     assertEquals(12, pitchStates.size)

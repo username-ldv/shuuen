@@ -8,9 +8,7 @@ object MusicLabelDefaults {
    * letter order is C, D, E, F, G, A, B.
    */
   val NoteNames: List<String> =
-    NoteLetters +
-      NoteLetters.map { "$it♯" } +
-      NoteLetters.map { "$it♭" }
+    NoteLetters + NoteLetters.map { "$it♯" } + NoteLetters.map { "$it♭" }
 
   val DegreeNames: List<String> = Degree.chromaticOrder.map { it.label }
 }
@@ -27,9 +25,27 @@ object MusicLabelPresets {
       MusicLabelPreset(
         "Hybrid solfege",
         listOf(
-          "Do", "Re", "Mi", "Fa", "So", "La", "Ti",
-          "Di", "Ri", "Mya", "Fi", "Si", "Li", "Tya",
-          "Du", "Ra", "Me", "Fe", "Se", "Le", "Te",
+          "Do",
+          "Re",
+          "Mi",
+          "Fa",
+          "So",
+          "La",
+          "Ti",
+          "Di",
+          "Ri",
+          "Mya",
+          "Fi",
+          "Si",
+          "Li",
+          "Tya",
+          "Du",
+          "Ra",
+          "Me",
+          "Fe",
+          "Se",
+          "Le",
+          "Te",
         ),
       ),
     )

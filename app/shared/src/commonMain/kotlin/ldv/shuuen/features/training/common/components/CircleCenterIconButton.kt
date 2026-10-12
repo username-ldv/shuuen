@@ -28,11 +28,12 @@ fun CircleCenterIconButton(
   onClick: () -> Unit,
 ) {
   Box(
-    modifier = modifier
-      .size(52.dp)
-      .clip(CircleShape)
-      .background(ShuuenUi.Ink.copy(alpha = 0.05f))
-      .clickable(onClick = onClick),
+    modifier =
+      modifier
+        .size(52.dp)
+        .clip(CircleShape)
+        .background(ShuuenUi.Ink.copy(alpha = 0.05f))
+        .clickable(onClick = onClick),
     contentAlignment = Alignment.Center,
   ) {
     Icon(

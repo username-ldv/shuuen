@@ -85,16 +85,15 @@ fun FreePlayScreen(
         contentAlignment = Alignment.Center,
       ) {
         FifthsCircle(
-          modifier = Modifier
-            .width(circleWidth)
-            .aspectRatio(1f),
+          modifier = Modifier.width(circleWidth).aspectRatio(1f),
           itemNames = circleLabels(state, musicLabels),
           onItemPressedChange = { index, pressed ->
             if (pressed) viewModel.onAction(FreePlayAction.ToggleDrone(index))
           },
-          programmaticIndications = state.activeFifthsItems.map {
-            FifthsCircleIndication(it, durationMillis = null)
-          },
+          programmaticIndications =
+            state.activeFifthsItems.map {
+              FifthsCircleIndication(it, durationMillis = null)
+            },
           onCenterClick = { viewModel.onAction(FreePlayAction.StopAll) },
         )
       }
@@ -107,9 +106,8 @@ fun FreePlayScreen(
         contentAlignment = Alignment.Center,
       ) {
         PianoKeyboard(
-          modifier = Modifier
-            .width(keyboardWidth)
-            .aspectRatio(PianoKeyboardDefaults.aspectRatio(12)),
+          modifier =
+            Modifier.width(keyboardWidth).aspectRatio(PianoKeyboardDefaults.aspectRatio(12)),
           enabledKeys = state.enabledKeyboardKeys,
           onKeyPressedChange = { index, pressed ->
             viewModel.onAction(
@@ -117,12 +115,13 @@ fun FreePlayScreen(
                 FreePlayAction.PressPitch(index)
               } else {
                 FreePlayAction.ReleasePitch(index)
-              },
+              }
             )
           },
-          programmaticIndications = state.activeKeyboardKeys.map {
-            PianoKeyIndication(it, durationMillis = null)
-          },
+          programmaticIndications =
+            state.activeKeyboardKeys.map {
+              PianoKeyIndication(it, durationMillis = null)
+            },
           pressedKeyColors = PianoKeyboardDefaults.pressedColors(12),
         )
       }

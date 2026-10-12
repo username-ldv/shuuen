@@ -3,13 +3,14 @@ package ldv.shuuen.core.music
 import kotlinx.serialization.Serializable
 
 /**
- * Direction of a melody step relative to the previous note: the nearest occurrence
- * of the degree above ([Up]) or below ([Down]) it. Mirrors how the player resolves
- * setup melodies (currently ascending-only via Note.next; Down is the planned extension).
+ * Direction of a melody step relative to the previous note: the nearest occurrence of the degree
+ * above ([Up]) or below ([Down]) it. Mirrors how the player resolves setup melodies (currently
+ * ascending-only via Note.next; Down is the planned extension).
  */
 @Serializable
 enum class DegreeDirection(val arrow: String) {
-  Up("↑"), Down("↓");
+  Up("↑"),
+  Down("↓");
 
   fun flipped(): DegreeDirection = if (this == Up) Down else Up
 }

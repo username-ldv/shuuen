@@ -31,8 +31,9 @@ internal class TrainingLevelResolverImpl(
       is LevelReference.Remote -> {
         require(reference.mode == TrainingFlow.Singles) { "Expected a Singles level reference." }
         val playable = courseRepository.getLevel(reference).playable
-        val level = (playable as? PlayableTrainingLevel.Singles)?.level
-          ?: error("The course returned a different level mode for ${reference.encoded}.")
+        val level =
+          (playable as? PlayableTrainingLevel.Singles)?.level
+            ?: error("The course returned a different level mode for ${reference.encoded}.")
         level.withCourseOverrides(courseOverrides(reference))
       }
     }
@@ -43,8 +44,9 @@ internal class TrainingLevelResolverImpl(
       is LevelReference.Remote -> {
         require(reference.mode == TrainingFlow.Melodies) { "Expected a Melodies level reference." }
         val playable = courseRepository.getLevel(reference).playable
-        val level = (playable as? PlayableTrainingLevel.Melodies)?.level
-          ?: error("The course returned a different level mode for ${reference.encoded}.")
+        val level =
+          (playable as? PlayableTrainingLevel.Melodies)?.level
+            ?: error("The course returned a different level mode for ${reference.encoded}.")
         level.withCourseOverrides(courseOverrides(reference))
       }
     }

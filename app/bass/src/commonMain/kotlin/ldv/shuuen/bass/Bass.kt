@@ -3,78 +3,115 @@ package ldv.shuuen.bass
 object Bass {
   val BASS_OK: Int
     get() = BassConstants.BASS_OK
+
   val BASS_ERROR_INIT: Int
     get() = BassConstants.BASS_ERROR_INIT
+
   val BASS_CONFIG_BUFFER: Int
     get() = BassConstants.BASS_CONFIG_BUFFER
+
   val BASS_CONFIG_UPDATEPERIOD: Int
     get() = BassConstants.BASS_CONFIG_UPDATEPERIOD
+
   val BASS_CONFIG_DEV_BUFFER: Int
     get() = BassConstants.BASS_CONFIG_DEV_BUFFER
+
   val BASS_CONFIG_DEV_PERIOD: Int
     get() = BassConstants.BASS_CONFIG_DEV_PERIOD
+
   val BASS_ATTRIB_BUFFER: Int
     get() = BassConstants.BASS_ATTRIB_BUFFER
+
   val BASS_ATTRIB_VOL: Int
     get() = BassConstants.BASS_ATTRIB_VOL
+
   val BASS_ATTRIB_MIDI_SRC: Int
     get() = BassConstants.BASS_ATTRIB_MIDI_SRC
+
   val BASS_STREAM_DECODE: Int
     get() = BassConstants.BASS_STREAM_DECODE
+
   val BASS_STREAM_PRESCAN: Int
     get() = BassConstants.BASS_STREAM_PRESCAN
+
   val BASS_MIDI_DECAYEND: Int
     get() = BassConstants.BASS_MIDI_DECAYEND
+
   val BASS_CONFIG_MIDI_VOICES: Int
     get() = BassConstants.BASS_CONFIG_MIDI_VOICES
+
   val MIDI_EVENT_NOTE: Int
     get() = BassConstants.MIDI_EVENT_NOTE
+
   val MIDI_EVENT_PROGRAM: Int
     get() = BassConstants.MIDI_EVENT_PROGRAM
+
   val MIDI_EVENT_BANK: Int
     get() = BassConstants.MIDI_EVENT_BANK
+
   val MIDI_EVENT_BANK_LSB: Int
     get() = BassConstants.MIDI_EVENT_BANK_LSB
+
   val MIDI_EVENT_VOLUME: Int
     get() = BassConstants.MIDI_EVENT_VOLUME
+
   val MIDI_EVENT_EXPRESSION: Int
     get() = BassConstants.MIDI_EVENT_EXPRESSION
+
   val MIDI_EVENT_CUTOFF: Int
     get() = BassConstants.MIDI_EVENT_CUTOFF
+
   val MIDI_EVENT_FINETUNE: Int
     get() = BassConstants.MIDI_EVENT_FINETUNE
+
   val MIDI_EVENT_PITCH: Int
     get() = BassConstants.MIDI_EVENT_PITCH
+
   val MIDI_EVENT_PITCHRANGE: Int
     get() = BassConstants.MIDI_EVENT_PITCHRANGE
+
   val MIDI_EVENT_REVERB_LEVEL: Int
     get() = BassConstants.MIDI_EVENT_REVERB_LEVEL
+
   val MIDI_EVENT_CHORUS_LEVEL: Int
     get() = BassConstants.MIDI_EVENT_CHORUS_LEVEL
+
   val MIDI_EVENT_CHORUS_MACRO: Int
     get() = BassConstants.MIDI_EVENT_CHORUS_MACRO
+
   val MIDI_EVENT_SYSTEM: Int
     get() = BassConstants.MIDI_EVENT_SYSTEM
+
   val MIDI_EVENT_TRANSPOSE: Int
     get() = BassConstants.MIDI_EVENT_TRANSPOSE
+
   val MIDI_EVENT_SYSTEMEX: Int
     get() = BassConstants.MIDI_EVENT_SYSTEMEX
+
   val MIDI_EVENT_NOTESOFF: Int
     get() = BassConstants.MIDI_EVENT_NOTESOFF
+
   val MIDI_EVENT_NOTES: Int
     get() = BassConstants.MIDI_EVENT_NOTES
+
   val BASS_FILE_MEM: Int
     get() = BassConstants.BASS_FILE_MEM
+
   val BASS_POS_BYTE: Int
     get() = BassConstants.BASS_POS_BYTE
+
   val BASS_POS_MIDI_TICK: Int
     get() = BassConstants.BASS_POS_MIDI_TICK
+
   val BASS_POS_FLUSH: Int
     get() = BassConstants.BASS_POS_FLUSH
+
   val BASS_ACTIVE_STOPPED: Int
     get() = BassConstants.BASS_ACTIVE_STOPPED
+
   val BASS_ACTIVE_PLAYING: Int
     get() = BassConstants.BASS_ACTIVE_PLAYING
+
   val BASS_ACTIVE_PAUSED: Int
     get() = BassConstants.BASS_ACTIVE_PAUSED
 
@@ -118,22 +155,24 @@ object Bass {
   ): Int = BassPlatform.createMidiStreamFromMemory(data, flags, frequency)
 
   /**
-   * Creates an audio file stream (MP3/OGG/WAV/AIFF) from [data]; the platform keeps the native
-   * copy of [data] alive until [freeStream]. Pass [BASS_STREAM_PRESCAN] in [flags] when the
-   * stream needs accurate seeking (MP3 seeking is approximate without it).
+   * Creates an audio file stream (MP3/OGG/WAV/AIFF) from [data]; the platform keeps the native copy
+   * of [data] alive until [freeStream]. Pass [BASS_STREAM_PRESCAN] in [flags] when the stream needs
+   * accurate seeking (MP3 seeking is approximate without it).
    */
   fun createFileStreamFromMemory(data: ByteArray, flags: Int = 0): Int =
     BassPlatform.createFileStreamFromMemory(data, flags)
 
   /**
-   * Links [chan] to [handle] so they start/stop/pause/resume together; linked channels on the
-   * same device start playing simultaneously. One-way: operations on [handle] drive [chan].
+   * Links [chan] to [handle] so they start/stop/pause/resume together; linked channels on the same
+   * device start playing simultaneously. One-way: operations on [handle] drive [chan].
    */
   fun linkChannels(handle: Int, chan: Int): Boolean = BassPlatform.linkChannels(handle, chan)
 
   fun unlinkChannels(handle: Int, chan: Int): Boolean = BassPlatform.unlinkChannels(handle, chan)
 
-  /** Retrieves events from a MIDI stream. track = -1 for all tracks; filter e.g. [MIDI_EVENT_NOTES]. */
+  /**
+   * Retrieves events from a MIDI stream. track = -1 for all tracks; filter e.g. [MIDI_EVENT_NOTES].
+   */
   fun streamGetEvents(
     streamHandle: Int,
     track: Int = -1,
@@ -170,8 +209,7 @@ object Bass {
   fun play(channelHandle: Int, restart: Boolean = false): Boolean =
     BassPlatform.play(channelHandle, restart)
 
-  fun start(channelHandle: Int): Boolean =
-    BassPlatform.start(channelHandle)
+  fun start(channelHandle: Int): Boolean = BassPlatform.start(channelHandle)
 
   fun pause(channelHandle: Int): Boolean = BassPlatform.pause(channelHandle)
 
@@ -211,8 +249,7 @@ object Bass {
 
   fun freeStream(streamHandle: Int): Boolean = BassPlatform.freeStream(streamHandle)
 
-  fun freeSoundFont(soundFontHandle: Int): Boolean =
-    BassPlatform.freeSoundFont(soundFontHandle)
+  fun freeSoundFont(soundFontHandle: Int): Boolean = BassPlatform.freeSoundFont(soundFontHandle)
 
   /** Whether this platform's BASSMIDI build offers MIDI input (it does not on Android). */
   val midiInputSupported: Boolean
@@ -223,8 +260,8 @@ object Bass {
     BassPlatform.midiInGetDeviceInfo(device)
 
   /**
-   * Initializes MIDI input device [device]. [onData] receives the raw MIDI bytes as they arrive,
-   * on an internal BASS thread — it must hand the data off quickly and never block.
+   * Initializes MIDI input device [device]. [onData] receives the raw MIDI bytes as they arrive, on
+   * an internal BASS thread — it must hand the data off quickly and never block.
    */
   fun midiInInit(device: Int, onData: (ByteArray) -> Unit): Boolean =
     BassPlatform.midiInInit(device, onData)

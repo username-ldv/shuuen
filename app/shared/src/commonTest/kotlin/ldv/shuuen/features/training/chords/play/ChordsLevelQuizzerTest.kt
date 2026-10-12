@@ -1,8 +1,5 @@
 package ldv.shuuen.features.training.chords.play
 
-import kotlin.random.Random
-import kotlin.test.Test
-import kotlin.test.assertEquals
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.NoteRange
 import ldv.shuuen.core.music.Pitch
@@ -14,6 +11,9 @@ import ldv.shuuen.features.training.chords.domain.ChordsLevel
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.LevelSource
 import ldv.shuuen.features.training.domain.ScaleConfig
+import kotlin.random.Random
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class ChordsLevelQuizzerTest {
   /**
@@ -37,7 +37,7 @@ class ChordsLevelQuizzerTest {
                     ScaleConfig.ScaleItemState.ScalePitchState(Pitch.E, true),
                   ),
               )
-            ),
+            )
         ),
       context = null,
       source = LevelSource.User,
@@ -50,9 +50,12 @@ class ChordsLevelQuizzerTest {
 
   @Test
   fun fromBottomNamesEachOctaveCopyInTurn() {
-    val quizzer = ChordsLevelQuizzer(level(ChordAnswerOrder.FromBottom, size = 4), random = Random(1))
-    assertEquals(listOf(Note(Pitch.C, 3), Note(Pitch.E, 3), Note(Pitch.C, 4), Note(Pitch.E, 4)),
-      quizzer.quizState.value.currentChord)
+    val quizzer =
+      ChordsLevelQuizzer(level(ChordAnswerOrder.FromBottom, size = 4), random = Random(1))
+    assertEquals(
+      listOf(Note(Pitch.C, 3), Note(Pitch.E, 3), Note(Pitch.C, 4), Note(Pitch.E, 4)),
+      quizzer.quizState.value.currentChord,
+    )
 
     assertEquals(ChordGuessResult.Correct, quizzer.check(Pitch.C))
     assertEquals(ChordGuessResult.Correct, quizzer.check(Pitch.E))
@@ -64,8 +67,9 @@ class ChordsLevelQuizzerTest {
   }
 
   @Test
-  fun fromBottomRejectsAnAnsweredClassThatIsNotTheNextNote()  {
-    val quizzer = ChordsLevelQuizzer(level(ChordAnswerOrder.FromBottom, size = 4), random = Random(1))
+  fun fromBottomRejectsAnAnsweredClassThatIsNotTheNextNote() {
+    val quizzer =
+      ChordsLevelQuizzer(level(ChordAnswerOrder.FromBottom, size = 4), random = Random(1))
 
     assertEquals(ChordGuessResult.Correct, quizzer.check(Pitch.C))
     // C4 is in the chord but E3 is the next note from the bottom.
@@ -134,9 +138,12 @@ class ChordsLevelQuizzerTest {
         "Not a stacked diatonic triad: $chord",
       )
       // Answer the whole chord to advance to the next question.
-      chord.map { note -> note.pitch }.distinct().forEach { pitch ->
-        assertEquals(ChordGuessResult.Correct, quizzer.check(pitch))
-      }
+      chord
+        .map { note -> note.pitch }
+        .distinct()
+        .forEach { pitch ->
+          assertEquals(ChordGuessResult.Correct, quizzer.check(pitch))
+        }
     }
   }
 

@@ -37,14 +37,16 @@ internal class KtorBackendStatusMonitor(
   private suspend fun check(baseUrl: String): BackendStatus =
     try {
       withTimeout(CheckTimeoutMillis) {
-        client.get {
-          url(baseUrl)
-          url {
-            appendPathSegments("api", "v1", "courses")
-            parameters.append("limit", "1")
-            parameters.append("offset", "0")
+        client
+          .get {
+            url(baseUrl)
+            url {
+              appendPathSegments("api", "v1", "courses")
+              parameters.append("limit", "1")
+              parameters.append("offset", "0")
+            }
           }
-        }.bodyAsTextAndClose()
+          .bodyAsTextAndClose()
       }
       BackendStatus.Available
     } catch (_: TimeoutCancellationException) {

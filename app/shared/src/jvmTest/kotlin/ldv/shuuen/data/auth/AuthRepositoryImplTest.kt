@@ -14,17 +14,6 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
-import java.io.IOException
-import kotlin.io.path.createTempDirectory
-import kotlin.io.path.exists
-import kotlin.test.AfterTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -41,6 +30,17 @@ import ldv.shuuen.core.auth.AuthSession
 import ldv.shuuen.data.remote.ApiConfig
 import ldv.shuuen.data.remote.ApiJson
 import ldv.shuuen.data.remote.auth.AuthApi
+import java.io.IOException
+import kotlin.io.path.createTempDirectory
+import kotlin.io.path.exists
+import kotlin.test.AfterTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * These touch the real filesystem through KStore, which runs off the test scheduler, so they use
@@ -76,12 +76,16 @@ class AuthRepositoryImplTest {
   @Test
   fun theLoginRequestSendsTheTrimmedUsernameAndPassword() = runBlocking {
     var body: String? = null
-    val repository = repository(
-      engine = authEngine(login = { scope, request ->
-        body = request.body.toByteArray().decodeToString()
-        scope.jsonRespond(LoginResponse)
-      }),
-    )
+    val repository =
+      repository(
+        engine =
+          authEngine(
+            login = { scope, request ->
+              body = request.body.toByteArray().decodeToString()
+              scope.jsonRespond(LoginResponse)
+            }
+          )
+      )
 
     repository.signIn(" Learner ", "hunter2000")
 
@@ -92,14 +96,18 @@ class AuthRepositoryImplTest {
 
   @Test
   fun wrongCredentialsSurfaceAFriendlyMessage() = runBlocking {
-    val repository = repository(
-      engine = authEngine(login = { scope, _ ->
-        scope.jsonRespond(
-          """{"error":"invalid username or password"}""",
-          HttpStatusCode.Unauthorized,
-        )
-      }),
-    )
+    val repository =
+      repository(
+        engine =
+          authEngine(
+            login = { scope, _ ->
+              scope.jsonRespond(
+                """{"error":"invalid username or password"}""",
+                HttpStatusCode.Unauthorized,
+              )
+            }
+          )
+      )
 
     val error = assertFailsWith<AuthException> { repository.signIn("Learner", "wrong-password") }
 
@@ -110,14 +118,18 @@ class AuthRepositoryImplTest {
 
   @Test
   fun rateLimitedAttemptsAreReportedSeparately() = runBlocking {
-    val repository = repository(
-      engine = authEngine(login = { scope, _ ->
-        scope.jsonRespond(
-          """{"error":"too many authentication attempts"}""",
-          HttpStatusCode.TooManyRequests,
-        )
-      }),
-    )
+    val repository =
+      repository(
+        engine =
+          authEngine(
+            login = { scope, _ ->
+              scope.jsonRespond(
+                """{"error":"too many authentication attempts"}""",
+                HttpStatusCode.TooManyRequests,
+              )
+            }
+          )
+      )
 
     val error = assertFailsWith<AuthException> { repository.signIn("Learner", "hunter2000") }
 
@@ -137,11 +149,18 @@ class AuthRepositoryImplTest {
   fun aRejectedStoredTokenSignsTheUserOut() = runBlocking {
     repository(engine = authEngine()).signIn("Learner", "hunter2000")
 
-    val restarted = repository(
-      engine = authEngine(refresh = { scope, _ ->
-        scope.jsonRespond("""{"error":"token has been revoked"}""", HttpStatusCode.Unauthorized)
-      }),
-    )
+    val restarted =
+      repository(
+        engine =
+          authEngine(
+            refresh = { scope, _ ->
+              scope.jsonRespond(
+                """{"error":"token has been revoked"}""",
+                HttpStatusCode.Unauthorized,
+              )
+            }
+          )
+      )
 
     assertNull(restarted.session.await { it == null })
   }
@@ -151,18 +170,23 @@ class AuthRepositoryImplTest {
     repository(engine = authEngine()).signIn("Learner", "hunter2000")
 
     var presented: String? = null
-    val restarted = repository(
-      engine = authEngine(refresh = { scope, request ->
-        presented = request.headers[HttpHeaders.Authorization]
-        scope.jsonRespond(RefreshResponse)
-      }),
-    )
+    val restarted =
+      repository(
+        engine =
+          authEngine(
+            refresh = { scope, request ->
+              presented = request.headers[HttpHeaders.Authorization]
+              scope.jsonRespond(RefreshResponse)
+            }
+          )
+      )
 
     val renewed = restarted.session.await { it?.accessToken == "renewed-token" }
     assertEquals("Bearer issued-token", presented)
     assertEquals("Ada Lovelace", assertNotNull(renewed).user.displayName)
 
-    val offline = repository(engine = authEngine(refresh = { _, _ -> throw IOException("offline") }))
+    val offline =
+      repository(engine = authEngine(refresh = { _, _ -> throw IOException("offline") }))
     assertEquals("renewed-token", offline.session.await { it != null }?.accessToken)
   }
 
@@ -170,9 +194,8 @@ class AuthRepositoryImplTest {
   fun anUnreachableBackendKeepsTheStoredSession() = runBlocking {
     repository(engine = authEngine()).signIn("Learner", "hunter2000")
 
-    val restarted = repository(
-      engine = authEngine(refresh = { _, _ -> throw IOException("offline") }),
-    )
+    val restarted =
+      repository(engine = authEngine(refresh = { _, _ -> throw IOException("offline") }))
 
     val session = restarted.session.await { it != null }
     assertEquals("Learner", assertNotNull(session).user.username)
@@ -209,10 +232,11 @@ class AuthRepositoryImplTest {
   ): AuthRepositoryImpl {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     scopes += scope
-    val client = HttpClient(engine) {
-      expectSuccess = true
-      install(ContentNegotiation) { json(ApiJson) }
-    }
+    val client =
+      HttpClient(engine) {
+        expectSuccess = true
+        install(ContentNegotiation) { json(ApiJson) }
+      }
     return AuthRepositoryImpl(storePath, AuthApi(client), config, scope)
   }
 
@@ -224,14 +248,16 @@ class AuthRepositoryImplTest {
       {"data":{"user":{"id":7,"username":"Learner","display_name":"Ada","role":"user"},
       "access_token":"issued-token","token_type":"Bearer",
       "expires_at":"2026-08-03T10:00:00Z"}}
-      """.trimIndent()
+      """
+        .trimIndent()
 
     val RefreshResponse =
       """
       {"data":{"user":{"id":7,"username":"Learner","display_name":"Ada Lovelace","role":"user"},
       "access_token":"renewed-token","token_type":"Bearer",
       "expires_at":"2026-09-02T10:00:00Z"}}
-      """.trimIndent()
+      """
+        .trimIndent()
 
     fun MockRequestHandleScope.jsonRespond(
       body: String,
@@ -259,8 +285,7 @@ class AuthRepositoryImplTest {
     }
 
     /** Waits for the first value matching [predicate]; the flow is fed by background IO. */
-    suspend fun StateFlow<AuthSession?>.await(
-      predicate: (AuthSession?) -> Boolean,
-    ): AuthSession? = withTimeout(5_000) { first(predicate) }
+    suspend fun StateFlow<AuthSession?>.await(predicate: (AuthSession?) -> Boolean): AuthSession? =
+      withTimeout(5_000) { first(predicate) }
   }
 }

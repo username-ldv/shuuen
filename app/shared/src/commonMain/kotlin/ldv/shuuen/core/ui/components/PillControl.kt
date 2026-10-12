@@ -15,14 +15,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
- * Selectable chip. Selected state inverts to a white pill with black content;
- * unselected stays a quiet translucent fill.
+ * Selectable chip. Selected state inverts to a white pill with black content; unselected stays a
+ * quiet translucent fill.
  */
 @Composable
 fun PillControl(
@@ -34,20 +33,27 @@ fun PillControl(
   /** Shown at the end whatever the selection; a chevron marks a pill that opens a picker. */
   trailingIcon: ImageVector? = null,
   /**
-   * Whether the label stretches to the pill's width, pushing any trailing icon to the far edge.
-   * Off makes the pill only as wide as its content — necessary beside a flexible sibling, which
-   * is measured after the pill and would otherwise be left with nothing.
+   * Whether the label stretches to the pill's width, pushing any trailing icon to the far edge. Off
+   * makes the pill only as wide as its content — necessary beside a flexible sibling, which is
+   * measured after the pill and would otherwise be left with nothing.
    */
   fillLabel: Boolean = true,
   onClick: (() -> Unit)? = null,
 ) {
   val shape = ldv.shuuen.core.ui.components.ShuuenUi.ControlShape
-  val contentColor = if (selected) ldv.shuuen.core.ui.components.ShuuenUi.OnInverse else ldv.shuuen.core.ui.components.ShuuenUi.Muted
+  val contentColor =
+    if (selected) ldv.shuuen.core.ui.components.ShuuenUi.OnInverse
+    else ldv.shuuen.core.ui.components.ShuuenUi.Muted
   Row(
-    modifier = modifier.clip(shape)
-      .background(if (selected) ldv.shuuen.core.ui.components.ShuuenUi.Inverse else ldv.shuuen.core.ui.components.ShuuenUi.Ink.copy(alpha = 0.05f))
-      .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier.Companion)
-      .padding(horizontal = 12.dp, vertical = 9.dp),
+    modifier =
+      modifier
+        .clip(shape)
+        .background(
+          if (selected) ldv.shuuen.core.ui.components.ShuuenUi.Inverse
+          else ldv.shuuen.core.ui.components.ShuuenUi.Ink.copy(alpha = 0.05f)
+        )
+        .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier.Companion)
+        .padding(horizontal = 12.dp, vertical = 9.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(8.dp),
   ) {

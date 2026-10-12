@@ -23,8 +23,7 @@ internal actual object BassPlatform {
   actual fun init(device: Int, frequency: Int, flags: Int): Boolean =
     BASS.BASS_Init(device, frequency, flags)
 
-  actual fun setConfig(option: Int, value: Int): Boolean =
-    BASS.BASS_SetConfig(option, value)
+  actual fun setConfig(option: Int, value: Int): Boolean = BASS.BASS_SetConfig(option, value)
 
   actual fun free(): Boolean = BASS.BASS_Free()
 
@@ -40,25 +39,26 @@ internal actual object BassPlatform {
 
   actual fun createMidiStreamFromMemory(data: ByteArray, flags: Int, frequency: Int): Int {
     // A direct buffer is required so BASS can read the bytes; MIDI is fully loaded at creation.
-    val buffer = ByteBuffer.allocateDirect(data.size).apply {
-      put(data)
-      position(0)
-    }
+    val buffer =
+      ByteBuffer.allocateDirect(data.size).apply {
+        put(data)
+        position(0)
+      }
     return BASSMIDI.BASS_MIDI_StreamCreateFile(buffer, 0, data.size.toLong(), flags, frequency)
   }
 
   actual fun createFileStreamFromMemory(data: ByteArray, flags: Int): Int {
-    val buffer = ByteBuffer.allocateDirect(data.size).apply {
-      put(data)
-      position(0)
-    }
+    val buffer =
+      ByteBuffer.allocateDirect(data.size).apply {
+        put(data)
+        position(0)
+      }
     val handle = BASS.BASS_StreamCreateFile(buffer, 0, data.size.toLong(), flags)
     if (handle != 0) fileStreamBuffers[handle] = buffer
     return handle
   }
 
-  actual fun linkChannels(handle: Int, chan: Int): Boolean =
-    BASS.BASS_ChannelSetLink(handle, chan)
+  actual fun linkChannels(handle: Int, chan: Int): Boolean = BASS.BASS_ChannelSetLink(handle, chan)
 
   actual fun unlinkChannels(handle: Int, chan: Int): Boolean =
     BASS.BASS_ChannelRemoveLink(handle, chan)
@@ -142,28 +142,25 @@ internal actual object BassPlatform {
     preset: Int,
     bank: Int,
   ): Boolean {
-    val font = BASSMIDI.BASS_MIDI_FONT().apply {
-      font = soundFontHandle
-      this.preset = preset
-      this.bank = bank
-    }
+    val font =
+      BASSMIDI.BASS_MIDI_FONT().apply {
+        font = soundFontHandle
+        this.preset = preset
+        this.bank = bank
+      }
     return BASSMIDI.BASS_MIDI_StreamSetFonts(streamHandle, arrayOf(font), 1)
   }
 
   actual fun play(channelHandle: Int, restart: Boolean): Boolean =
     BASS.BASS_ChannelPlay(channelHandle, restart)
 
-  actual fun start(channelHandle: Int): Boolean =
-    BASS.BASS_ChannelStart(channelHandle)
+  actual fun start(channelHandle: Int): Boolean = BASS.BASS_ChannelStart(channelHandle)
 
-  actual fun pause(channelHandle: Int): Boolean =
-    BASS.BASS_ChannelPause(channelHandle)
+  actual fun pause(channelHandle: Int): Boolean = BASS.BASS_ChannelPause(channelHandle)
 
-  actual fun stop(channelHandle: Int): Boolean =
-    BASS.BASS_ChannelStop(channelHandle)
+  actual fun stop(channelHandle: Int): Boolean = BASS.BASS_ChannelStop(channelHandle)
 
-  actual fun channelIsActive(channelHandle: Int): Int =
-    BASS.BASS_ChannelIsActive(channelHandle)
+  actual fun channelIsActive(channelHandle: Int): Int = BASS.BASS_ChannelIsActive(channelHandle)
 
   actual fun channelGetPosition(channelHandle: Int, mode: Int): Long =
     BASS.BASS_ChannelGetPosition(channelHandle, mode)

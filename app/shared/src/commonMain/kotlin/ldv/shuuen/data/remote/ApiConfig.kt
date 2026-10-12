@@ -17,9 +17,7 @@ class ApiConfig(
   val normalizedDefaultBaseUrl: String =
     requireNotNull(normalizeBackendUrl(defaultBaseUrl)) { "The default backend URL is blank." }
 
-  val baseUrl: Flow<String> = configuredBaseUrl
-    .map(::effectiveBaseUrl)
-    .distinctUntilChanged()
+  val baseUrl: Flow<String> = configuredBaseUrl.map(::effectiveBaseUrl).distinctUntilChanged()
 
   fun effectiveBaseUrl(configured: String?): String =
     normalizeBackendUrl(configured) ?: normalizedDefaultBaseUrl

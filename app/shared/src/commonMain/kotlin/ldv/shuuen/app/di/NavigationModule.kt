@@ -1,11 +1,11 @@
 package ldv.shuuen.app.di
 
 import ldv.shuuen.features.auth.loginNavigationModule
-import ldv.shuuen.features.settings.settingsNavigationModule
 import ldv.shuuen.features.context.contextNavigationModule
 import ldv.shuuen.features.free_play.freePlayNavigationModule
 import ldv.shuuen.features.main.mainMenuNavigationModule
 import ldv.shuuen.features.pitch_slide.pitchSlideNavigationModule
+import ldv.shuuen.features.settings.settingsNavigationModule
 import ldv.shuuen.features.training.chords.chordsTrainingNavigationModule
 import ldv.shuuen.features.training.level_end.LevelCompleteViewModel
 import ldv.shuuen.features.training.melodies.melodiesTrainingNavigationModule
@@ -18,14 +18,14 @@ val navigationModule = module {
   viewModel<LevelCompleteViewModel>()
 
   includes(
-      mainMenuNavigationModule,
-      freePlayNavigationModule,
-      pitchSlideNavigationModule,
-      settingsNavigationModule,
-      loginNavigationModule,
-      contextNavigationModule,
-      singlesTrainingNavigationModule,
-      melodiesTrainingNavigationModule,
-      chordsTrainingNavigationModule,
+    mainMenuNavigationModule,
+    freePlayNavigationModule,
+    pitchSlideNavigationModule,
+    settingsNavigationModule,
+    loginNavigationModule,
+    contextNavigationModule,
+    singlesTrainingNavigationModule,
+    melodiesTrainingNavigationModule,
+    chordsTrainingNavigationModule,
   )
 }

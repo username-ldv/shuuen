@@ -13,12 +13,11 @@ import androidx.compose.ui.graphics.lerp
 import ldv.shuuen.core.settings.ThemeStyle
 
 /**
- * Maps a [ShuuenPalette] onto the Material roles. Direct colorScheme reads are
- * rare (the design tokens in ShuuenUi carry the look), but Material components
- * (text fields, menus, ripples) still pull their defaults from here, so every
- * colored role must stay monochrome. All roles are passed explicitly, which
- * makes the light/dark builder choice irrelevant — a ColorScheme is only a bag
- * of colors.
+ * Maps a [ShuuenPalette] onto the Material roles. Direct colorScheme reads are rare (the design
+ * tokens in ShuuenUi carry the look), but Material components (text fields, menus, ripples) still
+ * pull their defaults from here, so every colored role must stay monochrome. All roles are passed
+ * explicitly, which makes the light/dark builder choice irrelevant — a ColorScheme is only a bag of
+ * colors.
  */
 private fun shuuenColorScheme(palette: ShuuenPalette): ColorScheme {
   // Stepped neutral containers: background tinted with progressively more ink.

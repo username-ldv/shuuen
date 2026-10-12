@@ -3,12 +3,6 @@ package ldv.shuuen.features.training.chords.play
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.ExperimentalTime
-import kotlin.time.TimeSource
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
@@ -43,15 +37,21 @@ import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
 import ldv.shuuen.features.training.chords.domain.ChordsLevel
-import ldv.shuuen.features.training.course.domain.TrainingLevelResolver
 import ldv.shuuen.features.training.common.DegreeContextPlayer
 import ldv.shuuen.features.training.common.LevelPresetController
 import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.common.components.KeyFlashRequest
+import ldv.shuuen.features.training.course.domain.TrainingLevelResolver
 import ldv.shuuen.features.training.level_end.domain.QuestionResult
 import ldv.shuuen.features.training.level_end.domain.TrainingSession
 import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
 import ldv.shuuen.features.training.level_end.domain.longestCleanRun
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.ExperimentalTime
+import kotlin.time.TimeSource
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 sealed interface ChordsQuizPhase {
   object LoadingContext : ChordsQuizPhase
@@ -63,21 +63,21 @@ sealed interface ChordsQuizPhase {
 }
 
 data class ChordsPlayScreenState(
-    val levelData: ResponseState<ChordsLevel> = ResponseState.Loading,
-    val phase: ChordsQuizPhase = ChordsQuizPhase.LoadingContext,
-    val quizState: ChordsQuizState? = null,
+  val levelData: ResponseState<ChordsLevel> = ResponseState.Loading,
+  val phase: ChordsQuizPhase = ChordsQuizPhase.LoadingContext,
+  val quizState: ChordsQuizState? = null,
 )
 
 /** How long a non-sustained chord rings before its release. */
 val playChordDuration = 1800.milliseconds
 
 class ChordsPlayScreenViewModel(
-    levelId: String,
-    levelResolver: TrainingLevelResolver,
-    val midiEngine: MidiEngine,
-    settingsRepository: SettingsRepository,
-    private val trainingSessionRepository: TrainingSessionRepository,
-    midiKeyboardInput: MidiKeyboardInput,
+  levelId: String,
+  levelResolver: TrainingLevelResolver,
+  val midiEngine: MidiEngine,
+  settingsRepository: SettingsRepository,
+  private val trainingSessionRepository: TrainingSessionRepository,
+  midiKeyboardInput: MidiKeyboardInput,
 ) : ViewModel() {
   private val _state = MutableStateFlow(ChordsPlayScreenState())
   val state = _state.asStateFlow()
@@ -86,26 +86,26 @@ class ChordsPlayScreenViewModel(
 
   /** Whether any channel has alternative instruments, i.e. whether the shuffle button is useful. */
   val canShufflePresets: StateFlow<Boolean> =
-      settingsRepository.settings
-          .map { it.presets.hasChoices }
-          .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    settingsRepository.settings
+      .map { it.presets.hasChoices }
+      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
   /** The input component + interpretation mode chosen in settings. */
   val inputMethod: StateFlow<InputMethod> =
-      settingsRepository.settings
-          .map { it.inputMethod }
-          .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InputMethod())
+    settingsRepository.settings
+      .map { it.inputMethod }
+      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InputMethod())
 
   val musicLabels: StateFlow<MusicLabelSettings> =
-      settingsRepository.settings
-          .map { it.musicLabels }
-          .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MusicLabelSettings())
+    settingsRepository.settings
+      .map { it.musicLabels }
+      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MusicLabelSettings())
 
   // Read at the moment a MIDI key lands, so it must always hold the latest value: Eagerly.
   private val midiRespectOctaves: StateFlow<Boolean> =
-      settingsRepository.settings
-          .map { it.midiRespectOctaves }
-          .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    settingsRepository.settings
+      .map { it.midiRespectOctaves }
+      .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
   private var degreeContextPlayer: DegreeContextPlayer? = null
 
@@ -131,19 +131,19 @@ class ChordsPlayScreenViewModel(
   // Setup-melody highlights and answer feedback are both transient flashes driven by the screen
   // through PianoKeyboardState. The VM only emits which key/color to flash as the melody plays.
   private val _setupMelodyFlashes =
-      MutableSharedFlow<KeyFlashRequest>(
-          extraBufferCapacity = 8,
-          onBufferOverflow = BufferOverflow.DROP_OLDEST,
-      )
+    MutableSharedFlow<KeyFlashRequest>(
+      extraBufferCapacity = 8,
+      onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
   val setupMelodyFlashes: SharedFlow<KeyFlashRequest> = _setupMelodyFlashes.asSharedFlow()
 
   // Answer feedback for MIDI keyboard guesses: the screen flashes the input item matching the
   // played key's pitch class, exactly like it does for its own taps.
   private val _midiGuessFlashes =
-      MutableSharedFlow<KeyFlashRequest>(
-          extraBufferCapacity = 8,
-          onBufferOverflow = BufferOverflow.DROP_OLDEST,
-      )
+    MutableSharedFlow<KeyFlashRequest>(
+      extraBufferCapacity = 8,
+      onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
   val midiGuessFlashes: SharedFlow<KeyFlashRequest> = _midiGuessFlashes.asSharedFlow()
 
   init {
@@ -164,14 +164,16 @@ class ChordsPlayScreenViewModel(
         is MidiEngineStatus.Failed -> error("Failed MidiEngine audio initializition")
       }
 
-      val level =
-        runCatching { levelResolver.resolveChords(levelId) }
-          .getOrElse { error ->
-            _state.update { it.copy(levelData = ResponseState.Error(error)) }
-            return@launch
-          }
+      val level = runCatching {
+        levelResolver.resolveChords(levelId)
+      }
+        .getOrElse { error ->
+          _state.update { it.copy(levelData = ResponseState.Error(error)) }
+          return@launch
+        }
       _state.update { it.copy(levelData = ResponseState.Success(level)) }
-      val allowSevenAccidentalKeys = settingsRepository.settings.map { it.allowSevenAccidentalKeys }.first()
+      val allowSevenAccidentalKeys =
+        settingsRepository.settings.map { it.allowSevenAccidentalKeys }.first()
       presets.begin()
       sustainNotes = level.sustainNotes
       quizzer = ChordsLevelQuizzer(level, allowSevenAccidentalKeys)
@@ -195,7 +197,9 @@ class ChordsPlayScreenViewModel(
         // The level's opening instruments were rolled in begin(); question 1 keeps them.
         if (quizState.currentQuestionNumber > 1) presets.onQuestion()
 
-        if (degreeContextPlayer?.isChangingNode(quizState.currentQuestionNumber, isNewRoot) ?: false) {
+        if (
+          degreeContextPlayer?.isChangingNode(quizState.currentQuestionNumber, isNewRoot) ?: false
+        ) {
           Napier.v { "cancelling the currently playing chord BECAUSE of the new node starting..." }
           playChordJob?.cancelAndJoin()
         }
@@ -235,10 +239,10 @@ class ChordsPlayScreenViewModel(
   fun userGuessed(index: Int, mode: InputMode): ChordGuessResult? {
     val quizzer = quizzer ?: return null
     val pitch =
-        when (mode) {
-          InputMode.Absolute -> Pitch.fromOrdinal(index)
-          InputMode.Relative -> Degree.fromOffset(index).pitch(quizzer.quizState.value.root)
-        }
+      when (mode) {
+        InputMode.Absolute -> Pitch.fromOrdinal(index)
+        InputMode.Relative -> Degree.fromOffset(index).pitch(quizzer.quizState.value.root)
+      }
     return userGuessed(pitch)
   }
 
@@ -266,19 +270,20 @@ class ChordsPlayScreenViewModel(
 
   /**
    * A key pressed on a connected MIDI keyboard answers like a tap on the input item of the key's
-   * pitch class, regardless of the on-screen input method. With the respect-octaves setting on,
-   * the exact key (octave included) must match a chord note.
+   * pitch class, regardless of the on-screen input method. With the respect-octaves setting on, the
+   * exact key (octave included) must match a chord note.
    */
   private fun midiKeyPressed(midiIndex: Int) {
     if (_state.value.phase != ChordsQuizPhase.AwaitingAnswer) return
     val pitch = Pitch.fromOrdinal(midiIndex)
     val exactMidiIndex = midiIndex.takeIf { midiRespectOctaves.value }
     val color =
-        when (userGuessed(pitch, exactMidiIndex)) {
-          ChordGuessResult.Correct -> ShuuenUi.Correct
-          ChordGuessResult.Incorrect -> ShuuenUi.Incorrect
-          ChordGuessResult.Ignored, null -> return
-        }
+      when (userGuessed(pitch, exactMidiIndex)) {
+        ChordGuessResult.Correct -> ShuuenUi.Correct
+        ChordGuessResult.Incorrect -> ShuuenUi.Incorrect
+        ChordGuessResult.Ignored,
+        null -> return
+      }
     _midiGuessFlashes.tryEmit(KeyFlashRequest(pitch, color))
   }
 
@@ -322,43 +327,44 @@ class ChordsPlayScreenViewModel(
     // so it doesn't count as an answered (missed) question.
     val missedQuestions =
       quizState.incorrectAnswers.map { it.questionNumber }.filter { it <= answered }.toSet()
-    val session = TrainingSession(
-      id = Uuid.generateV7().toString(),
-      flow = TrainingFlow.Chords,
-      levelId = level.id,
-      levelName = level.name,
-      completedAtEpochMillis = Clock.System.now().toEpochMilliseconds(),
-      finishedEarly = finishedEarly,
-      questionsAnswered = answered,
-      notesTotal = answered,
-      correctNotes = quizState.correctAnswers,
-      missedNotes = missedQuestions.size,
-      replays = replayCount,
-      durationMillis = sessionStartMark?.elapsedNow()?.inWholeMilliseconds ?: 0L,
-      avgAnswerMillis =
-        answerTimesMillis.takeIf { it.isNotEmpty() }?.let { it.sum() / it.size },
-      avgDeltaMillis = null,
-      bestStreak = longestCleanRun(answered, missedQuestions.map { it - 1 }.toSet()),
-      keysPracticed = rootsPracticed.size,
-      questionResults =
-        (1..answered).map { q -> QuestionResult(q, 1, if (q in missedQuestions) 1 else 0) },
-    )
-    val savedId =
-      runCatching { trainingSessionRepository.saveSession(session) }
-        .fold(
-          onSuccess = { session.id },
-          onFailure = {
-            Napier.w(it) { "Failed to save the training session" }
-            null
-          },
-        )
+    val session =
+      TrainingSession(
+        id = Uuid.generateV7().toString(),
+        flow = TrainingFlow.Chords,
+        levelId = level.id,
+        levelName = level.name,
+        completedAtEpochMillis = Clock.System.now().toEpochMilliseconds(),
+        finishedEarly = finishedEarly,
+        questionsAnswered = answered,
+        notesTotal = answered,
+        correctNotes = quizState.correctAnswers,
+        missedNotes = missedQuestions.size,
+        replays = replayCount,
+        durationMillis = sessionStartMark?.elapsedNow()?.inWholeMilliseconds ?: 0L,
+        avgAnswerMillis = answerTimesMillis.takeIf { it.isNotEmpty() }?.let { it.sum() / it.size },
+        avgDeltaMillis = null,
+        bestStreak = longestCleanRun(answered, missedQuestions.map { it - 1 }.toSet()),
+        keysPracticed = rootsPracticed.size,
+        questionResults =
+          (1..answered).map { q -> QuestionResult(q, 1, if (q in missedQuestions) 1 else 0) },
+      )
+    val savedId = runCatching {
+      trainingSessionRepository.saveSession(session)
+    }
+      .fold(
+        onSuccess = { session.id },
+        onFailure = {
+          Napier.w(it) { "Failed to save the training session" }
+          null
+        },
+      )
     _state.update { it.copy(phase = ChordsQuizPhase.Complete(sessionId = savedId)) }
   }
 
   /**
    * Plays [notes] as one chord. A sustained level holds the chord until the next question's chord
-   * (or a replay) cancels it; otherwise it rings for [playChordDuration] and releases. Exclusive:
-   * a new call cancels the previous playback and waits for its note-off to finish before the new
+   * (or a replay) cancels it; otherwise it rings for [playChordDuration] and releases. Exclusive: a
+   * new call cancels the previous playback and waits for its note-off to finish before the new
    * note-on, so a rapid replay can't let an earlier stop land after a later start.
    */
   private fun playChord(notes: List<Note>) {
@@ -390,7 +396,9 @@ class ChordsPlayScreenViewModel(
     readyStatusJob = viewModelScope.launch {
       player.ready.collect { ready ->
         _state.update {
-          it.copy(phase = if (ready) ChordsQuizPhase.AwaitingAnswer else ChordsQuizPhase.LoadingContext)
+          it.copy(
+            phase = if (ready) ChordsQuizPhase.AwaitingAnswer else ChordsQuizPhase.LoadingContext
+          )
         }
       }
     }
@@ -401,7 +409,7 @@ class ChordsPlayScreenViewModel(
       player.setupMelodyNotes.collect { note ->
         if (note != null) {
           _setupMelodyFlashes.emit(
-              KeyFlashRequest(note.pitch, PianoKeyboardDefaults.MonochromePressedColor)
+            KeyFlashRequest(note.pitch, PianoKeyboardDefaults.MonochromePressedColor)
           )
         }
       }

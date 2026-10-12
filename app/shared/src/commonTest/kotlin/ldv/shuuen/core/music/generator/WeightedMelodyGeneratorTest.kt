@@ -1,19 +1,18 @@
 package ldv.shuuen.core.music.generator
 
+import ldv.shuuen.core.music.Note
+import ldv.shuuen.core.music.NoteRange
+import ldv.shuuen.core.music.NoteValue
+import ldv.shuuen.core.music.Pitch
 import kotlin.math.abs
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
-import ldv.shuuen.core.music.Note
-import ldv.shuuen.core.music.NoteRange
-import ldv.shuuen.core.music.NoteValue
-import ldv.shuuen.core.music.Pitch
 
 class WeightedMelodyGeneratorTest {
-  private val cMajorPitches =
-    listOf(Pitch.C, Pitch.D, Pitch.E, Pitch.F, Pitch.G, Pitch.A, Pitch.B)
+  private val cMajorPitches = listOf(Pitch.C, Pitch.D, Pitch.E, Pitch.F, Pitch.G, Pitch.A, Pitch.B)
 
   private fun generator(
     style: MelodyStyle,
@@ -107,8 +106,7 @@ class WeightedMelodyGeneratorTest {
     val generated = notes(generator(MelodyStyles.SteadyQuarters), atLeast = 500)
 
     val reached = generated.map { it.note }.toSet()
-    val expected =
-      (Note(Pitch.C, 4)..Note(Pitch.C, 5)).filter { it.pitch in cMajorPitches }.toSet()
+    val expected = (Note(Pitch.C, 4)..Note(Pitch.C, 5)).filter { it.pitch in cMajorPitches }.toSet()
     assertEquals(expected, reached)
   }
 

@@ -3,14 +3,11 @@ package ldv.shuuen.data.remote.course
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
-@Serializable
-internal data class DataEnvelopeDto<T>(val data: T)
+@Serializable internal data class DataEnvelopeDto<T>(val data: T)
 
-@Serializable
-internal data class PageEnvelopeDto<T>(val data: List<T>, val meta: PageMetaDto)
+@Serializable internal data class PageEnvelopeDto<T>(val data: List<T>, val meta: PageMetaDto)
 
-@Serializable
-internal data class PageMetaDto(val limit: Int, val offset: Int, val total: Long)
+@Serializable internal data class PageMetaDto(val limit: Int, val offset: Int, val total: Long)
 
 @Serializable
 internal data class CourseDto(
@@ -89,5 +86,4 @@ internal data class CourseLevelDto(
   val navigation: CourseLevelNavigationDto? = null,
 )
 
-@Serializable
-internal data class QueryCourseLevelsRequestDto(val ids: List<String>)
+@Serializable internal data class QueryCourseLevelsRequestDto(val ids: List<String>)

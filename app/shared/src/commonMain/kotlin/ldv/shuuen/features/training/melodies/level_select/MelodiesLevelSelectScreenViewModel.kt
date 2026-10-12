@@ -6,28 +6,28 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import ldv.shuuen.core.music.DegreeContext
 import ldv.shuuen.core.settings.CourseOverrides
 import ldv.shuuen.core.settings.DefaultLevelStatsWindow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
-import ldv.shuuen.core.music.DegreeContext
 import ldv.shuuen.core.settings.MidiLevelOptions
 import ldv.shuuen.core.settings.SettingsRepository
+import ldv.shuuen.core.settings.coerceLevelStatsWindow
 import ldv.shuuen.features.training.common.LevelAccuracyStats
 import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.common.components.TuneInconsistencyRange
-import ldv.shuuen.core.settings.coerceLevelStatsWindow
-import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
-import ldv.shuuen.features.training.melodies.domain.MelodiesLocalLevelRepository
 import ldv.shuuen.features.training.course.domain.CourseRepository
 import ldv.shuuen.features.training.course.domain.PlayableTrainingLevel
 import ldv.shuuen.features.training.course.presentation.CourseLevelBrowser
+import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
+import ldv.shuuen.features.training.melodies.domain.MelodiesLocalLevelRepository
 
 class MelodiesLevelSelectScreenViewModel(
   private val levelRepository: MelodiesLocalLevelRepository,
@@ -77,7 +77,9 @@ class MelodiesLevelSelectScreenViewModel(
     }
   }
 
-  /** Local per-course level overrides, applied to course level cards and edited in the course sheet. */
+  /**
+   * Local per-course level overrides, applied to course level cards and edited in the course sheet.
+   */
   val courseOverrides: StateFlow<Map<Long, CourseOverrides>> =
     settingsRepository.settings
       .map { it.courseOverrides }
@@ -86,19 +88,22 @@ class MelodiesLevelSelectScreenViewModel(
 
   fun setCourseTuneInconsistency(courseId: Long, cents: Int?) {
     viewModelScope.launch {
-      settingsRepository.setCourseTuneInconsistency(courseId, cents?.coerceIn(TuneInconsistencyRange))
+      settingsRepository.setCourseTuneInconsistency(
+        courseId,
+        cents?.coerceIn(TuneInconsistencyRange),
+      )
     }
   }
 
   val attemptedLevelIds =
-    trainingSessionRepository.observeAttemptedLevelIds(TrainingFlow.Melodies)
+    trainingSessionRepository
+      .observeAttemptedLevelIds(TrainingFlow.Melodies)
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
   @OptIn(ExperimentalCoroutinesApi::class)
-  fun levelStats(levelId: String): Flow<LevelAccuracyStats> =
-    statsWindow.flatMapLatest { window ->
-      trainingSessionRepository.observeLevelAccuracyStats(TrainingFlow.Melodies, levelId, window)
-    }
+  fun levelStats(levelId: String): Flow<LevelAccuracyStats> = statsWindow.flatMapLatest { window ->
+    trainingSessionRepository.observeLevelAccuracyStats(TrainingFlow.Melodies, levelId, window)
+  }
 
   fun deleteLevel(levelId: String) {
     viewModelScope.launch {
@@ -124,11 +129,17 @@ class MelodiesLevelSelectScreenViewModel(
   }
 
   fun refreshCourses() = courseBrowser.refreshCourses()
+
   fun selectMyLevels() = courseBrowser.selectMyLevels()
+
   fun selectCourse(courseId: Long) = courseBrowser.selectCourse(courseId)
+
   fun selectGroup(groupId: String) = courseBrowser.selectGroup(groupId)
+
   fun loadNextPage() = courseBrowser.loadNextPage()
+
   suspend fun firstUnattemptedCourseLevel(attemptedLevelIds: Set<String>): String? =
     courseBrowser.firstUnattemptedReference(attemptedLevelIds)
+
   fun retryCourseLevels() = courseBrowser.retryLevels()
 }

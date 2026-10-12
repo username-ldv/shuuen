@@ -2,11 +2,9 @@ package ldv.shuuen.data.remote.auth
 
 import kotlinx.serialization.Serializable
 
-@Serializable
-internal data class AuthEnvelopeDto<T>(val data: T)
+@Serializable internal data class AuthEnvelopeDto<T>(val data: T)
 
-@Serializable
-internal data class LoginRequestDto(val username: String, val password: String)
+@Serializable internal data class LoginRequestDto(val username: String, val password: String)
 
 @Serializable
 internal data class AuthResultDto(
@@ -25,5 +23,4 @@ internal data class AuthUserDto(
 )
 
 /** The backend's error envelope: `{"error": "...", "details": ...}`. */
-@Serializable
-internal data class ApiErrorDto(val error: String = "")
+@Serializable internal data class ApiErrorDto(val error: String = "")

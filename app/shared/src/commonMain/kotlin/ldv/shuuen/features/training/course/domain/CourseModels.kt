@@ -73,15 +73,18 @@ sealed interface PlayableTrainingLevel {
   val id: String
 
   data class Singles(val level: SinglesLevel) : PlayableTrainingLevel {
-    override val id: String get() = level.id
+    override val id: String
+      get() = level.id
   }
 
   data class Melodies(val level: MelodiesLevel) : PlayableTrainingLevel {
-    override val id: String get() = level.id
+    override val id: String
+      get() = level.id
   }
 
   data class Chords(val level: ChordsLevel) : PlayableTrainingLevel {
-    override val id: String get() = level.id
+    override val id: String
+      get() = level.id
   }
 }
 

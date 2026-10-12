@@ -1,11 +1,11 @@
 package ldv.shuuen.training
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import ldv.shuuen.features.training.level_end.domain.QuestionResult
 import ldv.shuuen.features.training.level_end.domain.accuracyBuckets
 import ldv.shuuen.features.training.level_end.domain.longestCleanRun
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class SessionStatsTest {
   @Test

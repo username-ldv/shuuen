@@ -29,7 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -59,20 +58,21 @@ fun TextDropdownMenu(
       onValueChange = {},
       enabled = false,
       shape = ldv.shuuen.core.ui.components.ShuuenUi.ControlShape,
-      colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
-        disabledTextColor = ldv.shuuen.core.ui.components.ShuuenUi.Text,
-        disabledBorderColor = ldv.shuuen.core.ui.components.ShuuenUi.HairlineStrong,
-        disabledTrailingIconColor = ldv.shuuen.core.ui.components.ShuuenUi.Muted,
-        disabledLabelColor = ldv.shuuen.core.ui.components.ShuuenUi.Muted,
-        disabledPlaceholderColor = ldv.shuuen.core.ui.components.ShuuenUi.Muted,
-      ),
+      colors =
+        ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+          disabledTextColor = ldv.shuuen.core.ui.components.ShuuenUi.Text,
+          disabledBorderColor = ldv.shuuen.core.ui.components.ShuuenUi.HairlineStrong,
+          disabledTrailingIconColor = ldv.shuuen.core.ui.components.ShuuenUi.Muted,
+          disabledLabelColor = ldv.shuuen.core.ui.components.ShuuenUi.Muted,
+          disabledPlaceholderColor = ldv.shuuen.core.ui.components.ShuuenUi.Muted,
+        ),
       readOnly = true,
       singleLine = true,
       trailingIcon = {
         ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
       },
-      modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-        .fillMaxWidth(),
+      modifier =
+        Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
     )
 
     ExposedDropdownMenu(
@@ -106,9 +106,9 @@ fun TextDropdownMenu(
 }
 
 /**
- * Same tap-to-open menu as [TextDropdownMenu], but anchored on a compact 34dp pill
- * instead of an [OutlinedTextField] — visually matching the inline pill controls
- * (e.g. [ldv.shuuen.core.ui.components.music.OctaveStepper]) so it sits flush beside them.
+ * Same tap-to-open menu as [TextDropdownMenu], but anchored on a compact 34dp pill instead of an
+ * [OutlinedTextField] — visually matching the inline pill controls (e.g.
+ * [ldv.shuuen.core.ui.components.music.OctaveStepper]) so it sits flush beside them.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -127,12 +127,12 @@ fun CompactDropdownMenu(
     modifier = modifier,
   ) {
     Row(
-      modifier = Modifier
-        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-        .height(34.dp)
-        .clip(ShuuenUi.PillShape)
-        .background(ShuuenUi.Ink.copy(alpha = 0.05f))
-        .padding(start = 16.dp, end = 10.dp),
+      modifier =
+        Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+          .height(34.dp)
+          .clip(ShuuenUi.PillShape)
+          .background(ShuuenUi.Ink.copy(alpha = 0.05f))
+          .padding(start = 16.dp, end = 10.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -196,7 +196,8 @@ private fun TextDropdownMenuPreview() {
       CompactDropdownMenu(
         items = Pitch.entries.map { it.toString() },
         selectedItem = Pitch.C.toString(),
-        onItemSelected = {})
+        onItemSelected = {},
+      )
     }
   }
 }

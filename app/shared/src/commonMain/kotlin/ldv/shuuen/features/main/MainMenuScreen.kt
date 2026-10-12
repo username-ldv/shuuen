@@ -1,11 +1,11 @@
 package ldv.shuuen.features.main
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,10 +13,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.LibraryBooks
@@ -56,6 +56,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ldv.shuuen.core.auth.AuthRepository
+import ldv.shuuen.core.sync.DataSyncStatus
 import ldv.shuuen.core.ui.components.AccountBadge
 import ldv.shuuen.core.ui.components.BackendStatusBadge
 import ldv.shuuen.core.ui.components.Hairline
@@ -66,8 +68,6 @@ import ldv.shuuen.core.ui.components.ShuuenTopAppBarType
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.SurfaceCard
-import ldv.shuuen.core.auth.AuthRepository
-import ldv.shuuen.core.sync.DataSyncStatus
 import ldv.shuuen.features.training.common.TrainingFlow
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.koinInject
@@ -101,13 +101,11 @@ fun MainMenuScreen(
           DataSyncButton(status = state.dataSyncStatus, onClick = viewModel::syncData)
           MidiKeyboardBadge()
         },
-        type = ShuuenTopAppBarType.Simple
+        type = ShuuenTopAppBarType.Simple,
       )
-    },
+    }
   ) {
-    Box(
-      modifier = Modifier.fillMaxWidth()
-    ) {
+    Box(modifier = Modifier.fillMaxWidth()) {
       Column(
         modifier = Modifier.align(Alignment.Center),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -222,10 +220,11 @@ private fun ContinueCard(
         Text(
           text = "CONTINUE",
           color = ShuuenUi.Muted,
-          style = MaterialTheme.typography.labelLarge.copy(
-            letterSpacing = ShuuenUi.labelSpacing,
-            fontWeight = FontWeight.SemiBold,
-          ),
+          style =
+            MaterialTheme.typography.labelLarge.copy(
+              letterSpacing = ShuuenUi.labelSpacing,
+              fontWeight = FontWeight.SemiBold,
+            ),
         )
         Text(
           text = "${state.flow.label} — ${state.levelName}",
@@ -285,14 +284,18 @@ private fun ContinueCard(
 
         AnimatedVisibility(
           visible = groupsExpanded && otherGroups.isNotEmpty(),
-          enter = fadeIn(tween(180)) + expandVertically(
-            animationSpec = tween(220),
-            expandFrom = Alignment.Top,
-          ),
-          exit = fadeOut(tween(140)) + shrinkVertically(
-            animationSpec = tween(200),
-            shrinkTowards = Alignment.Top,
-          ),
+          enter =
+            fadeIn(tween(180)) +
+              expandVertically(
+                animationSpec = tween(220),
+                expandFrom = Alignment.Top,
+              ),
+          exit =
+            fadeOut(tween(140)) +
+              shrinkVertically(
+                animationSpec = tween(200),
+                shrinkTowards = Alignment.Top,
+              ),
         ) {
           Column(
             modifier = Modifier.padding(top = 10.dp),
@@ -330,7 +333,8 @@ private fun ContinueCard(
           TextButton(onClick = { groupsExpanded = !groupsExpanded }) {
             Text(if (groupsExpanded) "HIDE GROUPS" else "ALL GROUPS")
             Icon(
-              imageVector = if (groupsExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+              imageVector =
+                if (groupsExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
               contentDescription = null,
               modifier = Modifier.size(20.dp),
             )
@@ -371,7 +375,8 @@ private fun ProgressBlock(
       Text(
         text = label,
         color = if (compact) ShuuenUi.Muted else ShuuenUi.Text,
-        style = if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.labelLarge,
+        style =
+          if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.labelLarge,
         modifier = Modifier.weight(1f),
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
@@ -388,11 +393,12 @@ private fun ProgressBlock(
 }
 
 private val TrainingFlow.label: String
-  get() = when (this) {
-    TrainingFlow.Singles -> "Singles"
-    TrainingFlow.Melodies -> "Melodies"
-    TrainingFlow.Chords -> "Chords"
-  }
+  get() =
+    when (this) {
+      TrainingFlow.Singles -> "Singles"
+      TrainingFlow.Melodies -> "Melodies"
+      TrainingFlow.Chords -> "Chords"
+    }
 
 @Composable
 private fun ExerciseList(
@@ -458,10 +464,11 @@ private fun ExerciseRow(
 ) {
   val enabled = onClick != null
   Row(
-    modifier = Modifier.fillMaxWidth()
-      .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-      .padding(horizontal = 18.dp, vertical = 15.dp)
-      .alpha(if (enabled) 1f else 0.38f),
+    modifier =
+      Modifier.fillMaxWidth()
+        .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+        .padding(horizontal = 18.dp, vertical = 15.dp)
+        .alpha(if (enabled) 1f else 0.38f),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(16.dp),
   ) {
@@ -478,10 +485,11 @@ private fun ExerciseRow(
       Text(
         text = title,
         color = ShuuenUi.Text,
-        style = MaterialTheme.typography.titleMedium.copy(
-          letterSpacing = ShuuenUi.titlesSpacing,
-          fontWeight = FontWeight.SemiBold,
-        ),
+        style =
+          MaterialTheme.typography.titleMedium.copy(
+            letterSpacing = ShuuenUi.titlesSpacing,
+            fontWeight = FontWeight.SemiBold,
+          ),
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
       )

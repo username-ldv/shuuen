@@ -39,9 +39,10 @@ val chordsTrainingNavigationModule = module {
 
   navigation<AppRoute.ChordsSetup> { route ->
     val navigator = LocalAppNavigator.current
-    val viewModel = koinViewModel<ChordsSetupScreenViewModel> {
-      parametersOf(route.levelId.orEmpty())
-    }
+    val viewModel =
+      koinViewModel<ChordsSetupScreenViewModel> {
+        parametersOf(route.levelId.orEmpty())
+      }
     val resultStore = LocalNavResultStore.current
     val result = resultStore.peek(ChordsContextResult)
     LaunchedEffect(result) {

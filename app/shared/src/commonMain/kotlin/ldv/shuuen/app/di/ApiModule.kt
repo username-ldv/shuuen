@@ -17,19 +17,19 @@ import ldv.shuuen.data.remote.auth.AuthApi
 import ldv.shuuen.data.remote.course.CourseApi
 import ldv.shuuen.data.remote.course.CourseDefinitionMapper
 import ldv.shuuen.data.remote.course.CourseRepositoryImpl
-import ldv.shuuen.data.remote.course.MidiContentResolverImpl
 import ldv.shuuen.data.remote.course.LevelDefinitionCodec
+import ldv.shuuen.data.remote.course.MidiContentResolverImpl
+import ldv.shuuen.data.remote.createPlatformApiHttpClient
+import ldv.shuuen.data.remote.defaultApiBaseUrl
 import ldv.shuuen.data.remote.sync.LevelSyncApi
 import ldv.shuuen.data.remote.sync.LevelSyncRepositoryImpl
 import ldv.shuuen.data.remote.sync.TrainingSessionSyncApi
 import ldv.shuuen.data.remote.sync.TrainingSessionSyncRepositoryImpl
-import ldv.shuuen.data.remote.createPlatformApiHttpClient
-import ldv.shuuen.data.remote.defaultApiBaseUrl
 import ldv.shuuen.features.training.course.domain.CourseRepository
 import ldv.shuuen.features.training.melodies.domain.MidiContentResolver
+import org.koin.core.qualifier.named
 import org.koin.dsl.bind
 import org.koin.dsl.module
-import org.koin.core.qualifier.named
 import org.koin.plugin.module.dsl.single
 
 val apiModule = module {

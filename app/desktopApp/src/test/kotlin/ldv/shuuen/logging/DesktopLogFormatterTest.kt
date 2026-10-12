@@ -14,15 +14,16 @@ class DesktopLogFormatterTest {
   fun `formats Napier message with fixed timestamp`() {
     val record =
       LogRecord(
-        Level.FINEST,
-        "[VERBOSE] AppNavigator\$navigateTo - Navigate happened",
-      ).apply {
-        instant = Instant.parse("2026-06-06T14:38:03.123Z")
-      }
+          Level.FINEST,
+          "[VERBOSE] AppNavigator\$navigateTo - Navigate happened",
+        )
+        .apply {
+          instant = Instant.parse("2026-06-06T14:38:03.123Z")
+        }
 
     assertEquals(
       "2026-06-06 14:38:03.123 [VERBOSE] AppNavigator\$navigateTo - Navigate happened" +
-          System.lineSeparator(),
+        System.lineSeparator(),
       formatter.format(record),
     )
   }
@@ -32,10 +33,11 @@ class DesktopLogFormatterTest {
     val lineSeparator = System.lineSeparator()
     val message =
       listOf(
-        "[ERROR] Player - Playback failed",
-        "java.lang.IllegalStateException: decoder stopped",
-        "\tat ldv.shuuen.Player.play(Player.kt:42)",
-      ).joinToString(lineSeparator, postfix = lineSeparator)
+          "[ERROR] Player - Playback failed",
+          "java.lang.IllegalStateException: decoder stopped",
+          "\tat ldv.shuuen.Player.play(Player.kt:42)",
+        )
+        .joinToString(lineSeparator, postfix = lineSeparator)
     val record =
       LogRecord(Level.SEVERE, message).apply {
         instant = Instant.parse("2026-06-06T14:38:03.123Z")

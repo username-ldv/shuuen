@@ -25,13 +25,14 @@ import ldv.shuuen.data.database.entity.SinglesLevelDbEntity
 import ldv.shuuen.data.database.entity.TrainingSessionDbEntity
 
 @Database(
-  entities = [
-    SinglesLevelDbEntity::class,
-    MelodiesLevelDbEntity::class,
-    ChordsLevelDbEntity::class,
-    ContextDbEntity::class,
-    TrainingSessionDbEntity::class,
-  ],
+  entities =
+    [
+      SinglesLevelDbEntity::class,
+      MelodiesLevelDbEntity::class,
+      ChordsLevelDbEntity::class,
+      ContextDbEntity::class,
+      TrainingSessionDbEntity::class,
+    ],
   version = 8,
 )
 @TypeConverters(
@@ -45,9 +46,13 @@ import ldv.shuuen.data.database.entity.TrainingSessionDbEntity
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
   abstract fun singlesLevelDao(): SinglesLevelDao
+
   abstract fun melodiesLevelDao(): MelodiesLevelDao
+
   abstract fun chordsLevelDao(): ChordsLevelDao
+
   abstract fun contextDao(): ContextDao
+
   abstract fun trainingSessionDao(): TrainingSessionDao
 }
 
@@ -55,8 +60,6 @@ expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
   override fun initialize(): AppDatabase
 }
 
-fun createDatabase(
-  builder: RoomDatabase.Builder<AppDatabase>
-): AppDatabase {
+fun createDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
   return builder.setDriver(BundledSQLiteDriver()).setQueryCoroutineContext(Dispatchers.IO).build()
 }

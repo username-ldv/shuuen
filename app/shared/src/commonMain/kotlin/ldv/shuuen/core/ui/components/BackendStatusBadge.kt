@@ -18,7 +18,9 @@ import ldv.shuuen.core.online.BackendStatus
 import ldv.shuuen.core.online.BackendStatusMonitor
 import org.koin.compose.koinInject
 
-/** App-bar indicator for the optional backend. Unlike the MIDI badge, it remains visible offline. */
+/**
+ * App-bar indicator for the optional backend. Unlike the MIDI badge, it remains visible offline.
+ */
 @Composable
 fun BackendStatusBadge(
   modifier: Modifier = Modifier,

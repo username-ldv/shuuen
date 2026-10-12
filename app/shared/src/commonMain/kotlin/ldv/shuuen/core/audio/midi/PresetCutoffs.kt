@@ -20,9 +20,9 @@ val DefaultPresetCutoffScope = PresetCutoffScope.OriginalVelocityMelodies
 /**
  * Optional velocity-filter compensation per instrument.
  *
- * Some SoundFont presets intentionally close their low-pass filter as note velocity falls. A
- * stored value raises MIDI CC74 for that preset; an absent value leaves its authored response
- * alone. The setting belongs to the preset rather than a channel, just like [PresetVolumes].
+ * Some SoundFont presets intentionally close their low-pass filter as note velocity falls. A stored
+ * value raises MIDI CC74 for that preset; an absent value leaves its authored response alone. The
+ * setting belongs to the preset rather than a channel, just like [PresetVolumes].
  */
 @Serializable
 data class PresetCutoffs(

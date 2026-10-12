@@ -1,7 +1,6 @@
 package ldv.shuuen.data.audio
 
 import io.github.aakira.napier.Napier
-import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.first
 import ldv.shuuen.bass.Bass
 import ldv.shuuen.core.audio.engine.MidiEngine
@@ -14,6 +13,7 @@ import ldv.shuuen.core.audio.midi.scaledChannelVolume
 import ldv.shuuen.core.music.Chord
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.settings.SettingsRepository
+import kotlin.math.roundToInt
 
 class BassMidiEngine(
   private val settingsRepository: SettingsRepository,
@@ -45,8 +45,9 @@ class BassMidiEngine(
       Bass.start(midiStreamHandle)
 
       val settings = settingsRepository.settings.first()
-      soundFontHandle = settings.soundFontPath?.let { soundFontProvider.loadSoundFont(it) }
-        ?: soundFontProvider.loadDefaultSoundFont()
+      soundFontHandle =
+        settings.soundFontPath?.let { soundFontProvider.loadSoundFont(it) }
+          ?: soundFontProvider.loadDefaultSoundFont()
       require(soundFontHandle != 0) { "Unable to load soundfont: ${Bass.errorCode()}." }
       require(Bass.setStreamSoundFont(midiStreamHandle, soundFontHandle)) {
         "Unable to attach soundfont to stream: ${Bass.errorCode()}."
@@ -77,13 +78,19 @@ class BassMidiEngine(
 
       initialized = true
       MidiEngineStatus.Ready
-    }.getOrElse { throwable ->
-      close()
-      MidiEngineStatus.Failed(throwable.message ?: "Unable to initialize MIDI engine.")
     }
+      .getOrElse { throwable ->
+        close()
+        MidiEngineStatus.Failed(throwable.message ?: "Unable to initialize MIDI engine.")
+      }
   }
 
-  override fun playNote(note: Note, channel: MidiChannel, velocity: Int, detuneCents: Int): Boolean {
+  override fun playNote(
+    note: Note,
+    channel: MidiChannel,
+    velocity: Int,
+    detuneCents: Int,
+  ): Boolean {
     if (!initialized) return false
     Napier.v { "Detune note cents: $detuneCents" }
     applyFineTune(channel, detuneCents)
@@ -122,9 +129,11 @@ class BassMidiEngine(
   override fun stopAll(channel: MidiChannel?): Boolean {
     if (!initialized) return false
     val channels = channel?.let(::listOf) ?: MidiChannel.entries
-    return channels.map {
-      Bass.streamEvent(midiStreamHandle, it.id, Bass.MIDI_EVENT_NOTESOFF, 0)
-    }.all { it }
+    return channels
+      .map {
+        Bass.streamEvent(midiStreamHandle, it.id, Bass.MIDI_EVENT_NOTESOFF, 0)
+      }
+      .all { it }
   }
 
   override fun setPitchBendRange(channel: MidiChannel, semitones: Int): Boolean {
@@ -211,8 +220,7 @@ class BassMidiEngine(
 }
 
 /** MIDI_EVENT_FINETUNE parameter for a cent offset: 0 = -100¢, 8192 = in tune, 16383 = +100¢. */
-internal fun fineTuneParam(cents: Int): Int =
-  (8192 + cents * 8192 / 100).coerceIn(0, 16383)
+internal fun fineTuneParam(cents: Int): Int = (8192 + cents * 8192 / 100).coerceIn(0, 16383)
 
 /** MIDI_EVENT_PITCH parameter for a bend of [semitones] on a wheel spanning ±[rangeSemitones]. */
 internal fun pitchWheelParam(semitones: Double, rangeSemitones: Int): Int {

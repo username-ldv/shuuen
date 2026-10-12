@@ -5,19 +5,18 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import ldv.shuuen.core.result.ResponseState
+import ldv.shuuen.core.settings.coerceLevelStatsWindow
 import ldv.shuuen.data.database.dao.TrainingSessionDao
 import ldv.shuuen.data.database.entity.TrainingSessionDbEntity
 import ldv.shuuen.features.training.common.LevelAccuracySample
 import ldv.shuuen.features.training.common.LevelAccuracyStats
 import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.common.levelAccuracyStats
-import ldv.shuuen.core.settings.coerceLevelStatsWindow
 import ldv.shuuen.features.training.level_end.domain.TrainingSession
 import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
 
-class TrainingSessionRepositoryImpl(
-  private val trainingSessionDao: TrainingSessionDao,
-) : TrainingSessionRepository {
+class TrainingSessionRepositoryImpl(private val trainingSessionDao: TrainingSessionDao) :
+  TrainingSessionRepository {
   override suspend fun saveSession(session: TrainingSession) {
     trainingSessionDao.upsertSession(session.toEntity())
   }
@@ -28,15 +27,14 @@ class TrainingSessionRepositoryImpl(
       val session =
         trainingSessionDao.getById(id)?.toDomain() ?: error("session with id $id not found")
       emit(ResponseState.Success(session))
-    }.catch {
-      emit(ResponseState.Error(it))
     }
+      .catch {
+        emit(ResponseState.Error(it))
+      }
   }
 
   override fun observeLatestSession(): Flow<TrainingSession?> =
-    trainingSessionDao.observeLatest()
-      .map { it?.toDomain() }
-      .catch { emit(null) }
+    trainingSessionDao.observeLatest().map { it?.toDomain() }.catch { emit(null) }
 
   override fun observeLevelAccuracyStats(
     flow: TrainingFlow,
@@ -44,7 +42,8 @@ class TrainingSessionRepositoryImpl(
     limit: Int,
   ): Flow<LevelAccuracyStats> {
     val coercedLimit = coerceLevelStatsWindow(limit)
-    return trainingSessionDao.observeRecentScoresByLevelId(flow, levelId, coercedLimit)
+    return trainingSessionDao
+      .observeRecentScoresByLevelId(flow, levelId, coercedLimit)
       .map { scores ->
         levelAccuracyStats(
           samples =
@@ -61,14 +60,10 @@ class TrainingSessionRepositoryImpl(
   }
 
   override fun observeAttemptedLevelIds(flow: TrainingFlow): Flow<Set<String>> =
-    trainingSessionDao.observeAttemptedLevelIds(flow)
-      .map { it.toSet() }
-      .catch { emit(emptySet()) }
+    trainingSessionDao.observeAttemptedLevelIds(flow).map { it.toSet() }.catch { emit(emptySet()) }
 
   override fun observeCompletedLevelIds(flow: TrainingFlow): Flow<Set<String>> =
-    trainingSessionDao.observeCompletedLevelIds(flow)
-      .map { it.toSet() }
-      .catch { emit(emptySet()) }
+    trainingSessionDao.observeCompletedLevelIds(flow).map { it.toSet() }.catch { emit(emptySet()) }
 
   override suspend fun deleteLastLevelSession(flow: TrainingFlow, levelId: String) {
     trainingSessionDao.deleteLastByLevelId(flow, levelId)

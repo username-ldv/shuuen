@@ -41,7 +41,12 @@ data class ChannelPresets(
 
   /** Replaces [channel]'s choices, keeping its base preset on the list's first entry. */
   fun withChoices(channel: MidiChannel, choices: List<Preset>): ChannelPresets {
-    val chosen = choices.distinctBy { it.toPacked() }.ifEmpty { return this }
+    val chosen =
+      choices
+        .distinctBy { it.toPacked() }
+        .ifEmpty {
+          return this
+        }
     val base = chosen.first()
     return when (channel) {
       MidiChannel.Notes -> copy(notes = base, notesChoices = chosen)

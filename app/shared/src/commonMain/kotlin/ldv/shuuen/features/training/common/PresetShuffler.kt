@@ -1,11 +1,11 @@
 package ldv.shuuen.features.training.common
 
-import kotlin.random.Random
 import ldv.shuuen.core.audio.midi.ChannelPresets
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.settings.PresetShuffleMode
 import ldv.shuuen.core.settings.PresetShuffleSettings
+import kotlin.random.Random
 
 /**
  * Picks each channel's preset out of the set chosen in settings, on the schedule that channel's
@@ -35,11 +35,13 @@ class PresetShuffler(
       presets.choicesFor(channel).random(random).also { current[channel] = it }
     }
 
-  fun atQuestion(): Map<MidiChannel, Preset> =
-    rollAll { effectiveMode(it) == PresetShuffleMode.PerQuestion }
+  fun atQuestion(): Map<MidiChannel, Preset> = rollAll {
+    effectiveMode(it) == PresetShuffleMode.PerQuestion
+  }
 
-  fun atMelodyNote(): Map<MidiChannel, Preset> =
-    rollAll { effectiveMode(it) == PresetShuffleMode.PerNote }
+  fun atMelodyNote(): Map<MidiChannel, Preset> = rollAll {
+    effectiveMode(it) == PresetShuffleMode.PerNote
+  }
 
   /** The "shuffle now" button: every channel that has a choice re-rolls, whatever its mode. */
   fun manual(): Map<MidiChannel, Preset> = rollAll { true }

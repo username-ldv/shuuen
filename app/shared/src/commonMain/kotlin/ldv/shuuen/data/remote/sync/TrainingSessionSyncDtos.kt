@@ -71,7 +71,7 @@ internal data class TrainingSessionSyncResponseDto(
 
 @Serializable
 internal data class StoredTrainingSessionSyncRegistry(
-  val accounts: Map<String, StoredTrainingSessionSyncAccount> = emptyMap(),
+  val accounts: Map<String, StoredTrainingSessionSyncAccount> = emptyMap()
 )
 
 @Serializable

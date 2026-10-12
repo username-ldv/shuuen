@@ -18,9 +18,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
- * Flat, typography-driven section header: a small uppercase label with an
- * optional supporting line and trailing slot. Replaces panel + icon-bubble
- * section titles.
+ * Flat, typography-driven section header: a small uppercase label with an optional supporting line
+ * and trailing slot. Replaces panel + icon-bubble section titles.
  */
 @Composable
 fun SectionHeader(
@@ -41,10 +40,11 @@ fun SectionHeader(
       Text(
         text = label,
         color = ldv.shuuen.core.ui.components.ShuuenUi.Muted,
-        style = MaterialTheme.typography.labelLarge.copy(
-          letterSpacing = ldv.shuuen.core.ui.components.ShuuenUi.labelSpacing,
-          fontWeight = FontWeight.SemiBold,
-        ),
+        style =
+          MaterialTheme.typography.labelLarge.copy(
+            letterSpacing = ldv.shuuen.core.ui.components.ShuuenUi.labelSpacing,
+            fontWeight = FontWeight.SemiBold,
+          ),
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
       )
@@ -67,12 +67,16 @@ fun SectionHeader(
 /** 1px divider used between flat sections and list rows. */
 @Composable
 fun Hairline(modifier: Modifier = Modifier) {
-  HorizontalDivider(modifier = modifier, thickness = 1.dp, color = ldv.shuuen.core.ui.components.ShuuenUi.Hairline)
+  HorizontalDivider(
+    modifier = modifier,
+    thickness = 1.dp,
+    color = ldv.shuuen.core.ui.components.ShuuenUi.Hairline,
+  )
 }
 
 /**
- * A flat content section: header, content, no card around it.
- * Sections are visually separated by spacing and hairlines at the call site.
+ * A flat content section: header, content, no card around it. Sections are visually separated by
+ * spacing and hairlines at the call site.
  */
 @Composable
 fun FlatSection(
@@ -89,7 +93,7 @@ fun FlatSection(
     ldv.shuuen.core.ui.components.SectionHeader(
       label = label,
       supporting = supporting,
-      trailing = trailing
+      trailing = trailing,
     )
     content()
   }

@@ -2,15 +2,6 @@ package ldv.shuuen.features.pitch_slide
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlin.math.abs
-import kotlin.math.exp
-import kotlin.math.ln
-import kotlin.math.log2
-import kotlin.math.pow
-import kotlin.random.Random
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
@@ -22,14 +13,23 @@ import ldv.shuuen.core.audio.engine.MidiEngine
 import ldv.shuuen.core.audio.engine.MidiEngineStatus
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.music.Note
+import kotlin.math.abs
+import kotlin.math.exp
+import kotlin.math.ln
+import kotlin.math.log2
+import kotlin.math.pow
+import kotlin.random.Random
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 /** The slidable frequency span. */
 internal const val PitchSlideMinHz = 80.0
 internal const val PitchSlideMaxHz = 1200.0
 
 /**
- * D#4 (~311.1 Hz) — the one note the screen ever plays. It sits at the log-center of the span,
- * so a ±24-semitone pitch wheel sweeps the whole 80–1200 Hz range from this single note-on.
+ * D#4 (~311.1 Hz) — the one note the screen ever plays. It sits at the log-center of the span, so a
+ * ±24-semitone pitch wheel sweeps the whole 80–1200 Hz range from this single note-on.
  */
 internal val PitchSlideCenterNote = Note(63)
 internal val PitchSlideCenterHz = 440.0 * 2.0.pow((PitchSlideCenterNote.midiIndex - 69) / 12.0)
@@ -58,9 +58,9 @@ data class PitchSlideState(
     get() = errorCents != null
 
   /**
-   * 0–10 score: 10.00 within 0.1 Hz of the target, 0 from 100 cents off, linear in between.
-   * Derived from the frozen [errorCents] (not the live slider), so it doesn't change when the
-   * player keeps sliding after the reveal.
+   * 0–10 score: 10.00 within 0.1 Hz of the target, 0 from 100 cents off, linear in between. Derived
+   * from the frozen [errorCents] (not the live slider), so it doesn't change when the player keeps
+   * sliding after the reveal.
    */
   val score: Double?
     get() = errorCents?.let { cents ->
@@ -74,8 +74,8 @@ data class PitchSlideState(
 }
 
 /**
- * Proof of concept of a dialed.gg-style pitch-recreation game. Each round: the target tone plays,
- * a short gap, then the player's bendable tone comes in on its own and keeps sounding while the
+ * Proof of concept of a dialed.gg-style pitch-recreation game. Each round: the target tone plays, a
+ * short gap, then the player's bendable tone comes in on its own and keeps sounding while the
  * question is open — sliding the wave bends it, releasing just leaves it playing. Answering stops
  * the sound; after the reveal the wave is hold-to-hear, so the player can compare against target
  * replays and move on when ready. One note is held on the Notes channel (whatever preset it has)
@@ -115,26 +115,25 @@ class PitchSlideViewModel(private val midiEngine: MidiEngine) : ViewModel() {
    */
   private fun playTargetThenResume(silenceBefore: Duration = Duration.ZERO) {
     val previous = sequenceJob
-    sequenceJob =
-      viewModelScope.launch {
-        previous?.cancelAndJoin()
-        stopUserTone()
-        if (silenceBefore > Duration.ZERO) delay(silenceBefore)
-        _state.update { it.copy(isTargetPlaying = true) }
-        try {
-          midiEngine.setPitchBend(MidiChannel.Notes, bendFor(_state.value.targetHz))
-          midiEngine.playNote(PitchSlideCenterNote)
-          delay(TargetPlayTime)
-        } finally {
-          midiEngine.stopNote(PitchSlideCenterNote)
-          _state.update { it.copy(isTargetPlaying = false) }
-        }
-        // An open question gets the persistent tone back; after the reveal it's hold-to-hear.
-        if (!_state.value.revealed) {
-          delay(GapAfterTarget)
-          startUserTone()
-        }
+    sequenceJob = viewModelScope.launch {
+      previous?.cancelAndJoin()
+      stopUserTone()
+      if (silenceBefore > Duration.ZERO) delay(silenceBefore)
+      _state.update { it.copy(isTargetPlaying = true) }
+      try {
+        midiEngine.setPitchBend(MidiChannel.Notes, bendFor(_state.value.targetHz))
+        midiEngine.playNote(PitchSlideCenterNote)
+        delay(TargetPlayTime)
+      } finally {
+        midiEngine.stopNote(PitchSlideCenterNote)
+        _state.update { it.copy(isTargetPlaying = false) }
       }
+      // An open question gets the persistent tone back; after the reveal it's hold-to-hear.
+      if (!_state.value.revealed) {
+        delay(GapAfterTarget)
+        startUserTone()
+      }
+    }
   }
 
   private fun startUserTone() {
@@ -151,9 +150,9 @@ class PitchSlideViewModel(private val midiEngine: MidiEngine) : ViewModel() {
   }
 
   /**
-   * Finger down or dragging on the wave: bends the tone to [hz]. The slider always moves, but
-   * while the round sequence is mid-flight (pre-target silence, target, gap) the tone itself
-   * stays with the sequence — it comes in when the sequence finishes.
+   * Finger down or dragging on the wave: bends the tone to [hz]. The slider always moves, but while
+   * the round sequence is mid-flight (pre-target silence, target, gap) the tone itself stays with
+   * the sequence — it comes in when the sequence finishes.
    */
   fun slideTo(hz: Double) {
     val current = _state.value

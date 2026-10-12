@@ -2,6 +2,7 @@ package ldv.shuuen.features.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,18 +26,16 @@ import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.core.settings.coerceLevelStatsWindow
 import ldv.shuuen.data.remote.ApiConfig
 import ldv.shuuen.data.remote.normalizeBackendUrl
-import kotlin.time.Duration.Companion.milliseconds
 
 class SettingsViewModel(
-    private val midiEngine: MidiEngine,
-    private val settingsRepository: SettingsRepository,
-    midiKeyboardInput: MidiKeyboardInput,
-    private val apiConfig: ApiConfig,
-    private val backendStatusMonitor: BackendStatusMonitor,
+  private val midiEngine: MidiEngine,
+  private val settingsRepository: SettingsRepository,
+  midiKeyboardInput: MidiKeyboardInput,
+  private val apiConfig: ApiConfig,
+  private val backendStatusMonitor: BackendStatusMonitor,
 ) : ViewModel() {
-  private val mutableState = MutableStateFlow(
-    SettingsUiState(defaultBackendUrl = apiConfig.normalizedDefaultBaseUrl)
-  )
+  private val mutableState =
+    MutableStateFlow(SettingsUiState(defaultBackendUrl = apiConfig.normalizedDefaultBaseUrl))
   val state: StateFlow<SettingsUiState> = mutableState.asStateFlow()
 
   private var previewJob: Job? = null
@@ -82,15 +81,15 @@ class SettingsViewModel(
         MidiEngineStatus.Ready -> {
           val grouped = midiEngine.availablePresets().groupBy { it.bank }
           val soundbanks =
-              grouped.keys.sorted().map { bank ->
-                Soundbank(bank, grouped.getValue(bank).sortedBy { it.id })
-              }
+            grouped.keys.sorted().map { bank ->
+              Soundbank(bank, grouped.getValue(bank).sortedBy { it.id })
+            }
           mutableState.update {
             it.copy(
-                audioReady = true,
-                loadingPresets = false,
-                soundbanks = soundbanks,
-                errorMessage = null,
+              audioReady = true,
+              loadingPresets = false,
+              soundbanks = soundbanks,
+              errorMessage = null,
             )
           }
         }
@@ -155,31 +154,40 @@ class SettingsViewModel(
       is SettingsAction.OpenLabelEditor ->
         mutableState.update { it.copy(openLabelEditor = action.editor) }
 
-      SettingsAction.CloseLabelEditor ->
-        mutableState.update { it.copy(openLabelEditor = null) }
+      SettingsAction.CloseLabelEditor -> mutableState.update { it.copy(openLabelEditor = null) }
 
       is SettingsAction.SetNoteName -> setNoteName(action.index, action.value)
 
       is SettingsAction.SetDegreeName -> setDegreeName(action.index, action.value)
 
       is SettingsAction.SetNoteNames ->
-        viewModelScope.launch { settingsRepository.setNoteNames(action.values.toSizedLabels(MusicLabelDefaults.NoteNames)) }
+        viewModelScope.launch {
+          settingsRepository.setNoteNames(action.values.toSizedLabels(MusicLabelDefaults.NoteNames))
+        }
 
       is SettingsAction.SetDegreeNames ->
-        viewModelScope.launch { settingsRepository.setDegreeNames(action.values.toSizedLabels(MusicLabelDefaults.DegreeNames)) }
+        viewModelScope.launch {
+          settingsRepository.setDegreeNames(
+            action.values.toSizedLabels(MusicLabelDefaults.DegreeNames)
+          )
+        }
 
       is SettingsAction.SaveCustomNoteNamesPreset ->
         viewModelScope.launch {
-          settingsRepository.setCustomNoteNamesPreset(action.values.toSizedLabels(MusicLabelDefaults.NoteNames))
+          settingsRepository.setCustomNoteNamesPreset(
+            action.values.toSizedLabels(MusicLabelDefaults.NoteNames)
+          )
         }
 
       is SettingsAction.SaveCustomDegreeNamesPreset ->
         viewModelScope.launch {
-          settingsRepository.setCustomDegreeNamesPreset(action.values.toSizedLabels(MusicLabelDefaults.DegreeNames))
+          settingsRepository.setCustomDegreeNamesPreset(
+            action.values.toSizedLabels(MusicLabelDefaults.DegreeNames)
+          )
         }
 
       is SettingsAction.OpenPicker ->
-          mutableState.update { it.copy(openPickerChannel = action.channel) }
+        mutableState.update { it.copy(openPickerChannel = action.channel) }
 
       SettingsAction.ClosePicker -> {
         previewJob?.cancel()
@@ -264,7 +272,9 @@ class SettingsViewModel(
       }
 
       is SettingsAction.SetVolume -> {
-        mutableState.update { it.copy(selectedVolumes = it.selectedVolumes.with(action.channel, action.value)) }
+        mutableState.update {
+          it.copy(selectedVolumes = it.selectedVolumes.with(action.channel, action.value))
+        }
         applyChannelVolume(action.channel)
       }
 
@@ -350,7 +360,11 @@ class SettingsViewModel(
     val chosen = current.any { it.toPacked() == preset.toPacked() }
     val next =
       if (chosen) {
-        current.filterNot { it.toPacked() == preset.toPacked() }.ifEmpty { return }
+        current
+          .filterNot { it.toPacked() == preset.toPacked() }
+          .ifEmpty {
+            return
+          }
       } else {
         current + preset
       }

@@ -37,11 +37,11 @@ import ldv.shuuen.core.music.generator.RhythmFigure
 import ldv.shuuen.core.ui.components.ShuuenUi
 
 /**
- * Compact, informational summary of a melody style: one chip per rhythm figure — note heads,
- * stems, beams and dots drawn directly (no reliance on musical glyphs in the platform fonts),
- * with the heads rising/falling along the figure's contour — plus a line describing the note
- * picker. A chip's opacity reflects the figure's weight; chord-ladder (arpeggio) figures carry
- * an underline in the accent color.
+ * Compact, informational summary of a melody style: one chip per rhythm figure — note heads, stems,
+ * beams and dots drawn directly (no reliance on musical glyphs in the platform fonts), with the
+ * heads rising/falling along the figure's contour — plus a line describing the note picker. A
+ * chip's opacity reflects the figure's weight; chord-ladder (arpeggio) figures carry an underline
+ * in the accent color.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -68,9 +68,9 @@ fun MelodyStyleSummary(style: MelodyStyle, modifier: Modifier = Modifier) {
 }
 
 /**
- * Compact summary of a chord style: one chip per figure — stacked-dot glyph plus the shape as
- * scale steps from the bass ("1·3·5" root triad, "1·4·6" second inversion, …), or a dice for
- * the free pick. A chip's opacity reflects the figure's weight.
+ * Compact summary of a chord style: one chip per figure — stacked-dot glyph plus the shape as scale
+ * steps from the bass ("1·3·5" root triad, "1·4·6" second inversion, …), or a dice for the free
+ * pick. A chip's opacity reflects the figure's weight.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -117,8 +117,7 @@ private fun chordFiguresLabel(style: ChordStyle): String {
   }
 }
 
-private fun Double.trimmed(): String =
-  if (this % 1.0 == 0.0) toInt().toString() else toString()
+private fun Double.trimmed(): String = if (this % 1.0 == 0.0) toInt().toString() else toString()
 
 /** Opacity floor keeps even the rarest figure readable while the weighting stays visible. */
 private fun chipAlpha(emphasis: Float): Float = 0.4f + 0.5f * emphasis.coerceIn(0f, 1f)
@@ -138,10 +137,10 @@ private fun RhythmFigureChip(figure: RhythmFigure, emphasis: Float) {
   val isArpeggio = figure.ladder == FigureLadder.Chord
   val arpeggioLineColor = ShuuenUi.Text.copy(alpha = 0.6f)
   Column(
-    modifier = Modifier
-      .clip(ShuuenUi.ControlShape)
-      .background(ShuuenUi.Ink.copy(alpha = 0.05f))
-      .padding(horizontal = 9.dp, vertical = 4.dp),
+    modifier =
+      Modifier.clip(ShuuenUi.ControlShape)
+        .background(ShuuenUi.Ink.copy(alpha = 0.05f))
+        .padding(horizontal = 9.dp, vertical = 4.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.spacedBy(3.dp),
   ) {
@@ -183,10 +182,11 @@ private fun RhythmFigureGlyph(figure: RhythmFigure, color: Color) {
     val stem = StemHeight.toPx()
     // The lowest head sits just above the bottom edge; shrink nothing, the presets' contours fit.
     val baseY = size.height - headRy - 2.dp.toPx() + minOff * rise
-    fun headCenter(i: Int) = Offset(
-      x = 5.dp.toPx() + NoteSpacing.toPx() * i + HeadRx.toPx(),
-      y = baseY - padded[i] * rise,
-    )
+    fun headCenter(i: Int) =
+      Offset(
+        x = 5.dp.toPx() + NoteSpacing.toPx() * i + HeadRx.toPx(),
+        y = baseY - padded[i] * rise,
+      )
 
     figure.values.forEachIndexed { i, value ->
       drawNote(headCenter(i), value, color)
@@ -198,11 +198,12 @@ private fun RhythmFigureGlyph(figure: RhythmFigure, color: Color) {
       val runEnds = i == notes || figure.values[i] != figure.values[runStart]
       if (!runEnds) continue
       val value = figure.values[runStart]
-      val beams = when (value) {
-        NoteValue.Eighth -> 1
-        NoteValue.Sixteenth -> 2
-        else -> 0
-      }
+      val beams =
+        when (value) {
+          NoteValue.Eighth -> 1
+          NoteValue.Sixteenth -> 2
+          else -> 0
+        }
       if (beams > 0) {
         val stemTop = { n: Int -> headCenter(n) + Offset(HeadRx.toPx(), -stem) }
         if (i - runStart >= 2) {
@@ -241,7 +242,8 @@ private fun DrawScope.drawNote(center: Offset, value: NoteValue, color: Color) {
     color = color,
     topLeft = Offset(center.x - rx, center.y - ry),
     size = Size(rx * 2, ry * 2),
-    style = if (hollow) Stroke(width = 1.4.dp.toPx()) else androidx.compose.ui.graphics.drawscope.Fill,
+    style =
+      if (hollow) Stroke(width = 1.4.dp.toPx()) else androidx.compose.ui.graphics.drawscope.Fill,
   )
   if (value != NoteValue.Whole) {
     drawLine(
@@ -252,7 +254,11 @@ private fun DrawScope.drawNote(center: Offset, value: NoteValue, color: Color) {
     )
   }
   if (value == NoteValue.DottedQuarter) {
-    drawCircle(color = color, radius = 1.3.dp.toPx(), center = center + Offset(rx + 3.dp.toPx(), 0f))
+    drawCircle(
+      color = color,
+      radius = 1.3.dp.toPx(),
+      center = center + Offset(rx + 3.dp.toPx(), 0f),
+    )
   }
 }
 
@@ -264,10 +270,10 @@ private fun DrawScope.drawNote(center: Offset, value: NoteValue, color: Color) {
 private fun ChordFigureChip(figure: ChordFigure, emphasis: Float) {
   val color = ShuuenUi.Ink.copy(alpha = chipAlpha(emphasis))
   Row(
-    modifier = Modifier
-      .clip(ShuuenUi.ControlShape)
-      .background(ShuuenUi.Ink.copy(alpha = 0.05f))
-      .padding(horizontal = 9.dp, vertical = 6.dp),
+    modifier =
+      Modifier.clip(ShuuenUi.ControlShape)
+        .background(ShuuenUi.Ink.copy(alpha = 0.05f))
+        .padding(horizontal = 9.dp, vertical = 6.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(6.dp),
   ) {

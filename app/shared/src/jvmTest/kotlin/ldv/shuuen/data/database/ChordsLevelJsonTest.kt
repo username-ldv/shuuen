@@ -1,8 +1,5 @@
 package ldv.shuuen.data.database
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -14,12 +11,15 @@ import ldv.shuuen.features.training.common.asConfigDegreeStates
 import ldv.shuuen.features.training.common.asPitchStates
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.ScaleConfig
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
- * The chords level config — including the chord style — is stored as one JSON column by the
- * Room type converter; these tests pin that round-trip. (The style deliberately lives inside
- * the config: the entity's other columns are mapped field by field, where a new field would be
- * silently dropped.)
+ * The chords level config — including the chord style — is stored as one JSON column by the Room
+ * type converter; these tests pin that round-trip. (The style deliberately lives inside the config:
+ * the entity's other columns are mapped field by field, where a new field would be silently
+ * dropped.)
  */
 class ChordsLevelJsonTest {
   private fun relativeConfig(): LevelConfig.Chords =
@@ -28,7 +28,7 @@ class ChordsLevelJsonTest {
         ScaleConfig.RelativeScaleConfig(
           scaleType = ScaleType.Major,
           degreeStates = Scale.major(Pitch.C).asConfigDegreeStates(),
-        ),
+        )
     )
 
   @Test
@@ -74,10 +74,11 @@ class ChordsLevelJsonTest {
     // A level saved by the previous app version has no chordStyle key in its config JSON.
     val legacyJson =
       JsonObject(
-        Json.parseToJsonElement(RoomJson.encode(relativeConfig())).jsonObject.filterKeys {
-          it != "chordStyle"
-        }
-      ).toString()
+          Json.parseToJsonElement(RoomJson.encode(relativeConfig())).jsonObject.filterKeys {
+            it != "chordStyle"
+          }
+        )
+        .toString()
 
     val decoded: LevelConfig.Chords = RoomJson.decode(legacyJson)
 

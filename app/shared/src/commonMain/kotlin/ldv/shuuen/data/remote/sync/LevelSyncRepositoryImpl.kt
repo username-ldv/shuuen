@@ -7,7 +7,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.io.files.Path
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -26,8 +25,8 @@ import ldv.shuuen.data.database.entity.MelodiesLevelDbEntity
 import ldv.shuuen.data.database.entity.SinglesLevelDbEntity
 import ldv.shuuen.data.database.entity.toDbEntity
 import ldv.shuuen.data.database.entity.toDomainEntity
-import ldv.shuuen.data.remote.auth.ApiErrorDto
 import ldv.shuuen.data.remote.ApiJsonQualifier
+import ldv.shuuen.data.remote.auth.ApiErrorDto
 import ldv.shuuen.data.remote.bodyAndClose
 import ldv.shuuen.data.remote.course.LevelDefinitionCodec
 import ldv.shuuen.features.training.chords.domain.ChordsLevel
@@ -55,8 +54,7 @@ internal class LevelSyncRepositoryImpl(
 
   override suspend fun sync(): LevelSyncResult = mutex.withLock {
     val session =
-      authRepository.session.value
-        ?: throw LevelSyncException("Sign in before syncing levels.")
+      authRepository.session.value ?: throw LevelSyncException("Sign in before syncing levels.")
     val accountKey = "${session.backendUrl}\u0000${session.user.id}"
     var registry = store.get() ?: StoredLevelSyncRegistry()
     var account = registry.accounts[accountKey] ?: StoredLevelSyncAccount()
@@ -72,11 +70,13 @@ internal class LevelSyncRepositoryImpl(
         val pending = findPendingMutations(local, account).take(MaxChangesPerRequest)
         val response =
           try {
-            api.sync(
-              baseUrl = session.backendUrl,
-              accessToken = session.accessToken,
-              request = LevelSyncRequestDto(account.revision, pending),
-            ).data
+            api
+              .sync(
+                baseUrl = session.backendUrl,
+                accessToken = session.accessToken,
+                request = LevelSyncRequestDto(account.revision, pending),
+              )
+              .data
           } catch (error: ResponseException) {
             // A restored/recreated backend can legitimately have a lower cursor.
             // Reset this account's baseline once and let the ordinary first-sync
@@ -118,15 +118,14 @@ internal class LevelSyncRepositoryImpl(
     } catch (error: LevelSyncException) {
       throw error
     } catch (error: ResponseException) {
-      val serverMessage =
-        runCatching { error.response.bodyAndClose<ApiErrorDto>().error }
-          .getOrNull()
-          ?.takeIf { it.isNotBlank() }
+      val serverMessage = runCatching {
+        error.response.bodyAndClose<ApiErrorDto>().error
+      }.getOrNull()?.takeIf { it.isNotBlank() }
       val message =
         when (error.response.status) {
           HttpStatusCode.Unauthorized -> "Your session has expired. Sign in again."
-          HttpStatusCode.BadRequest, HttpStatusCode.Conflict ->
-            serverMessage ?: "The backend rejected the level changes."
+          HttpStatusCode.BadRequest,
+          HttpStatusCode.Conflict -> serverMessage ?: "The backend rejected the level changes."
           else -> serverMessage ?: "The backend couldn't sync the levels."
         }
       throw LevelSyncException(message, error)
@@ -151,7 +150,9 @@ internal class LevelSyncRepositoryImpl(
             questionsNumber = entity.questionsNumber,
             range = entity.range,
           )
-        add(LocalLevel(TrainingFlow.Singles, level.id, level.name, level.source, codec.encode(level)))
+        add(
+          LocalLevel(TrainingFlow.Singles, level.id, level.name, level.source, codec.encode(level))
+        )
       }
       melodiesDao.getAll().forEach { entity ->
         val level =
@@ -162,7 +163,9 @@ internal class LevelSyncRepositoryImpl(
             context = contexts[entity.contextId],
             source = entity.source,
           )
-        add(LocalLevel(TrainingFlow.Melodies, level.id, level.name, level.source, codec.encode(level)))
+        add(
+          LocalLevel(TrainingFlow.Melodies, level.id, level.name, level.source, codec.encode(level))
+        )
       }
       chordsDao.getAll().forEach { entity ->
         val level =
@@ -178,7 +181,9 @@ internal class LevelSyncRepositoryImpl(
             sustainNotes = entity.sustainNotes,
             answerOrder = entity.answerOrder,
           )
-        add(LocalLevel(TrainingFlow.Chords, level.id, level.name, level.source, codec.encode(level)))
+        add(
+          LocalLevel(TrainingFlow.Chords, level.id, level.name, level.source, codec.encode(level))
+        )
       }
     }
     return levels.associateBy { it.key }
@@ -219,27 +224,36 @@ internal class LevelSyncRepositoryImpl(
   }
 
   private suspend fun applyRemoteChanges(changes: List<LevelSyncChangeDto>) {
-    changes.sortedBy { it.revision }.forEach { change ->
-      val flow = TrainingFlow.entries.firstOrNull { it.apiName == change.kind }
-        ?: throw LevelSyncException("The backend returned an unknown level kind '${change.kind}'.")
-      if (change.deleted) {
-        when (flow) {
-          TrainingFlow.Singles -> singlesDao.deleteById(change.id)
-          TrainingFlow.Melodies -> melodiesDao.deleteById(change.id)
-          TrainingFlow.Chords -> chordsDao.deleteById(change.id)
+    changes
+      .sortedBy { it.revision }
+      .forEach { change ->
+        val flow =
+          TrainingFlow.entries.firstOrNull { it.apiName == change.kind }
+            ?: throw LevelSyncException(
+              "The backend returned an unknown level kind '${change.kind}'."
+            )
+        if (change.deleted) {
+          when (flow) {
+            TrainingFlow.Singles -> singlesDao.deleteById(change.id)
+            TrainingFlow.Melodies -> melodiesDao.deleteById(change.id)
+            TrainingFlow.Chords -> chordsDao.deleteById(change.id)
+          }
+          return@forEach
         }
-        return@forEach
+        val source =
+          LevelSource.entries.firstOrNull { it.dbValue == change.source }
+            ?: throw LevelSyncException(
+              "The backend returned an unknown level source '${change.source}'."
+            )
+        val definition =
+          change.definition
+            ?: throw LevelSyncException("The backend returned a level without its definition.")
+        when (val decoded = codec.decode(flow, change.id, change.name, source, definition)) {
+          is PlayableTrainingLevel.Singles -> upsert(decoded.level)
+          is PlayableTrainingLevel.Melodies -> upsert(decoded.level)
+          is PlayableTrainingLevel.Chords -> upsert(decoded.level)
+        }
       }
-      val source = LevelSource.entries.firstOrNull { it.dbValue == change.source }
-        ?: throw LevelSyncException("The backend returned an unknown level source '${change.source}'.")
-      val definition = change.definition
-        ?: throw LevelSyncException("The backend returned a level without its definition.")
-      when (val decoded = codec.decode(flow, change.id, change.name, source, definition)) {
-        is PlayableTrainingLevel.Singles -> upsert(decoded.level)
-        is PlayableTrainingLevel.Melodies -> upsert(decoded.level)
-        is PlayableTrainingLevel.Chords -> upsert(decoded.level)
-      }
-    }
   }
 
   private suspend fun upsert(level: SinglesLevel) {
@@ -300,8 +314,8 @@ internal class LevelSyncRepositoryImpl(
     fingerprint(flow.apiName, id, name, source.dbValue, definition)
 
   private fun LevelSyncChangeDto.fingerprint(): String {
-    val definition = definition
-      ?: throw LevelSyncException("The backend returned a level without its definition.")
+    val definition =
+      definition ?: throw LevelSyncException("The backend returned a level without its definition.")
     return fingerprint(kind, id, name, source, definition)
   }
 
@@ -325,7 +339,9 @@ internal class LevelSyncRepositoryImpl(
   private fun canonicalJson(element: JsonElement): JsonElement =
     when (element) {
       is JsonObject ->
-        JsonObject(element.keys.sorted().associateWith { key -> canonicalJson(element.getValue(key)) })
+        JsonObject(
+          element.keys.sorted().associateWith { key -> canonicalJson(element.getValue(key)) }
+        )
       is JsonArray -> JsonArray(element.map(::canonicalJson))
       else -> element
     }

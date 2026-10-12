@@ -1,6 +1,12 @@
 package ldv.shuuen.features.training.melodies
 
 import androidx.compose.runtime.LaunchedEffect
+import ldv.shuuen.app.navigation.AppRoute
+import ldv.shuuen.app.navigation.LocalAppNavigator
+import ldv.shuuen.app.navigation.result.ContextRecipient
+import ldv.shuuen.app.navigation.result.LocalNavResultStore
+import ldv.shuuen.app.navigation.result.NavResultKeys.MelodiesContextResult
+import ldv.shuuen.app.navigation.result.NavResultKeys.MelodiesLevelOptionsContextResult
 import ldv.shuuen.features.training.level_end.LevelCompleteScreen
 import ldv.shuuen.features.training.melodies.level_select.MelodiesLevelSelectScreen
 import ldv.shuuen.features.training.melodies.level_select.MelodiesLevelSelectScreenViewModel
@@ -8,12 +14,6 @@ import ldv.shuuen.features.training.melodies.play.MelodiesPlayScreen
 import ldv.shuuen.features.training.melodies.play.MelodiesPlayScreenViewModel
 import ldv.shuuen.features.training.melodies.setup.MelodiesSetupScreen
 import ldv.shuuen.features.training.melodies.setup.MelodiesSetupScreenViewModel
-import ldv.shuuen.app.navigation.AppRoute
-import ldv.shuuen.app.navigation.LocalAppNavigator
-import ldv.shuuen.app.navigation.result.ContextRecipient
-import ldv.shuuen.app.navigation.result.LocalNavResultStore
-import ldv.shuuen.app.navigation.result.NavResultKeys.MelodiesContextResult
-import ldv.shuuen.app.navigation.result.NavResultKeys.MelodiesLevelOptionsContextResult
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.annotation.KoinExperimentalAPI
 import org.koin.core.parameter.parametersOf
@@ -54,9 +54,10 @@ val melodiesTrainingNavigationModule = module {
 
   navigation<AppRoute.MelodiesSetup> { route ->
     val navigator = LocalAppNavigator.current
-    val viewModel = koinViewModel<MelodiesSetupScreenViewModel> {
-      parametersOf(route.levelId.orEmpty())
-    }
+    val viewModel =
+      koinViewModel<MelodiesSetupScreenViewModel> {
+        parametersOf(route.levelId.orEmpty())
+      }
     val resultStore = LocalNavResultStore.current
     val result = resultStore.peek(MelodiesContextResult)
     LaunchedEffect(result) {
@@ -92,7 +93,9 @@ val melodiesTrainingNavigationModule = module {
       onNavigateBack = { navigator.goBack() },
       // MIDI transposition and context are shared settings, so retry and next reuse them.
       onRetryLevel = { navigator.replaceLastWith(AppRoute.MelodiesPlay(route.levelId)) },
-      onNextLevel = { nextLevelId -> navigator.replaceLastWith(AppRoute.MelodiesPlay(nextLevelId)) },
+      onNextLevel = { nextLevelId ->
+        navigator.replaceLastWith(AppRoute.MelodiesPlay(nextLevelId))
+      },
       // The level select this play session started from is right below on the back stack.
       onLevelSelect = { navigator.goBack() },
       viewModel = koinViewModel { parametersOf(route.sessionId) },

@@ -1,7 +1,6 @@
 package ldv.shuuen.data.remote.course
 
 import io.github.vinceglb.filekit.PlatformFile
-import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -35,6 +34,7 @@ import ldv.shuuen.core.music.generator.RhythmFigure
 import ldv.shuuen.core.music.generator.StyleTier
 import ldv.shuuen.core.music.generator.WeightedChordFigure
 import ldv.shuuen.core.music.generator.WeightedFigure
+import ldv.shuuen.data.remote.ApiJsonQualifier
 import ldv.shuuen.features.training.chords.domain.ChordAnswerOrder
 import ldv.shuuen.features.training.chords.domain.ChordSizeRange
 import ldv.shuuen.features.training.chords.domain.ChordsLevel
@@ -52,17 +52,23 @@ import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
 import ldv.shuuen.features.training.melodies.domain.MidiFileSource
 import ldv.shuuen.features.training.melodies.domain.MidiKey
 import ldv.shuuen.features.training.single.domain.SinglesLevel
-import ldv.shuuen.data.remote.ApiJsonQualifier
 import org.koin.core.annotation.Named
+import kotlin.time.Duration.Companion.milliseconds
 
-internal class CourseDefinitionMapper(
-  @Named(ApiJsonQualifier) private val json: Json,
-) {
+internal class CourseDefinitionMapper(@Named(ApiJsonQualifier) private val json: Json) {
   fun map(courseId: Long, mode: TrainingFlow, dto: CourseLevelDto): CourseLevelItem {
     val context = MappingContext(dto.id)
     return context.at("definition") {
-      context.require(dto.id.isNotBlank() && dto.id.length <= 64, "id", "is required and must be at most 64 characters")
-      context.require(dto.name.isNotBlank() && dto.name.length <= 220, "name", "is required and must be at most 220 characters")
+      context.require(
+        dto.id.isNotBlank() && dto.id.length <= 64,
+        "id",
+        "is required and must be at most 64 characters",
+      )
+      context.require(
+        dto.name.isNotBlank() && dto.name.length <= 220,
+        "name",
+        "is required and must be at most 220 characters",
+      )
       val reference = LevelReference.Remote(courseId, mode, dto.id)
       val source = context.levelSource(dto.source, "source")
       val playable =
@@ -81,7 +87,11 @@ internal class CourseDefinitionMapper(
         sortOrder = dto.sortOrder,
         sections =
           dto.sections.mapIndexed { index, section ->
-            context.require(section.libraryGroupId > 0, "sections[$index].library_group_id", "must be positive")
+            context.require(
+              section.libraryGroupId > 0,
+              "sections[$index].library_group_id",
+              "must be positive",
+            )
             context.require(section.depth > 0, "sections[$index].depth", "must be positive")
             CourseSection(
               libraryGroupId = section.libraryGroupId,
@@ -124,25 +134,53 @@ internal class CourseDefinitionMapper(
     val config: LevelConfig.Singles =
       when (configType) {
         "absolute" -> {
-          val value = context.decode<SinglesAbsoluteConfigDto>(definition.levelConfig, "definition.level_config")
-          context.require(value.scales.isNotEmpty(), "definition.level_config.scales", "must not be empty")
-          context.rotationAndTuning(value.rotateEveryQuestions, value.tuneInconsistencyCents, "definition.level_config")
+          val value =
+            context.decode<SinglesAbsoluteConfigDto>(
+              definition.levelConfig,
+              "definition.level_config",
+            )
+          context.require(
+            value.scales.isNotEmpty(),
+            "definition.level_config.scales",
+            "must not be empty",
+          )
+          context.rotationAndTuning(
+            value.rotateEveryQuestions,
+            value.tuneInconsistencyCents,
+            "definition.level_config",
+          )
           LevelConfig.Singles.Absolute(
-            scales = value.scales.mapIndexed { index, scale -> context.absoluteScale(scale, "definition.level_config.scales[$index]") },
+            scales =
+              value.scales.mapIndexed { index, scale ->
+                context.absoluteScale(scale, "definition.level_config.scales[$index]")
+              },
             rotateEveryQuestions = value.rotateEveryQuestions,
             tuneInconsistencyCents = value.tuneInconsistencyCents,
           )
         }
         "relative" -> {
-          val value = context.decode<SinglesRelativeConfigDto>(definition.levelConfig, "definition.level_config")
-          context.rotationAndTuning(value.rotateEveryQuestions, value.tuneInconsistencyCents, "definition.level_config")
+          val value =
+            context.decode<SinglesRelativeConfigDto>(
+              definition.levelConfig,
+              "definition.level_config",
+            )
+          context.rotationAndTuning(
+            value.rotateEveryQuestions,
+            value.tuneInconsistencyCents,
+            "definition.level_config",
+          )
           LevelConfig.Singles.Relative(
-            scaleConfig = context.relativeScale(value.scaleConfig, "definition.level_config.scale_config"),
+            scaleConfig =
+              context.relativeScale(value.scaleConfig, "definition.level_config.scale_config"),
             rotateEveryQuestions = value.rotateEveryQuestions,
             tuneInconsistencyCents = value.tuneInconsistencyCents,
           )
         }
-        else -> context.fail("definition.level_config.type", "expected absolute or relative, was '$configType'")
+        else ->
+          context.fail(
+            "definition.level_config.type",
+            "expected absolute or relative, was '$configType'",
+          )
       }
     return SinglesLevel(
       id = reference.encoded,
@@ -174,8 +212,16 @@ internal class CourseDefinitionMapper(
             "definition.config.questions_number",
             "must be null for an endless melody stream",
           )
-          context.require(value.tempo in 20..400, "definition.config.tempo", "must be between 20 and 400")
-          context.rotationAndTuning(value.rotateEveryQuestions, value.tuneInconsistencyCents, "definition.config")
+          context.require(
+            value.tempo in 20..400,
+            "definition.config.tempo",
+            "must be between 20 and 400",
+          )
+          context.rotationAndTuning(
+            value.rotateEveryQuestions,
+            value.tuneInconsistencyCents,
+            "definition.config",
+          )
           LevelConfig.Melodies.Random(
             scaleConfig = context.scale(value.scaleConfig, "definition.config.scale_config"),
             questionsNumber = value.questionsNumber,
@@ -183,7 +229,9 @@ internal class CourseDefinitionMapper(
             tempo = value.tempo,
             range = context.noteRange(value.range, "definition.config.range"),
             rotateEveryQuestions = value.rotateEveryQuestions,
-            melodyStyle = value.melodyStyle?.let { context.melodyStyle(it, "definition.config.melody_style") } ?: MelodyStyles.Default,
+            melodyStyle =
+              value.melodyStyle?.let { context.melodyStyle(it, "definition.config.melody_style") }
+                ?: MelodyStyles.Default,
             tuneInconsistencyCents = value.tuneInconsistencyCents,
           )
         }
@@ -193,16 +241,43 @@ internal class CourseDefinitionMapper(
           val midiSource =
             when (value.file.type) {
               "backend" -> {
-                val melodyId = value.file.melodyId
-                  ?: context.fail("definition.config.file.melody_id", "is required")
-                val variantId = value.file.variantId
-                  ?: context.fail("definition.config.file.variant_id", "is required")
-                context.require(melodyId > 0, "definition.config.file.melody_id", "must be positive")
-                context.require(variantId > 0, "definition.config.file.variant_id", "must be positive")
-                context.require(value.file.path.isNullOrBlank(), "definition.config.file.path", "is not valid for a backend file")
-                val resource = dto.midi ?: context.fail("midi", "response resource is required for a backend MIDI level")
-                context.require(resource.melodyId == melodyId, "midi.melody_id", "does not match the definition")
-                context.require(resource.variantId == variantId, "midi.variant_id", "does not match the definition")
+                val melodyId =
+                  value.file.melodyId
+                    ?: context.fail("definition.config.file.melody_id", "is required")
+                val variantId =
+                  value.file.variantId
+                    ?: context.fail("definition.config.file.variant_id", "is required")
+                context.require(
+                  melodyId > 0,
+                  "definition.config.file.melody_id",
+                  "must be positive",
+                )
+                context.require(
+                  variantId > 0,
+                  "definition.config.file.variant_id",
+                  "must be positive",
+                )
+                context.require(
+                  value.file.path.isNullOrBlank(),
+                  "definition.config.file.path",
+                  "is not valid for a backend file",
+                )
+                val resource =
+                  dto.midi
+                    ?: context.fail(
+                      "midi",
+                      "response resource is required for a backend MIDI level",
+                    )
+                context.require(
+                  resource.melodyId == melodyId,
+                  "midi.melody_id",
+                  "does not match the definition",
+                )
+                context.require(
+                  resource.variantId == variantId,
+                  "midi.variant_id",
+                  "does not match the definition",
+                )
                 MidiFileSource.Backend(
                   melodyId = melodyId,
                   variantId = variantId,
@@ -211,13 +286,26 @@ internal class CourseDefinitionMapper(
                 )
               }
               "local" -> {
-                val path = value.file.path?.nonBlank(context, "definition.config.file.path")
-                  ?: context.fail("definition.config.file.path", "is required")
-                context.require(value.file.melodyId == null, "definition.config.file.melody_id", "is not valid for a local file")
-                context.require(value.file.variantId == null, "definition.config.file.variant_id", "is not valid for a local file")
+                val path =
+                  value.file.path?.nonBlank(context, "definition.config.file.path")
+                    ?: context.fail("definition.config.file.path", "is required")
+                context.require(
+                  value.file.melodyId == null,
+                  "definition.config.file.melody_id",
+                  "is not valid for a local file",
+                )
+                context.require(
+                  value.file.variantId == null,
+                  "definition.config.file.variant_id",
+                  "is not valid for a local file",
+                )
                 MidiFileSource.Local(PlatformFile(path))
               }
-              else -> context.fail("definition.config.file.type", "expected backend or local, was '${value.file.type}'")
+              else ->
+                context.fail(
+                  "definition.config.file.type",
+                  "expected backend or local, was '${value.file.type}'",
+                )
             }
           LevelConfig.Melodies.Midi(
             midiSource = midiSource,
@@ -258,28 +346,61 @@ internal class CourseDefinitionMapper(
     val config: LevelConfig.Chords =
       when (configType) {
         "absolute" -> {
-          val value = context.decode<ChordsAbsoluteConfigDto>(definition.levelConfig, "definition.level_config")
-          context.require(value.scales.isNotEmpty(), "definition.level_config.scales", "must not be empty")
-          context.positiveOptional(value.rotateEveryQuestions, "definition.level_config.rotate_every_questions")
+          val value =
+            context.decode<ChordsAbsoluteConfigDto>(
+              definition.levelConfig,
+              "definition.level_config",
+            )
+          context.require(
+            value.scales.isNotEmpty(),
+            "definition.level_config.scales",
+            "must not be empty",
+          )
+          context.positiveOptional(
+            value.rotateEveryQuestions,
+            "definition.level_config.rotate_every_questions",
+          )
           LevelConfig.Chords.Absolute(
-            scales = value.scales.mapIndexed { index, scale -> context.absoluteScale(scale, "definition.level_config.scales[$index]") },
+            scales =
+              value.scales.mapIndexed { index, scale ->
+                context.absoluteScale(scale, "definition.level_config.scales[$index]")
+              },
             rotateEveryQuestions = value.rotateEveryQuestions,
-            chordStyle = value.chordStyle?.let { context.chordStyle(it, "definition.level_config.chord_style") } ?: ChordStyles.Default,
+            chordStyle =
+              value.chordStyle?.let {
+                context.chordStyle(it, "definition.level_config.chord_style")
+              } ?: ChordStyles.Default,
           )
         }
         "relative" -> {
-          val value = context.decode<ChordsRelativeConfigDto>(definition.levelConfig, "definition.level_config")
-          context.positiveOptional(value.rotateEveryQuestions, "definition.level_config.rotate_every_questions")
+          val value =
+            context.decode<ChordsRelativeConfigDto>(
+              definition.levelConfig,
+              "definition.level_config",
+            )
+          context.positiveOptional(
+            value.rotateEveryQuestions,
+            "definition.level_config.rotate_every_questions",
+          )
           LevelConfig.Chords.Relative(
-            scaleConfig = context.relativeScale(value.scaleConfig, "definition.level_config.scale_config"),
+            scaleConfig =
+              context.relativeScale(value.scaleConfig, "definition.level_config.scale_config"),
             rotateEveryQuestions = value.rotateEveryQuestions,
-            chordStyle = value.chordStyle?.let { context.chordStyle(it, "definition.level_config.chord_style") } ?: ChordStyles.Default,
+            chordStyle =
+              value.chordStyle?.let {
+                context.chordStyle(it, "definition.level_config.chord_style")
+              } ?: ChordStyles.Default,
           )
         }
-        else -> context.fail("definition.level_config.type", "expected absolute or relative, was '$configType'")
+        else ->
+          context.fail(
+            "definition.level_config.type",
+            "expected absolute or relative, was '$configType'",
+          )
       }
-    val answerOrder = ChordAnswerOrder.entries.firstOrNull { it.name == definition.answerOrder }
-      ?: context.fail("definition.answer_order", "unknown value '${definition.answerOrder}'")
+    val answerOrder =
+      ChordAnswerOrder.entries.firstOrNull { it.name == definition.answerOrder }
+        ?: context.fail("definition.answer_order", "unknown value '${definition.answerOrder}'")
     return ChordsLevel(
       id = reference.encoded,
       name = dto.name,
@@ -347,10 +468,10 @@ internal class CourseDefinitionMapper(
       Degree.entries.firstOrNull { it.name == value } ?: fail(field, "unknown degree '$value'")
 
     fun scaleType(value: String, field: String): ScaleType =
-      ScaleType.entries.firstOrNull { it.name == value } ?: fail(field, "unknown scale type '$value'")
+      ScaleType.entries.firstOrNull { it.name == value }
+        ?: fail(field, "unknown scale type '$value'")
 
-    fun note(value: NoteDto, field: String): Note =
-      at(field) { Note(value.midiIndex) }
+    fun note(value: NoteDto, field: String): Note = at(field) { Note(value.midiIndex) }
 
     fun noteRange(value: NoteRangeDto, field: String): NoteRange {
       val from = note(value.from, "$field.from.midi_index")
@@ -359,16 +480,24 @@ internal class CourseDefinitionMapper(
       return NoteRange(from, to)
     }
 
-    fun absoluteScale(value: AbsoluteScaleConfigDto, field: String): ScaleConfig.AbsoluteScaleConfig {
+    fun absoluteScale(
+      value: AbsoluteScaleConfigDto,
+      field: String,
+    ): ScaleConfig.AbsoluteScaleConfig {
       require(value.type == null || value.type == "absolute", "$field.type", "expected absolute")
       require(value.pitchStates.isNotEmpty(), "$field.pitch_states", "must not be empty")
-      val states = value.pitchStates.mapIndexed { index, state ->
-        ScaleConfig.ScaleItemState.ScalePitchState(
-          pitch(state.pitch, "$field.pitch_states[$index].pitch"),
-          state.active,
-        )
-      }
-      require(states.map { it.pitch }.distinct().size == states.size, "$field.pitch_states", "contains duplicate pitches")
+      val states =
+        value.pitchStates.mapIndexed { index, state ->
+          ScaleConfig.ScaleItemState.ScalePitchState(
+            pitch(state.pitch, "$field.pitch_states[$index].pitch"),
+            state.active,
+          )
+        }
+      require(
+        states.map { it.pitch }.distinct().size == states.size,
+        "$field.pitch_states",
+        "contains duplicate pitches",
+      )
       require(states.any { it.active }, field, "must contain at least one active pitch")
       return ScaleConfig.AbsoluteScaleConfig(
         root = pitch(value.root, "$field.root"),
@@ -377,16 +506,24 @@ internal class CourseDefinitionMapper(
       )
     }
 
-    fun relativeScale(value: RelativeScaleConfigDto, field: String): ScaleConfig.RelativeScaleConfig {
+    fun relativeScale(
+      value: RelativeScaleConfigDto,
+      field: String,
+    ): ScaleConfig.RelativeScaleConfig {
       require(value.type == null || value.type == "relative", "$field.type", "expected relative")
       require(value.degreeStates.isNotEmpty(), "$field.degree_states", "must not be empty")
-      val states = value.degreeStates.mapIndexed { index, state ->
-        ScaleConfig.ScaleItemState.ScaleDegreeState(
-          degree(state.degree, "$field.degree_states[$index].degree"),
-          state.active,
-        )
-      }
-      require(states.map { it.degree }.distinct().size == states.size, "$field.degree_states", "contains duplicate degrees")
+      val states =
+        value.degreeStates.mapIndexed { index, state ->
+          ScaleConfig.ScaleItemState.ScaleDegreeState(
+            degree(state.degree, "$field.degree_states[$index].degree"),
+            state.active,
+          )
+        }
+      require(
+        states.map { it.degree }.distinct().size == states.size,
+        "$field.degree_states",
+        "contains duplicate degrees",
+      )
       require(states.any { it.active }, field, "must contain at least one active degree")
       return ScaleConfig.RelativeScaleConfig(
         scaleType = scaleType(value.scaleType, "$field.scale_type"),
@@ -403,8 +540,13 @@ internal class CourseDefinitionMapper(
 
     fun midiKey(value: MidiKeyDto, field: String): MidiKey {
       require(value.degrees.isNotEmpty(), "$field.degrees", "must not be empty")
-      val degrees = value.degrees.mapIndexed { index, name -> degree(name, "$field.degrees[$index]") }
-      require(degrees.distinct().size == degrees.size, "$field.degrees", "contains duplicate degrees")
+      val degrees =
+        value.degrees.mapIndexed { index, name -> degree(name, "$field.degrees[$index]") }
+      require(
+        degrees.distinct().size == degrees.size,
+        "$field.degrees",
+        "contains duplicate degrees",
+      )
       val accidentalType =
         when (value.spelling) {
           "sharps" -> ScaleAccidentalType.Sharps
@@ -426,7 +568,11 @@ internal class CourseDefinitionMapper(
       at(field) { DegreeWithOctave(degree(value.degree, "$field.degree"), value.octave) }
 
     fun degreeContext(value: DegreeContextDto, field: String): DegreeContext {
-      require(value.id.isNotBlank() && value.id.length <= 64, "$field.id", "is required and must be at most 64 characters")
+      require(
+        value.id.isNotBlank() && value.id.length <= 64,
+        "$field.id",
+        "is required and must be at most 64 characters",
+      )
       require(value.nodes.isNotEmpty(), "$field.nodes", "must not be empty")
       val source =
         when (value.source) {
@@ -448,12 +594,17 @@ internal class CourseDefinitionMapper(
       val sustain =
         when (value.sustain.type) {
           "endless" -> {
-            require(value.sustain.durationMs == null, "$field.sustain.duration_ms", "is only valid for finite sustain")
+            require(
+              value.sustain.durationMs == null,
+              "$field.sustain.duration_ms",
+              "is only valid for finite sustain",
+            )
             Sustain.Endless
           }
           "finite" -> {
-            val duration = value.sustain.durationMs
-              ?: fail("$field.sustain.duration_ms", "is required for finite sustain")
+            val duration =
+              value.sustain.durationMs
+                ?: fail("$field.sustain.duration_ms", "is required for finite sustain")
             require(duration > 0, "$field.sustain.duration_ms", "must be positive")
             Sustain.Finite(duration.milliseconds)
           }
@@ -462,43 +613,73 @@ internal class CourseDefinitionMapper(
       val duration =
         when (value.duration.type) {
           "finite" -> {
-            val count = value.duration.durationInQuestions
-              ?: fail("$field.duration.duration_in_questions", "is required for finite duration")
+            val count =
+              value.duration.durationInQuestions
+                ?: fail("$field.duration.duration_in_questions", "is required for finite duration")
             require(count > 0, "$field.duration.duration_in_questions", "must be positive")
             ContextDuration.Finite(count)
           }
           "immediate" -> {
-            require(value.duration.durationInQuestions == null, "$field.duration.duration_in_questions", "is only valid for finite duration")
+            require(
+              value.duration.durationInQuestions == null,
+              "$field.duration.duration_in_questions",
+              "is only valid for finite duration",
+            )
             ContextDuration.Immediate
           }
           "endless" -> {
-            require(value.duration.durationInQuestions == null, "$field.duration.duration_in_questions", "is only valid for finite duration")
+            require(
+              value.duration.durationInQuestions == null,
+              "$field.duration.duration_in_questions",
+              "is only valid for finite duration",
+            )
             ContextDuration.Endless
           }
           "same_as_scale_rotation" -> {
-            require(value.duration.durationInQuestions == null, "$field.duration.duration_in_questions", "is only valid for finite duration")
+            require(
+              value.duration.durationInQuestions == null,
+              "$field.duration.duration_in_questions",
+              "is only valid for finite duration",
+            )
             ContextDuration.SameAsScaleRotation
           }
           else -> fail("$field.duration.type", "unknown context duration '${value.duration.type}'")
         }
-      val setup = value.setupMelody?.let { setup ->
-        SetupMelody(
-          melody = RelativeMelody(
-            firstDegree = degreeWithOctave(setup.melody.firstDegree, "$field.setup_melody.melody.first_degree"),
-            extraDegrees = setup.melody.extraDegrees.mapIndexed { index, degree ->
-              DirectedDegree(
-                this.degree(degree.degree, "$field.setup_melody.melody.extra_degrees[$index].degree"),
-                direction(degree.direction, "$field.setup_melody.melody.extra_degrees[$index].direction"),
-              )
-            },
-          ),
-          repeat = SetupMelodyRepeat.entries.firstOrNull { it.name == setup.repeat }
-            ?: fail("$field.setup_melody.repeat", "unknown repeat '${setup.repeat}'"),
-        )
-      }
+      val setup =
+        value.setupMelody?.let { setup ->
+          SetupMelody(
+            melody =
+              RelativeMelody(
+                firstDegree =
+                  degreeWithOctave(
+                    setup.melody.firstDegree,
+                    "$field.setup_melody.melody.first_degree",
+                  ),
+                extraDegrees =
+                  setup.melody.extraDegrees.mapIndexed { index, degree ->
+                    DirectedDegree(
+                      this.degree(
+                        degree.degree,
+                        "$field.setup_melody.melody.extra_degrees[$index].degree",
+                      ),
+                      direction(
+                        degree.direction,
+                        "$field.setup_melody.melody.extra_degrees[$index].direction",
+                      ),
+                    )
+                  },
+              ),
+            repeat =
+              SetupMelodyRepeat.entries.firstOrNull { it.name == setup.repeat }
+                ?: fail("$field.setup_melody.repeat", "unknown repeat '${setup.repeat}'"),
+          )
+        }
       return DegreeContextNode(
         firstDegree = degreeWithOctave(value.firstDegree, "$field.first_degree"),
-        extraDegrees = value.extraDegrees.mapIndexed { index, degree -> degree(degree, "$field.extra_degrees[$index]") },
+        extraDegrees =
+          value.extraDegrees.mapIndexed { index, degree ->
+            degree(degree, "$field.extra_degrees[$index]")
+          },
         sustain = sustain,
         duration = duration,
         setupMelody = setup,
@@ -513,40 +694,70 @@ internal class CourseDefinitionMapper(
     fun melodyStyle(value: MelodyStyleDto, field: String): MelodyStyle {
       styleHeader(value.id, value.name, value.tier, field)
       require(value.figures.isNotEmpty(), "$field.figures", "must not be empty")
-      val figures = value.figures.mapIndexed { index, weighted ->
-        require(weighted.weight > 0, "$field.figures[$index].weight", "must be positive")
-        val figure = weighted.figure
-        require(figure.values.isNotEmpty(), "$field.figures[$index].figure.values", "must not be empty")
-        require(
-          figure.contour.isEmpty() || figure.contour.size == figure.values.size - 1,
-          "$field.figures[$index].figure.contour",
-          "must be empty or contain one item per note gap",
-        )
-        WeightedFigure(
-          figure = RhythmFigure(
-            values = figure.values.mapIndexed { valueIndex, noteValue ->
-              NoteValue.entries.firstOrNull { it.name == noteValue }
-                ?: fail("$field.figures[$index].figure.values[$valueIndex]", "unknown note value '$noteValue'")
-            },
-            contour = figure.contour,
-            ladder = FigureLadder.entries.firstOrNull { it.name == figure.ladder }
-              ?: fail("$field.figures[$index].figure.ladder", "unknown ladder '${figure.ladder}'"),
-          ),
-          weight = weighted.weight,
-        )
-      }
+      val figures =
+        value.figures.mapIndexed { index, weighted ->
+          require(weighted.weight > 0, "$field.figures[$index].weight", "must be positive")
+          val figure = weighted.figure
+          require(
+            figure.values.isNotEmpty(),
+            "$field.figures[$index].figure.values",
+            "must not be empty",
+          )
+          require(
+            figure.contour.isEmpty() || figure.contour.size == figure.values.size - 1,
+            "$field.figures[$index].figure.contour",
+            "must be empty or contain one item per note gap",
+          )
+          WeightedFigure(
+            figure =
+              RhythmFigure(
+                values =
+                  figure.values.mapIndexed { valueIndex, noteValue ->
+                    NoteValue.entries.firstOrNull { it.name == noteValue }
+                      ?: fail(
+                        "$field.figures[$index].figure.values[$valueIndex]",
+                        "unknown note value '$noteValue'",
+                      )
+                  },
+                contour = figure.contour,
+                ladder =
+                  FigureLadder.entries.firstOrNull { it.name == figure.ladder }
+                    ?: fail(
+                      "$field.figures[$index].figure.ladder",
+                      "unknown ladder '${figure.ladder}'",
+                    ),
+              ),
+            weight = weighted.weight,
+          )
+        }
       val noteWeights = value.noteWeights
-      require(noteWeights.intervalWeights.all { it > 0 }, "$field.note_weights.interval_weights", "weights must be positive")
-      require(noteWeights.chordToneBoost > 0, "$field.note_weights.chord_tone_boost", "must be positive")
-      val degreeWeights = noteWeights.degreeWeights.mapKeys { (degree, _) -> this.degree(degree, "$field.note_weights.degree_weights.$degree") }
-      require(degreeWeights.values.all { it > 0 }, "$field.note_weights.degree_weights", "weights must be positive")
+      require(
+        noteWeights.intervalWeights.all { it > 0 },
+        "$field.note_weights.interval_weights",
+        "weights must be positive",
+      )
+      require(
+        noteWeights.chordToneBoost > 0,
+        "$field.note_weights.chord_tone_boost",
+        "must be positive",
+      )
+      val degreeWeights =
+        noteWeights.degreeWeights.mapKeys { (degree, _) ->
+          this.degree(degree, "$field.note_weights.degree_weights.$degree")
+        }
+      require(
+        degreeWeights.values.all { it > 0 },
+        "$field.note_weights.degree_weights",
+        "weights must be positive",
+      )
       return MelodyStyle(
         id = value.id,
         name = value.name,
         description = value.description,
         tier = styleTier(value.tier, "$field.tier"),
         figures = figures,
-        noteWeights = NoteWeights(noteWeights.intervalWeights, degreeWeights, noteWeights.chordToneBoost),
+        noteWeights =
+          NoteWeights(noteWeights.intervalWeights, degreeWeights, noteWeights.chordToneBoost),
       )
     }
 
@@ -558,21 +769,31 @@ internal class CourseDefinitionMapper(
         name = value.name,
         description = value.description,
         tier = styleTier(value.tier, "$field.tier"),
-        figures = value.figures.mapIndexed { index, weighted ->
-          require(weighted.weight > 0, "$field.figures[$index].weight", "must be positive")
-          val figure =
-            when (weighted.figure.type) {
-              "free_pick" -> {
-                require(weighted.figure.ladderSteps.isEmpty(), "$field.figures[$index].figure.ladder_steps", "is not valid for free_pick")
-                ChordFigure.FreePick
+        figures =
+          value.figures.mapIndexed { index, weighted ->
+            require(weighted.weight > 0, "$field.figures[$index].weight", "must be positive")
+            val figure =
+              when (weighted.figure.type) {
+                "free_pick" -> {
+                  require(
+                    weighted.figure.ladderSteps.isEmpty(),
+                    "$field.figures[$index].figure.ladder_steps",
+                    "is not valid for free_pick",
+                  )
+                  ChordFigure.FreePick
+                }
+                "stacked" ->
+                  at("$field.figures[$index].figure.ladder_steps") {
+                    ChordFigure.Stacked(weighted.figure.ladderSteps)
+                  }
+                else ->
+                  fail(
+                    "$field.figures[$index].figure.type",
+                    "unknown chord figure '${weighted.figure.type}'",
+                  )
               }
-              "stacked" -> at("$field.figures[$index].figure.ladder_steps") {
-                ChordFigure.Stacked(weighted.figure.ladderSteps)
-              }
-              else -> fail("$field.figures[$index].figure.type", "unknown chord figure '${weighted.figure.type}'")
-            }
-          WeightedChordFigure(figure, weighted.weight)
-        },
+            WeightedChordFigure(figure, weighted.weight)
+          },
       )
     }
 

@@ -1,12 +1,9 @@
 package ldv.shuuen.features.training.course.presentation
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.NoteRange
 import ldv.shuuen.core.music.Pitch
@@ -29,6 +26,9 @@ import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.LevelSource
 import ldv.shuuen.features.training.domain.ScaleConfig
 import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CourseLevelBrowserTest {
@@ -135,9 +135,7 @@ private class PagingCourseRepository : CourseRepository {
     offset: Int,
   ): CourseLevelPage {
     requestedOffsets += offset
-    val indexes =
-      if (offset == 0) 0 until 20
-      else listOf(19) + (20 until 25)
+    val indexes = if (offset == 0) 0 until 20 else listOf(19) + (20 until 25)
     return CourseLevelPage(
       levels = indexes.map { remoteLevel(it) },
       meta = PageMeta(limit, offset, 25),

@@ -3,8 +3,8 @@ package ldv.shuuen.features.training.single.level_select
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -16,15 +16,15 @@ import kotlinx.coroutines.launch
 import ldv.shuuen.core.settings.CourseOverrides
 import ldv.shuuen.core.settings.DefaultLevelStatsWindow
 import ldv.shuuen.core.settings.SettingsRepository
+import ldv.shuuen.core.settings.coerceLevelStatsWindow
 import ldv.shuuen.features.training.common.LevelAccuracyStats
 import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.common.components.TuneInconsistencyRange
-import ldv.shuuen.core.settings.coerceLevelStatsWindow
-import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
-import ldv.shuuen.features.training.single.domain.SinglesLocalLevelRepository
 import ldv.shuuen.features.training.course.domain.CourseRepository
 import ldv.shuuen.features.training.course.domain.PlayableTrainingLevel
 import ldv.shuuen.features.training.course.presentation.CourseLevelBrowser
+import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
+import ldv.shuuen.features.training.single.domain.SinglesLocalLevelRepository
 
 class SinglesLevelSelectScreenViewModel(
   private val levelRepository: SinglesLocalLevelRepository,
@@ -56,7 +56,9 @@ class SinglesLevelSelectScreenViewModel(
       .distinctUntilChanged()
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DefaultLevelStatsWindow)
 
-  /** Local per-course level overrides, applied to course level cards and edited in the course sheet. */
+  /**
+   * Local per-course level overrides, applied to course level cards and edited in the course sheet.
+   */
   val courseOverrides: StateFlow<Map<Long, CourseOverrides>> =
     settingsRepository.settings
       .map { it.courseOverrides }
@@ -65,19 +67,22 @@ class SinglesLevelSelectScreenViewModel(
 
   fun setCourseTuneInconsistency(courseId: Long, cents: Int?) {
     viewModelScope.launch {
-      settingsRepository.setCourseTuneInconsistency(courseId, cents?.coerceIn(TuneInconsistencyRange))
+      settingsRepository.setCourseTuneInconsistency(
+        courseId,
+        cents?.coerceIn(TuneInconsistencyRange),
+      )
     }
   }
 
   val attemptedLevelIds =
-    trainingSessionRepository.observeAttemptedLevelIds(TrainingFlow.Singles)
+    trainingSessionRepository
+      .observeAttemptedLevelIds(TrainingFlow.Singles)
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
   @OptIn(ExperimentalCoroutinesApi::class)
-  fun levelStats(levelId: String): Flow<LevelAccuracyStats> =
-    statsWindow.flatMapLatest { window ->
-      trainingSessionRepository.observeLevelAccuracyStats(TrainingFlow.Singles, levelId, window)
-    }
+  fun levelStats(levelId: String): Flow<LevelAccuracyStats> = statsWindow.flatMapLatest { window ->
+    trainingSessionRepository.observeLevelAccuracyStats(TrainingFlow.Singles, levelId, window)
+  }
 
   fun deleteLevel(levelId: String) {
     viewModelScope.launch {
@@ -103,11 +108,17 @@ class SinglesLevelSelectScreenViewModel(
   }
 
   fun refreshCourses() = courseBrowser.refreshCourses()
+
   fun selectMyLevels() = courseBrowser.selectMyLevels()
+
   fun selectCourse(courseId: Long) = courseBrowser.selectCourse(courseId)
+
   fun selectGroup(groupId: String) = courseBrowser.selectGroup(groupId)
+
   fun loadNextPage() = courseBrowser.loadNextPage()
+
   suspend fun firstUnattemptedCourseLevel(attemptedLevelIds: Set<String>): String? =
-      courseBrowser.firstUnattemptedReference(attemptedLevelIds)
+    courseBrowser.firstUnattemptedReference(attemptedLevelIds)
+
   fun retryCourseLevels() = courseBrowser.retryLevels()
 }

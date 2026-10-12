@@ -1,25 +1,26 @@
 package ldv.shuuen.data.remote.course
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertIs
-import kotlin.test.assertTrue
 import kotlinx.serialization.json.decodeFromJsonElement
-import ldv.shuuen.data.remote.ApiJson
 import ldv.shuuen.core.music.ContextDuration
 import ldv.shuuen.core.music.Degree
 import ldv.shuuen.core.music.NoteValue
+import ldv.shuuen.data.remote.ApiJson
 import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.course.domain.CourseMappingException
 import ldv.shuuen.features.training.course.domain.PlayableTrainingLevel
 import ldv.shuuen.features.training.domain.LevelConfig
 import ldv.shuuen.features.training.domain.ScaleConfig
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 class CourseDefinitionMapperTest {
   @Test
   fun mapsTheActualCTonic60BpmDefinition() {
-    val dto = ApiJson.decodeFromJsonElement<CourseLevelDto>(ApiJson.parseToJsonElement(cTonicLevelJson))
+    val dto =
+      ApiJson.decodeFromJsonElement<CourseLevelDto>(ApiJson.parseToJsonElement(cTonicLevelJson))
 
     val item = CourseDefinitionMapper(ApiJson).map(7, TrainingFlow.Melodies, dto)
     val level = assertIs<PlayableTrainingLevel.Melodies>(item.playable).level
@@ -48,7 +49,10 @@ class CourseDefinitionMapperTest {
     val setup = requireNotNull(node.setupMelody)
     assertEquals(Degree.D1, setup.melody.firstDegree.degree)
     assertEquals(3, setup.melody.firstDegree.octave)
-    assertEquals(listOf(Degree.D3, Degree.D5, Degree.D1), setup.melody.extraDegrees.map { it.degree })
+    assertEquals(
+      listOf(Degree.D3, Degree.D5, Degree.D1),
+      setup.melody.extraDegrees.map { it.degree },
+    )
   }
 
   @Test
@@ -56,9 +60,10 @@ class CourseDefinitionMapperTest {
     val malformed = cTonicLevelJson.replace("\"tempo\": 60", "\"tempo\": 0")
     val dto = ApiJson.decodeFromJsonElement<CourseLevelDto>(ApiJson.parseToJsonElement(malformed))
 
-    val error = assertFailsWith<CourseMappingException> {
-      CourseDefinitionMapper(ApiJson).map(7, TrainingFlow.Melodies, dto)
-    }
+    val error =
+      assertFailsWith<CourseMappingException> {
+        CourseDefinitionMapper(ApiJson).map(7, TrainingFlow.Melodies, dto)
+      }
 
     assertEquals("seed-c-tonic-060", error.levelId)
     assertEquals("definition.config.tempo", error.field)
@@ -140,4 +145,5 @@ private val cTonicLevelJson =
       "total": 11
     }
   }
-  """.trimIndent()
+  """
+    .trimIndent()

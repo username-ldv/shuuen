@@ -22,8 +22,8 @@ enum class ChordAnswerOrder(val label: String) {
 
 /**
  * How many extra same-pitch-class copies a chord of [size] notes may contain when answered in
- * [ChordAnswerOrder.Any] mode: a pair stays all-distinct, 3–4 notes allow one duplicate (a class
- * at most twice), 5–7 allow two extras (at most three of a kind), 8–10 allow three (at most four).
+ * [ChordAnswerOrder.Any] mode: a pair stays all-distinct, 3–4 notes allow one duplicate (a class at
+ * most twice), 5–7 allow two extras (at most three of a kind), 8–10 allow three (at most four).
  * Ordered answering is exempt — each octave copy is named in turn, so duplicates stay unrestricted.
  */
 fun chordRepeatBudget(size: Int): Int =
@@ -35,15 +35,17 @@ fun chordRepeatBudget(size: Int): Int =
   }
 
 /**
- * How many notes each question's chord has, chosen uniformly per question among the sizes the
- * scale and range can actually produce. A chord may repeat a pitch class across octaves: freely
- * with ordered answering, within [chordRepeatBudget] with [ChordAnswerOrder.Any] (where one press
+ * How many notes each question's chord has, chosen uniformly per question among the sizes the scale
+ * and range can actually produce. A chord may repeat a pitch class across octaves: freely with
+ * ordered answering, within [chordRepeatBudget] with [ChordAnswerOrder.Any] (where one press
  * resolves every copy of the class at once).
  */
 @Serializable
 data class ChordSizeRange(val min: Int, val max: Int) {
   init {
-    require(min in MinSize..max) { "Chord size range must satisfy $MinSize <= min <= max, was $min..$max." }
+    require(min in MinSize..max) {
+      "Chord size range must satisfy $MinSize <= min <= max, was $min..$max."
+    }
     require(max <= MaxSize) { "Chord size max must be at most $MaxSize, was $max." }
   }
 
@@ -66,7 +68,9 @@ data class ChordsLevel(
   val questionsNumber: Int?,
   val range: NoteRange,
   val chordSize: ChordSizeRange,
-  /** true holds each chord until the question advances (or a replay); false releases it after ~2s. */
+  /**
+   * true holds each chord until the question advances (or a replay); false releases it after ~2s.
+   */
   val sustainNotes: Boolean,
   val answerOrder: ChordAnswerOrder,
 )

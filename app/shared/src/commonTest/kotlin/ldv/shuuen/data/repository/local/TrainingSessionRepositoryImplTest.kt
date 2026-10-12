@@ -1,8 +1,5 @@
 package ldv.shuuen.data.repository.local
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -11,6 +8,9 @@ import ldv.shuuen.data.database.dao.TrainingSessionDao
 import ldv.shuuen.data.database.dao.TrainingSessionScoreProjection
 import ldv.shuuen.data.database.entity.TrainingSessionDbEntity
 import ldv.shuuen.features.training.common.TrainingFlow
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class TrainingSessionRepositoryImplTest {
   @Test

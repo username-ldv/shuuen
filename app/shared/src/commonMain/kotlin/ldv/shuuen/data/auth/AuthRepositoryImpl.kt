@@ -20,10 +20,10 @@ import ldv.shuuen.core.auth.AuthRepository
 import ldv.shuuen.core.auth.AuthSession
 import ldv.shuuen.core.auth.AuthUser
 import ldv.shuuen.data.remote.ApiConfig
-import ldv.shuuen.data.remote.bodyAndClose
 import ldv.shuuen.data.remote.auth.ApiErrorDto
 import ldv.shuuen.data.remote.auth.AuthApi
 import ldv.shuuen.data.remote.auth.AuthUserDto
+import ldv.shuuen.data.remote.bodyAndClose
 import org.koin.core.annotation.Named
 
 /** The on-disk shape of a session. Kept private to this file so the domain model can change. */
@@ -142,16 +142,14 @@ internal class AuthRepositoryImpl(
     mutableSession.value = null
   }
 
-  private suspend fun readStore(): StoredAuthSession? =
-    runCatching { store.get() }
-      .onFailure { Napier.w(it) { "Couldn't read the stored backend session." } }
-      .getOrNull()
+  private suspend fun readStore(): StoredAuthSession? = runCatching {
+    store.get()
+  }.onFailure { Napier.w(it) { "Couldn't read the stored backend session." } }.getOrNull()
 
   private suspend fun ResponseException.toAuthException(): AuthException {
-    val serverMessage =
-      runCatching { response.bodyAndClose<ApiErrorDto>().error }
-        .getOrNull()
-        ?.takeIf { it.isNotBlank() }
+    val serverMessage = runCatching {
+      response.bodyAndClose<ApiErrorDto>().error
+    }.getOrNull()?.takeIf { it.isNotBlank() }
     return when (response.status) {
       HttpStatusCode.Unauthorized ->
         AuthException(AuthFailure.InvalidCredentials, "Wrong username or password.", this)
@@ -168,7 +166,11 @@ internal class AuthRepositoryImpl(
           this,
         )
       else ->
-        AuthException(AuthFailure.Server, serverMessage ?: "The backend couldn't sign you in.", this)
+        AuthException(
+          AuthFailure.Server,
+          serverMessage ?: "The backend couldn't sign you in.",
+          this,
+        )
     }
   }
 }

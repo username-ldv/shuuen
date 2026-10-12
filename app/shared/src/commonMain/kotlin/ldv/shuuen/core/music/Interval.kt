@@ -14,7 +14,8 @@ enum class IntervalType {
   M7,
   U8;
 
-  val semitones: Int get() = ordinal + 1
+  val semitones: Int
+    get() = ordinal + 1
 }
 
 enum class IntervalDirection {
@@ -32,7 +33,8 @@ data class Interval(
 
   val pitches: List<Pitch> = notes.map { it.pitch }
   val direction: IntervalDirection =
-    if (notes[0].midiIndex < notes[1].midiIndex) IntervalDirection.Ascending else IntervalDirection.Descending
+    if (notes[0].midiIndex < notes[1].midiIndex) IntervalDirection.Ascending
+    else IntervalDirection.Descending
 
   companion object {
     fun ascendingFrom(lowNote: Note, type: IntervalType): Interval =

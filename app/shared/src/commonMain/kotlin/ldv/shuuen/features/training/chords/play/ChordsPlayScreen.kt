@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.core.settings.InputComponent
 import ldv.shuuen.core.settings.InputMode
@@ -48,7 +49,6 @@ import ldv.shuuen.core.ui.components.SoftControl
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.music.inputs.FifthsCircle
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboard
-import kotlinx.coroutines.launch
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
 import ldv.shuuen.core.ui.components.music.inputs.rememberFifthsCircleState
 import ldv.shuuen.core.ui.components.music.inputs.rememberPianoKeyboardState
@@ -62,20 +62,20 @@ import ldv.shuuen.features.training.common.components.pitchToItemIndex
 
 @Composable
 fun ChordsPlayScreen(
-    onNavigateBack: () -> Unit,
-    onLevelEnd: (sessionId: String) -> Unit,
-    viewModel: ChordsPlayScreenViewModel,
+  onNavigateBack: () -> Unit,
+  onLevelEnd: (sessionId: String) -> Unit,
+  viewModel: ChordsPlayScreenViewModel,
 ) {
   val screenState by viewModel.state.collectAsStateWithLifecycle()
   val inputMethod by viewModel.inputMethod.collectAsStateWithLifecycle()
   val musicLabels by viewModel.musicLabels.collectAsStateWithLifecycle()
   val canShufflePresets by viewModel.canShufflePresets.collectAsStateWithLifecycle()
   val title =
-      when (val level = screenState.levelData) {
-        is ResponseState.Loading -> "Loading..."
-        is ResponseState.Error -> "Error"
-        is ResponseState.Success -> level.result.name
-      }
+    when (val level = screenState.levelData) {
+      is ResponseState.Loading -> "Loading..."
+      is ResponseState.Error -> "Error"
+      is ResponseState.Success -> level.result.name
+    }
 
   LaunchedEffect(screenState.phase) {
     when (val phase = screenState.phase) {
@@ -88,44 +88,44 @@ fun ChordsPlayScreen(
 
   val circleInput = inputMethod.component == InputComponent.Circle
   StaticScreenFrame(
-      scrollable = false,
-      // The circle input is full-bleed (it must reach the screen edges to stay tappable there), so
-      // the frame adds no horizontal padding; each child below applies its own where needed.
-      horizontalPadding = 0.dp,
-      topBar = {
-        ShuuenTopAppBar(
-            title = title,
-            onBack = onNavigateBack,
-            // The circle layout has no bottom bar; finishing early lives up here instead, matching
-            // the melodies play screen.
-            trailingIcon =
-                if (circleInput && screenState.quizState != null) Icons.Rounded.Flag else null,
-            onTrailingClick = { viewModel.finishEarly() },
-            statusContent = { MidiKeyboardBadge() },
-            actions = {
-              ShufflePresetsAction(
-                  visible = canShufflePresets,
-                  onClick = { viewModel.shufflePresets() },
-              )
-            },
-            type = ShuuenTopAppBarType.Simple,
-        )
-      },
+    scrollable = false,
+    // The circle input is full-bleed (it must reach the screen edges to stay tappable there), so
+    // the frame adds no horizontal padding; each child below applies its own where needed.
+    horizontalPadding = 0.dp,
+    topBar = {
+      ShuuenTopAppBar(
+        title = title,
+        onBack = onNavigateBack,
+        // The circle layout has no bottom bar; finishing early lives up here instead, matching
+        // the melodies play screen.
+        trailingIcon =
+          if (circleInput && screenState.quizState != null) Icons.Rounded.Flag else null,
+        onTrailingClick = { viewModel.finishEarly() },
+        statusContent = { MidiKeyboardBadge() },
+        actions = {
+          ShufflePresetsAction(
+            visible = canShufflePresets,
+            onClick = { viewModel.shufflePresets() },
+          )
+        },
+        type = ShuuenTopAppBarType.Simple,
+      )
+    },
   ) {
     screenState.quizState?.let {
       TrainingStatus(
-          it.currentQuestionNumber,
-          it.correctAnswers,
-          it.incorrectAnswers.size,
-          it.questionsNumber,
-          modifier = Modifier.padding(horizontal = ScreenHorizontalPadding),
+        it.currentQuestionNumber,
+        it.correctAnswers,
+        it.incorrectAnswers.size,
+        it.questionsNumber,
+        modifier = Modifier.padding(horizontal = ScreenHorizontalPadding),
       )
       ChordBuffer(
-          quizState = it,
-          answerOrder = (screenState.levelData as? ResponseState.Success)?.result?.answerOrder,
-          inputMode = inputMethod.mode,
-          musicLabels = musicLabels,
-          modifier = Modifier.padding(horizontal = ScreenHorizontalPadding),
+        quizState = it,
+        answerOrder = (screenState.levelData as? ResponseState.Success)?.result?.answerOrder,
+        inputMode = inputMethod.mode,
+        musicLabels = musicLabels,
+        modifier = Modifier.padding(horizontal = ScreenHorizontalPadding),
       )
     }
 
@@ -145,9 +145,21 @@ fun ChordsPlayScreen(
           val index = pitchToItemIndex(req.pitch, method.mode, currentRoot)
           when (method.component) {
             InputComponent.Piano ->
-                keyboardState.flash(index, req.color, holdMillis = 520, attackMillis = 80, releaseMillis = 300)
+              keyboardState.flash(
+                index,
+                req.color,
+                holdMillis = 520,
+                attackMillis = 80,
+                releaseMillis = 300,
+              )
             InputComponent.Circle ->
-                circleState.flash(index, req.color, holdMillis = 520, attackMillis = 80, releaseMillis = 300)
+              circleState.flash(
+                index,
+                req.color,
+                holdMillis = 520,
+                attackMillis = 80,
+                releaseMillis = 300,
+              )
           }
         }
       }
@@ -172,7 +184,8 @@ fun ChordsPlayScreen(
       when (viewModel.userGuessed(index, inputMethod.mode)) {
         ChordGuessResult.Correct -> flashOn(index, ShuuenUi.Correct)
         ChordGuessResult.Incorrect -> flashOn(index, ShuuenUi.Incorrect)
-        ChordGuessResult.Ignored, null -> Unit
+        ChordGuessResult.Ignored,
+        null -> Unit
       }
     }
 
@@ -182,15 +195,15 @@ fun ChordsPlayScreen(
         // pressedKeyColors stays at its neutral default (plain touch feedback); all color comes
         // from flashes.
         PianoKeyboard(
-            modifier = Modifier
-                .padding(horizontal = ScreenHorizontalPadding)
-                .fillMaxWidth()
-                .aspectRatio(PianoKeyboardDefaults.aspectRatio(12)),
-            keyCount = 12,
-            state = keyboardState,
-            onKeyPressedChange = { index, pressed ->
-              if (!pressed) handleGuess(index) { i, c -> keyboardState.flash(i, c) }
-            },
+          modifier =
+            Modifier.padding(horizontal = ScreenHorizontalPadding)
+              .fillMaxWidth()
+              .aspectRatio(PianoKeyboardDefaults.aspectRatio(12)),
+          keyCount = 12,
+          state = keyboardState,
+          onKeyPressedChange = { index, pressed ->
+            if (!pressed) handleGuess(index) { i, c -> keyboardState.flash(i, c) }
+          },
         )
         Spacer(Modifier.weight(0.34f))
       }
@@ -200,47 +213,47 @@ fun ChordsPlayScreen(
       // sides — is part of the touch surface. Items sit at the edge (dotEdgePadding = 0) yet stay
       // hittable right up to the screen edge.
       InputComponent.Circle ->
-          FifthsCircle(
-              modifier = Modifier.fillMaxWidth().weight(1f),
-              itemNames =
-                  circleItemNames(
-                      inputMethod.mode,
-                      screenState.quizState?.root,
-                      screenState.quizState?.accidentalType,
-                      musicLabels,
-                  ),
-              rotateItemToTop = circleTopItem(inputMethod, screenState.quizState?.root),
-              state = circleState,
-              onItemPressedChange = { index, pressed ->
-                if (!pressed) handleGuess(index) { i, c -> circleState.flash(i, c) }
-              },
-              dotEdgePadding = 16.dp,
-              // The repeat controls live in the ring's empty middle, so no bottom bar steals
-              // height from the circle.
-              centerContent = {
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                  CircleCenterIconButton(
-                      icon = Icons.Rounded.Replay,
-                      contentDescription = "Repeat chord",
-                      onClick = { viewModel.repeatChord() },
-                  )
-                  CircleCenterIconButton(
-                      icon = Icons.Rounded.MusicNote,
-                      contentDescription = "Repeat setup melody",
-                      tint = ShuuenUi.Muted,
-                      onClick = { viewModel.playSetupMelody() },
-                  )
-                }
-              },
-          )
+        FifthsCircle(
+          modifier = Modifier.fillMaxWidth().weight(1f),
+          itemNames =
+            circleItemNames(
+              inputMethod.mode,
+              screenState.quizState?.root,
+              screenState.quizState?.accidentalType,
+              musicLabels,
+            ),
+          rotateItemToTop = circleTopItem(inputMethod, screenState.quizState?.root),
+          state = circleState,
+          onItemPressedChange = { index, pressed ->
+            if (!pressed) handleGuess(index) { i, c -> circleState.flash(i, c) }
+          },
+          dotEdgePadding = 16.dp,
+          // The repeat controls live in the ring's empty middle, so no bottom bar steals
+          // height from the circle.
+          centerContent = {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+              CircleCenterIconButton(
+                icon = Icons.Rounded.Replay,
+                contentDescription = "Repeat chord",
+                onClick = { viewModel.repeatChord() },
+              )
+              CircleCenterIconButton(
+                icon = Icons.Rounded.MusicNote,
+                contentDescription = "Repeat setup melody",
+                tint = ShuuenUi.Muted,
+                onClick = { viewModel.playSetupMelody() },
+              )
+            }
+          },
+        )
     }
 
     if (inputMethod.component == InputComponent.Piano) {
       BottomActionBar(
-          onRepeatChord = { viewModel.repeatChord() },
-          onRepeatMelody = { viewModel.playSetupMelody() },
-          onFinishSession = { viewModel.finishEarly() },
-          modifier = Modifier.padding(horizontal = ScreenHorizontalPadding),
+        onRepeatChord = { viewModel.repeatChord() },
+        onRepeatMelody = { viewModel.playSetupMelody() },
+        onFinishSession = { viewModel.finishEarly() },
+        modifier = Modifier.padding(horizontal = ScreenHorizontalPadding),
       )
     }
   }
@@ -258,47 +271,47 @@ private val ChordCellHeight = 48.dp
 
 /**
  * The chord as a row of note cells (lowest note first), styled like the melodies buffer. An
- * answered cell shows its note's label in the active input vocabulary; in an ordered level the
- * next expected cell is highlighted, while "any" order highlights nothing. The lazy row keeps
- * wide chords scrollable on narrow screens; small ones sit centered within it.
+ * answered cell shows its note's label in the active input vocabulary; in an ordered level the next
+ * expected cell is highlighted, while "any" order highlights nothing. The lazy row keeps wide
+ * chords scrollable on narrow screens; small ones sit centered within it.
  */
 @Composable
 private fun ChordBuffer(
-    quizState: ChordsQuizState,
-    answerOrder: ChordAnswerOrder?,
-    inputMode: InputMode,
-    musicLabels: MusicLabelSettings,
-    modifier: Modifier = Modifier,
+  quizState: ChordsQuizState,
+  answerOrder: ChordAnswerOrder?,
+  inputMode: InputMode,
+  musicLabels: MusicLabelSettings,
+  modifier: Modifier = Modifier,
 ) {
   val chord = quizState.currentChord
   val targetIndex =
-      when (answerOrder) {
-        ChordAnswerOrder.FromBottom -> quizState.answeredNotes.size
-        ChordAnswerOrder.FromTop -> chord.size - 1 - quizState.answeredNotes.size
-        else -> -1
-      }
+    when (answerOrder) {
+      ChordAnswerOrder.FromBottom -> quizState.answeredNotes.size
+      ChordAnswerOrder.FromTop -> chord.size - 1 - quizState.answeredNotes.size
+      else -> -1
+    }
   LazyRow(
-      modifier = modifier.fillMaxWidth().height(ChordBufferHeight),
-      horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-      verticalAlignment = Alignment.CenterVertically,
+    modifier = modifier.fillMaxWidth().height(ChordBufferHeight),
+    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+    verticalAlignment = Alignment.CenterVertically,
   ) {
     itemsIndexed(chord) { index, note ->
       val answered = index in quizState.answeredNotes
       val label =
-          if (answered) {
-            inputLabelForPitch(
-                pitch = note.pitch,
-                mode = inputMode,
-                root = quizState.root,
-                accidentalType = quizState.accidentalType,
-                musicLabels = musicLabels,
-            )
-          } else "-"
+        if (answered) {
+          inputLabelForPitch(
+            pitch = note.pitch,
+            mode = inputMode,
+            root = quizState.root,
+            accidentalType = quizState.accidentalType,
+            musicLabels = musicLabels,
+          )
+        } else "-"
       ChordCell(
-          position = index + 1,
-          label = label,
-          answered = answered,
-          target = index == targetIndex,
+        position = index + 1,
+        label = label,
+        answered = answered,
+        target = index == targetIndex,
       )
     }
   }
@@ -306,73 +319,73 @@ private fun ChordBuffer(
 
 @Composable
 private fun ChordCell(
-    position: Int,
-    label: String,
-    answered: Boolean,
-    target: Boolean,
+  position: Int,
+  label: String,
+  answered: Boolean,
+  target: Boolean,
 ) {
   val shape = ShuuenUi.ControlShape
   val borderColor = if (target) ShuuenUi.HairlineStrong else ShuuenUi.Hairline
   val textColor = if (answered || target) ShuuenUi.Text else ShuuenUi.Muted
   Column(
-      modifier =
-          Modifier.width(ChordCellWidth)
-              .height(ChordCellHeight)
-              .clip(shape)
-              .background(
-                  when {
-                    target -> ShuuenUi.Ink.copy(alpha = 0.08f)
-                    answered -> ShuuenUi.Ink.copy(alpha = 0.04f)
-                    else -> Color.Transparent
-                  }
-              )
-              .border(1.dp, borderColor, shape)
-              .padding(vertical = 4.dp),
-      horizontalAlignment = Alignment.CenterHorizontally,
-      verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+    modifier =
+      Modifier.width(ChordCellWidth)
+        .height(ChordCellHeight)
+        .clip(shape)
+        .background(
+          when {
+            target -> ShuuenUi.Ink.copy(alpha = 0.08f)
+            answered -> ShuuenUi.Ink.copy(alpha = 0.04f)
+            else -> Color.Transparent
+          }
+        )
+        .border(1.dp, borderColor, shape)
+        .padding(vertical = 4.dp),
+    horizontalAlignment = Alignment.CenterHorizontally,
+    verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
   ) {
     Text(
-        "$position",
-        color = ShuuenUi.Dim,
-        style = MaterialTheme.typography.labelSmall,
-        maxLines = 1,
+      "$position",
+      color = ShuuenUi.Dim,
+      style = MaterialTheme.typography.labelSmall,
+      maxLines = 1,
     )
     Text(
-        text = label,
-        color = textColor,
-        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
+      text = label,
+      color = textColor,
+      style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
     )
   }
 }
 
 @Composable
 private fun TrainingStatus(
-    questionNumber: Int = 1,
-    correct: Int = 0,
-    incorrect: Int = 0,
-    questionsAmount: Int? = null,
-    modifier: Modifier = Modifier,
+  questionNumber: Int = 1,
+  correct: Int = 0,
+  incorrect: Int = 0,
+  questionsAmount: Int? = null,
+  modifier: Modifier = Modifier,
 ) {
   Column(
-      modifier = modifier.fillMaxWidth(),
-      verticalArrangement = Arrangement.spacedBy(12.dp),
+    modifier = modifier.fillMaxWidth(),
+    verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top,
+      modifier = Modifier.fillMaxWidth(),
+      verticalAlignment = Alignment.Top,
     ) {
       Text(
-          "$questionNumber/${questionsAmount ?: "∞"}",
-          color = ShuuenUi.Muted,
-          style = MaterialTheme.typography.titleSmall,
-          modifier = Modifier.weight(1f),
+        "$questionNumber/${questionsAmount ?: "∞"}",
+        color = ShuuenUi.Muted,
+        style = MaterialTheme.typography.titleSmall,
+        modifier = Modifier.weight(1f),
       )
 
       Row(
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
       ) {
         ScoreCount("$correct", ShuuenUi.Correct)
         Text("|", color = ShuuenUi.Dim, style = MaterialTheme.typography.titleMedium)
@@ -381,71 +394,71 @@ private fun TrainingStatus(
     }
 
     LinearTrainingProgress(
-        progress = (questionNumber.toFloat() - 1) / (questionsAmount ?: questionNumber),
+      progress = (questionNumber.toFloat() - 1) / (questionsAmount ?: questionNumber)
     )
   }
 }
 
 @Composable
 private fun ScoreCount(
-    value: String,
-    tint: Color,
+  value: String,
+  tint: Color,
 ) {
   Text(value, color = tint, style = MaterialTheme.typography.titleLarge)
 }
 
 @Composable
 private fun BottomActionBar(
-    onRepeatChord: () -> Unit,
-    onRepeatMelody: () -> Unit,
-    onFinishSession: () -> Unit,
-    modifier: Modifier = Modifier,
+  onRepeatChord: () -> Unit,
+  onRepeatMelody: () -> Unit,
+  onFinishSession: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
   Row(
-      modifier = modifier.fillMaxWidth(),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(12.dp),
+    modifier = modifier.fillMaxWidth(),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     BottomRepeatButton(Modifier.weight(1.8f), onClick = onRepeatChord)
     BottomIconButton(
-        icon = Icons.Rounded.MusicNote,
-        modifier = Modifier.width(80.dp),
-      onClick = onRepeatMelody
+      icon = Icons.Rounded.MusicNote,
+      modifier = Modifier.width(80.dp),
+      onClick = onRepeatMelody,
     )
     Spacer(Modifier.weight(0.34f))
     BottomIconButton(
-        icon = Icons.Rounded.Flag,
-        modifier = Modifier.width(64.dp),
-      onClick = onFinishSession
+      icon = Icons.Rounded.Flag,
+      modifier = Modifier.width(64.dp),
+      onClick = onFinishSession,
     )
   }
 }
 
 @Composable
-private fun BottomRepeatButton(modifier: Modifier = Modifier, onClick: () ->Unit) {
+private fun BottomRepeatButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
   SoftControl(modifier = modifier.height(60.dp), onClick = onClick) {
     Icon(
-        imageVector = Icons.Rounded.Replay,
-        contentDescription = null,
-        tint = ShuuenUi.Text,
-        modifier = Modifier.size(24.dp),
+      imageVector = Icons.Rounded.Replay,
+      contentDescription = null,
+      tint = ShuuenUi.Text,
+      modifier = Modifier.size(24.dp),
     )
     Text(
-        text = "Repeat",
-        color = ShuuenUi.Text,
-        style = MaterialTheme.typography.titleSmall,
-        textAlign = TextAlign.Center,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
+      text = "Repeat",
+      color = ShuuenUi.Text,
+      style = MaterialTheme.typography.titleSmall,
+      textAlign = TextAlign.Center,
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
     )
   }
 }
 
 @Composable
 private fun BottomIconButton(
-    icon: ImageVector,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
+  icon: ImageVector,
+  modifier: Modifier = Modifier,
+  onClick: () -> Unit,
 ) {
   SoftControl(modifier = modifier.height(60.dp), onClick = onClick) {
     Icon(icon, contentDescription = null, tint = ShuuenUi.Muted, modifier = Modifier.size(24.dp))

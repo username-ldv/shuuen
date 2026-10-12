@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -93,119 +92,119 @@ private val TimedSustain = Sustain.Finite(1.seconds)
 private const val standardTempo = 90
 
 private fun sequenceNode(
-    firstDegree: DegreeWithOctave = DegreeWithOctave(Degree.D1, 2),
-    extraDegrees: List<Degree> = listOf(),
-    sustain: Sustain = Sustain.Endless,
-    duration: ContextDuration = ContextDuration.SameAsScaleRotation,
-    setupMelody: SetupMelody? = null,
-    relativeDirection: DegreeDirection = DegreeDirection.Up,
+  firstDegree: DegreeWithOctave = DegreeWithOctave(Degree.D1, 2),
+  extraDegrees: List<Degree> = listOf(),
+  sustain: Sustain = Sustain.Endless,
+  duration: ContextDuration = ContextDuration.SameAsScaleRotation,
+  setupMelody: SetupMelody? = null,
+  relativeDirection: DegreeDirection = DegreeDirection.Up,
 ) =
-    DegreeContextNode(
-        firstDegree = firstDegree,
-        extraDegrees = extraDegrees,
-        sustain = sustain,
-        duration = duration,
-        setupMelody = setupMelody,
-        relativeDirection = relativeDirection,
-    )
+  DegreeContextNode(
+    firstDegree = firstDegree,
+    extraDegrees = extraDegrees,
+    sustain = sustain,
+    duration = duration,
+    setupMelody = setupMelody,
+    relativeDirection = relativeDirection,
+  )
 
 private data class SequencePreset(val label: String, val nodes: List<DegreeContextNode>)
 
 private val sequencePresets =
-    listOf(
-        SequencePreset(
-            label = "Drone",
-            nodes =
-                listOf(
-                    sequenceNode(
-                        firstDegree = DegreeWithOctave(Degree.D1, 2),
-                        extraDegrees = emptyList(),
-                        sustain = Sustain.Endless,
-                        setupMelody =
-                            SetupMelody(
-                                melody =
-                                    RelativeMelody(
-                                        firstDegree = DegreeWithOctave(Degree.D1, 3),
-                                        extraDegrees =
-                                            listOf(
-                                                DirectedDegree(Degree.D3, DegreeDirection.Up),
-                                                DirectedDegree(Degree.D5, DegreeDirection.Up),
-                                                DirectedDegree(Degree.D1, DegreeDirection.Up),
-                                            ),
-                                    ),
-                                repeat = SetupMelodyRepeat.Once,
-                            ),
-                    ),
-                ),
+  listOf(
+    SequencePreset(
+      label = "Drone",
+      nodes =
+        listOf(
+          sequenceNode(
+            firstDegree = DegreeWithOctave(Degree.D1, 2),
+            extraDegrees = emptyList(),
+            sustain = Sustain.Endless,
+            setupMelody =
+              SetupMelody(
+                melody =
+                  RelativeMelody(
+                    firstDegree = DegreeWithOctave(Degree.D1, 3),
+                    extraDegrees =
+                      listOf(
+                        DirectedDegree(Degree.D3, DegreeDirection.Up),
+                        DirectedDegree(Degree.D5, DegreeDirection.Up),
+                        DirectedDegree(Degree.D1, DegreeDirection.Up),
+                      ),
+                  ),
+                repeat = SetupMelodyRepeat.Once,
+              ),
+          )
         ),
-        SequencePreset(
-            label = "I-IV-V-I",
-            nodes =
-                listOf(
-                    sequenceNode(
-                        DegreeWithOctave(Degree.D1, 3),
-                        listOf(Degree.D3, Degree.D5),
-                        Sustain.Finite(Timing(standardTempo).quarter()),
-                        duration = ContextDuration.Immediate,
-                    ),
-                    sequenceNode(
-                        DegreeWithOctave(Degree.D4, 3),
-                        listOf(Degree.D6, Degree.D1),
-                        Sustain.Finite(Timing(standardTempo).quarter()),
-                        duration = ContextDuration.Immediate,
-                        relativeDirection = DegreeDirection.Up,
-                    ),
-                    sequenceNode(
-                        DegreeWithOctave(Degree.D5, 3),
-                        listOf(Degree.D7, Degree.D2),
-                        Sustain.Finite(Timing(standardTempo).quarter()),
-                        duration = ContextDuration.Immediate,
-                        relativeDirection = DegreeDirection.Up,
-                    ),
-                    sequenceNode(
-                        DegreeWithOctave(Degree.D1, 3),
-                        listOf(Degree.D3, Degree.D5),
-                        Sustain.Finite(Timing(standardTempo).half()),
-                        duration = ContextDuration.SameAsScaleRotation,
-                        relativeDirection = DegreeDirection.Down,
-                    ),
-                ),
+    ),
+    SequencePreset(
+      label = "I-IV-V-I",
+      nodes =
+        listOf(
+          sequenceNode(
+            DegreeWithOctave(Degree.D1, 3),
+            listOf(Degree.D3, Degree.D5),
+            Sustain.Finite(Timing(standardTempo).quarter()),
+            duration = ContextDuration.Immediate,
+          ),
+          sequenceNode(
+            DegreeWithOctave(Degree.D4, 3),
+            listOf(Degree.D6, Degree.D1),
+            Sustain.Finite(Timing(standardTempo).quarter()),
+            duration = ContextDuration.Immediate,
+            relativeDirection = DegreeDirection.Up,
+          ),
+          sequenceNode(
+            DegreeWithOctave(Degree.D5, 3),
+            listOf(Degree.D7, Degree.D2),
+            Sustain.Finite(Timing(standardTempo).quarter()),
+            duration = ContextDuration.Immediate,
+            relativeDirection = DegreeDirection.Up,
+          ),
+          sequenceNode(
+            DegreeWithOctave(Degree.D1, 3),
+            listOf(Degree.D3, Degree.D5),
+            Sustain.Finite(Timing(standardTempo).half()),
+            duration = ContextDuration.SameAsScaleRotation,
+            relativeDirection = DegreeDirection.Down,
+          ),
         ),
-        SequencePreset(
-            label = "ii-V-I",
-            nodes =
-                listOf(
-                    sequenceNode(
-                        DegreeWithOctave(Degree.D2, 3),
-                        listOf(Degree.D4, Degree.D6),
-                        Sustain.Finite(Timing(standardTempo).quarter()),
-                        duration = ContextDuration.Immediate,
-                    ),
-                    sequenceNode(
-                        DegreeWithOctave(Degree.D5, 3),
-                        listOf(Degree.D7, Degree.D2),
-                        Sustain.Finite(Timing(standardTempo).quarter()),
-                        duration = ContextDuration.Immediate,
-                        relativeDirection = DegreeDirection.Up,
-                    ),
-                    sequenceNode(
-                        DegreeWithOctave(Degree.D1, 3),
-                        listOf(Degree.D3, Degree.D5),
-                        Sustain.Finite(Timing(standardTempo).half()),
-                        duration = ContextDuration.SameAsScaleRotation,
-                        relativeDirection = DegreeDirection.Down,
-                    ),
-                ),
+    ),
+    SequencePreset(
+      label = "ii-V-I",
+      nodes =
+        listOf(
+          sequenceNode(
+            DegreeWithOctave(Degree.D2, 3),
+            listOf(Degree.D4, Degree.D6),
+            Sustain.Finite(Timing(standardTempo).quarter()),
+            duration = ContextDuration.Immediate,
+          ),
+          sequenceNode(
+            DegreeWithOctave(Degree.D5, 3),
+            listOf(Degree.D7, Degree.D2),
+            Sustain.Finite(Timing(standardTempo).quarter()),
+            duration = ContextDuration.Immediate,
+            relativeDirection = DegreeDirection.Up,
+          ),
+          sequenceNode(
+            DegreeWithOctave(Degree.D1, 3),
+            listOf(Degree.D3, Degree.D5),
+            Sustain.Finite(Timing(standardTempo).half()),
+            duration = ContextDuration.SameAsScaleRotation,
+            relativeDirection = DegreeDirection.Down,
+          ),
         ),
-    )
+    ),
+  )
 
 @OptIn(ExperimentalUuidApi::class)
 private fun editableContext(nodes: List<DegreeContextNode>): DegreeContext =
-    DegreeContext(
-        id = Uuid.generateV7().toString(),
-        source = ContextSource.UserLocal,
-        nodes = nodes,
-    )
+  DegreeContext(
+    id = Uuid.generateV7().toString(),
+    source = ContextSource.UserLocal,
+    nodes = nodes,
+  )
 
 @Composable
 fun ContextScreen(
@@ -225,89 +224,89 @@ fun ContextScreen(
   }
 
   StaticScreenFrame(
-      verticalSpacing = 18.dp,
-      topBar = {
-        ShuuenTopAppBar(
-            title = "CONTEXT",
-            subtitle = "Configure the listening context.",
-            onBack = onNavigateBack,
-            type = ShuuenTopAppBarType.Labeled,
-        )
-      },
+    verticalSpacing = 18.dp,
+    topBar = {
+      ShuuenTopAppBar(
+        title = "CONTEXT",
+        subtitle = "Configure the listening context.",
+        onBack = onNavigateBack,
+        type = ShuuenTopAppBarType.Labeled,
+      )
+    },
   ) {
     FlatSection(
-        label = "SEQUENCE",
-        supporting =
-            "Build the progression played during training. After the last node, the sequence returns to the first node.",
-        trailing = {
-          Text(
-              text = "${nodes.size} ${if (nodes.size == 1) "node" else "nodes"}",
-              color = ShuuenUi.Muted,
-              style = MaterialTheme.typography.labelLarge,
-          )
-        },
+      label = "SEQUENCE",
+      supporting =
+        "Build the progression played during training. After the last node, the sequence returns to the first node.",
+      trailing = {
+        Text(
+          text = "${nodes.size} ${if (nodes.size == 1) "node" else "nodes"}",
+          color = ShuuenUi.Muted,
+          style = MaterialTheme.typography.labelLarge,
+        )
+      },
     ) {
       PresetRow(
-          onApply = {
-            viewModel.stopPreviewsUsingSequenceNodes()
-            context = context.copy(nodes = it)
-          },
+        onApply = {
+          viewModel.stopPreviewsUsingSequenceNodes()
+          context = context.copy(nodes = it)
+        }
       )
       PreviewFullSequence(
-          playing = playingFullSequence,
-          onPreview = { viewModel.toggleFullSequencePreview(nodes) },
+        playing = playingFullSequence,
+        onPreview = { viewModel.toggleFullSequencePreview(nodes) },
       )
       nodes.forEachIndexed { index, node ->
         SequenceNodeCard(
-            number = index + 1,
-            isLast = index == nodes.lastIndex,
-            node = node,
-            onNodeChange = { update ->
-              viewModel.stopFullSequencePreview()
-              context = context.withUpdatedNode(index, update)
-            },
-            onDelete =
-                if (nodes.size > 1) {
-                  {
-                    viewModel.stopPreviewsUsingSequenceNodes()
-                    context = context.withDeletedNode(index)
-                  }
-                } else null,
-            nodePlaying = playingNodeNumber == index + 1,
-            setupMelodyPlaying = playingMelody,
-            onPreviewNode = { viewModel.toggleNodePreview(index + 1, nodes) },
-            onPreviewSetupMelody = viewModel::previewSetupMelody,
+          number = index + 1,
+          isLast = index == nodes.lastIndex,
+          node = node,
+          onNodeChange = { update ->
+            viewModel.stopFullSequencePreview()
+            context = context.withUpdatedNode(index, update)
+          },
+          onDelete =
+            if (nodes.size > 1) {
+              {
+                viewModel.stopPreviewsUsingSequenceNodes()
+                context = context.withDeletedNode(index)
+              }
+            } else null,
+          nodePlaying = playingNodeNumber == index + 1,
+          setupMelodyPlaying = playingMelody,
+          onPreviewNode = { viewModel.toggleNodePreview(index + 1, nodes) },
+          onPreviewSetupMelody = viewModel::previewSetupMelody,
         )
       }
       DashedAddButton(
-          text = "ADD NODE",
-          onClick = {
-            viewModel.stopFullSequencePreview()
-            context =
-                context.copy(
-                    nodes = context.nodes + sequenceNode(relativeDirection = DegreeDirection.Up)
-                )
-          },
+        text = "ADD NODE",
+        onClick = {
+          viewModel.stopFullSequencePreview()
+          context =
+            context.copy(
+              nodes = context.nodes + sequenceNode(relativeDirection = DegreeDirection.Up)
+            )
+        },
       )
     }
 
     SequenceInfoBlock()
 
     PrimaryCta(
-        text = "SAVE CONTEXT",
-        onClick = {
-          onContextChosen(context)
-          Napier.v { "sending context: $context" }
-          onNavigateBack()
-        },
-        modifier = Modifier.padding(bottom = 18.dp),
+      text = "SAVE CONTEXT",
+      onClick = {
+        onContextChosen(context)
+        Napier.v { "sending context: $context" }
+        onNavigateBack()
+      },
+      modifier = Modifier.padding(bottom = 18.dp),
     )
   }
 }
 
 private fun DegreeContext.withUpdatedNode(
-    index: Int,
-    update: (DegreeContextNode) -> DegreeContextNode,
+  index: Int,
+  update: (DegreeContextNode) -> DegreeContextNode,
 ): DegreeContext {
   if (index !in nodes.indices) return this
   return copy(nodes = nodes.toMutableList().also { it[index] = update(it[index]) })
@@ -322,23 +321,23 @@ private fun DegreeContext.withDeletedNode(index: Int): DegreeContext {
 private fun PresetRow(onApply: (List<DegreeContextNode>) -> Unit) {
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Text(
-        text = "PRESETS",
-        color = ShuuenUi.Dim,
-        style =
-            MaterialTheme.typography.labelSmall.copy(
-                letterSpacing = ShuuenUi.labelSpacing,
-                fontWeight = FontWeight.SemiBold,
-            ),
+      text = "PRESETS",
+      color = ShuuenUi.Dim,
+      style =
+        MaterialTheme.typography.labelSmall.copy(
+          letterSpacing = ShuuenUi.labelSpacing,
+          fontWeight = FontWeight.SemiBold,
+        ),
     )
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       sequencePresets.forEach { preset ->
         SmallPill(
-            text = preset.label,
-            onClick = { onApply(preset.nodes) },
-            modifier = Modifier.weight(1f),
+          text = preset.label,
+          onClick = { onApply(preset.nodes) },
+          modifier = Modifier.weight(1f),
         )
       }
     }
@@ -347,49 +346,49 @@ private fun PresetRow(onApply: (List<DegreeContextNode>) -> Unit) {
 
 @Composable
 private fun PreviewFullSequence(
-    playing: Boolean,
-    onPreview: () -> Unit,
+  playing: Boolean,
+  onPreview: () -> Unit,
 ) {
   SoftControl(modifier = Modifier.fillMaxWidth(), onClick = onPreview) {
     PlayBubble(playing)
     Text(
-        text = "Preview full sequence",
-        color = ShuuenUi.Text,
-        style = MaterialTheme.typography.titleSmall,
-        modifier = Modifier.weight(1f),
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
+      text = "Preview full sequence",
+      color = ShuuenUi.Text,
+      style = MaterialTheme.typography.titleSmall,
+      modifier = Modifier.weight(1f),
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
     )
     //    MiniWaveform(Modifier.width(126.dp).height(30.dp), pieces = 4)
     Icon(
-        Icons.Rounded.ChevronRight,
-        contentDescription = null,
-        tint = ShuuenUi.Dim,
-        modifier = Modifier.size(22.dp),
+      Icons.Rounded.ChevronRight,
+      contentDescription = null,
+      tint = ShuuenUi.Dim,
+      modifier = Modifier.size(22.dp),
     )
   }
 }
 
 @Composable
 private fun SequenceNodeCard(
-    number: Int,
-    isLast: Boolean,
-    node: DegreeContextNode,
-    onNodeChange: ((DegreeContextNode) -> DegreeContextNode) -> Unit,
-    onDelete: (() -> Unit)?,
-    nodePlaying: Boolean,
-    setupMelodyPlaying: Boolean,
-    onPreviewNode: () -> Unit,
-    onPreviewSetupMelody: (RelativeMelody) -> Unit,
+  number: Int,
+  isLast: Boolean,
+  node: DegreeContextNode,
+  onNodeChange: ((DegreeContextNode) -> DegreeContextNode) -> Unit,
+  onDelete: (() -> Unit)?,
+  nodePlaying: Boolean,
+  setupMelodyPlaying: Boolean,
+  onPreviewNode: () -> Unit,
+  onPreviewSetupMelody: (RelativeMelody) -> Unit,
 ) {
   val sustainEnabled = node.sustain is Sustain.Endless
 
   SurfaceCard {
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
       Row(
-          modifier = Modifier.fillMaxWidth(),
-          verticalAlignment = Alignment.Top,
-          horizontalArrangement = Arrangement.spacedBy(14.dp),
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
       ) {
         NodeNumber(number = number)
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -415,17 +414,14 @@ private fun SequenceNodeCard(
               contentDescription = "Delete node",
               tint = ShuuenUi.Dim,
               modifier =
-                Modifier
-                  .size(28.dp)
-                  .clip(ShuuenUi.ControlShape)
-                  .clickable(onClick = onDelete),
+                Modifier.size(28.dp).clip(ShuuenUi.ControlShape).clickable(onClick = onDelete),
             )
           }
         }
       }
       val spacing = 14.dp
       Column(
-//        verticalArrangement = Arrangement.spacedBy(14.dp),
+        //        verticalArrangement = Arrangement.spacedBy(14.dp),
       ) {
         NodeDegreesEditor(number = number, node = node, onNodeChange = onNodeChange)
         Spacer(modifier = Modifier.height(spacing))
@@ -434,17 +430,16 @@ private fun SequenceNodeCard(
           onChange = { enabled ->
             onNodeChange { current ->
               val updatedDuration =
-                  if (enabled && current.duration == ContextDuration.Immediate) {
-                    ContextDuration.SameAsScaleRotation
-                  } else {
-                    current.duration
-                  }
+                if (enabled && current.duration == ContextDuration.Immediate) {
+                  ContextDuration.SameAsScaleRotation
+                } else {
+                  current.duration
+                }
 
               current.copy(
-                  sustain =
-                      if (enabled) Sustain.Endless
-                      else Sustain.Finite(Timing(standardTempo).quarter()),
-                  duration = updatedDuration,
+                sustain =
+                  if (enabled) Sustain.Endless else Sustain.Finite(Timing(standardTempo).quarter()),
+                duration = updatedDuration,
               )
             }
           },
@@ -460,13 +455,11 @@ private fun SequenceNodeCard(
         NodePreviewRow(playing = nodePlaying, onPreview = onPreviewNode)
         Spacer(modifier = Modifier.height(spacing))
         DurationPicker(
-            duration = node.duration,
-            immediateVisible = !sustainEnabled,
-            onDurationChange = { duration -> onNodeChange { it.copy(duration = duration) } },
+          duration = node.duration,
+          immediateVisible = !sustainEnabled,
+          onDurationChange = { duration -> onNodeChange { it.copy(duration = duration) } },
         )
-        AnimatedVisibility(
-            visible = node.duration is ContextDuration.Finite,
-        ) {
+        AnimatedVisibility(visible = node.duration is ContextDuration.Finite) {
           Column {
             Spacer(modifier = Modifier.height(spacing))
             InlineCounter(
@@ -485,66 +478,66 @@ private fun SequenceNodeCard(
 
 private val ContextDuration.durationLabel: String
   get() =
-      when (this) {
-        is ContextDuration.Finite -> "Finite"
-        ContextDuration.Immediate -> "Immediate"
-        ContextDuration.Endless -> "Endless"
-        ContextDuration.SameAsScaleRotation -> "Rotate"
-      }
+    when (this) {
+      is ContextDuration.Finite -> "Finite"
+      ContextDuration.Immediate -> "Immediate"
+      ContextDuration.Endless -> "Endless"
+      ContextDuration.SameAsScaleRotation -> "Rotate"
+    }
 
 private fun ContextDuration.sameModeAs(other: ContextDuration): Boolean =
-    when {
-      this is ContextDuration.Finite && other is ContextDuration.Finite -> true
-      else -> this == other
-    }
+  when {
+    this is ContextDuration.Finite && other is ContextDuration.Finite -> true
+    else -> this == other
+  }
 
 @Composable
 private fun DurationPicker(
-    duration: ContextDuration,
-    immediateVisible: Boolean,
-    onDurationChange: (ContextDuration) -> Unit,
+  duration: ContextDuration,
+  immediateVisible: Boolean,
+  onDurationChange: (ContextDuration) -> Unit,
 ) {
   val finiteDuration = duration as? ContextDuration.Finite ?: ContextDuration.Finite(4)
   val topDurations =
-      if (immediateVisible) {
-        listOf(ContextDuration.Immediate, finiteDuration)
-      } else {
-        listOf(finiteDuration)
-      }
+    if (immediateVisible) {
+      listOf(ContextDuration.Immediate, finiteDuration)
+    } else {
+      listOf(finiteDuration)
+    }
 
   Column(
-      modifier =
-          Modifier.fillMaxWidth()
-              .clip(ShuuenUi.ControlShape)
-              .background(ShuuenUi.Ink.copy(alpha = 0.05f)),
+    modifier =
+      Modifier.fillMaxWidth()
+        .clip(ShuuenUi.ControlShape)
+        .background(ShuuenUi.Ink.copy(alpha = 0.05f))
   ) {
     DurationRow(
-        durations = topDurations,
-        selectedDuration = duration,
-        onDurationChange = onDurationChange,
+      durations = topDurations,
+      selectedDuration = duration,
+      onDurationChange = onDurationChange,
     )
     Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(ShuuenUi.Hairline))
     DurationRow(
-        durations = listOf(ContextDuration.SameAsScaleRotation, ContextDuration.Endless),
-        selectedDuration = duration,
-        onDurationChange = onDurationChange,
+      durations = listOf(ContextDuration.SameAsScaleRotation, ContextDuration.Endless),
+      selectedDuration = duration,
+      onDurationChange = onDurationChange,
     )
   }
 }
 
 @Composable
 private fun DurationRow(
-    durations: List<ContextDuration>,
-    selectedDuration: ContextDuration,
-    onDurationChange: (ContextDuration) -> Unit,
+  durations: List<ContextDuration>,
+  selectedDuration: ContextDuration,
+  onDurationChange: (ContextDuration) -> Unit,
 ) {
   Row(modifier = Modifier.fillMaxWidth().height(42.dp)) {
     durations.forEachIndexed { index, duration ->
       DurationSegment(
-          duration = duration,
-          selected = duration.sameModeAs(selectedDuration),
-          onClick = { onDurationChange(duration) },
-          modifier = Modifier.weight(1f),
+        duration = duration,
+        selected = duration.sameModeAs(selectedDuration),
+        onClick = { onDurationChange(duration) },
+        modifier = Modifier.weight(1f),
       )
       if (index < durations.lastIndex) {
         Box(modifier = Modifier.width(1.dp).fillMaxHeight().background(ShuuenUi.Hairline))
@@ -555,26 +548,26 @@ private fun DurationRow(
 
 @Composable
 private fun DurationSegment(
-    duration: ContextDuration,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
+  duration: ContextDuration,
+  selected: Boolean,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
   Box(
-      modifier =
-          modifier
-              .fillMaxHeight()
-              .background(if (selected) ShuuenUi.Inverse else Color.Transparent)
-              .clickable(onClick = onClick)
-              .padding(horizontal = 10.dp),
-      contentAlignment = Alignment.Center,
+    modifier =
+      modifier
+        .fillMaxHeight()
+        .background(if (selected) ShuuenUi.Inverse else Color.Transparent)
+        .clickable(onClick = onClick)
+        .padding(horizontal = 10.dp),
+    contentAlignment = Alignment.Center,
   ) {
     Text(
-        text = duration.durationLabel,
-        color = if (selected) ShuuenUi.OnInverse else ShuuenUi.Muted,
-        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
+      text = duration.durationLabel,
+      color = if (selected) ShuuenUi.OnInverse else ShuuenUi.Muted,
+      style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
     )
   }
 }
@@ -585,20 +578,20 @@ private fun DurationSegment(
  */
 @Composable
 private fun NodeDegreesEditor(
-    number: Int,
-    node: DegreeContextNode,
-    onNodeChange: ((DegreeContextNode) -> DegreeContextNode) -> Unit,
+  number: Int,
+  node: DegreeContextNode,
+  onNodeChange: ((DegreeContextNode) -> DegreeContextNode) -> Unit,
 ) {
   var selectedIndex by rememberSaveable(number) { mutableStateOf<Int?>(null) }
   var insertAfterSelected by rememberSaveable(number) { mutableStateOf(false) }
   val labels =
-      listOf(
-          if (number == 1) {
-            "${node.firstDegree.degree.label} · ${node.firstDegree.octave}"
-          } else {
-            node.firstDegree.degree.label
-          }
-      ) + node.extraDegrees.map { it.label }
+    listOf(
+      if (number == 1) {
+        "${node.firstDegree.degree.label} · ${node.firstDegree.octave}"
+      } else {
+        node.firstDegree.degree.label
+      }
+    ) + node.extraDegrees.map { it.label }
   val selectedDegreeIndex = selectedIndex?.takeIf { it in labels.indices }
 
   fun updateSelectedDegree(degree: Degree) {
@@ -608,16 +601,14 @@ private fun NodeDegreesEditor(
         insertAfterSelected && selected != null -> {
           val insertIndex = selected.coerceIn(0, current.extraDegrees.size)
           current.copy(
-              extraDegrees =
-                  current.extraDegrees.toMutableList().also { it.add(insertIndex, degree) }
+            extraDegrees = current.extraDegrees.toMutableList().also { it.add(insertIndex, degree) }
           )
         }
         selected == 0 -> current.copy(firstDegree = current.firstDegree.copy(degree = degree))
         selected != null && selected > 0 && selected - 1 in current.extraDegrees.indices ->
-            current.copy(
-                extraDegrees =
-                    current.extraDegrees.toMutableList().also { it[selected - 1] = degree }
-            )
+          current.copy(
+            extraDegrees = current.extraDegrees.toMutableList().also { it[selected - 1] = degree }
+          )
         else -> current.copy(extraDegrees = current.extraDegrees + degree)
       }
     }
@@ -628,79 +619,74 @@ private fun NodeDegreesEditor(
   }
 
   Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-    GroupLabel(
-        if (number == 1) "FIRST DEGREE" else "FIRST DEGREE, RELATIVE TO NODE ${number - 1}"
-    )
+    GroupLabel(if (number == 1) "FIRST DEGREE" else "FIRST DEGREE, RELATIVE TO NODE ${number - 1}")
     if (number == 1) {
       OctaveStepper(
-          node.firstDegree.octave,
-          { octave -> onNodeChange { it.copy(firstDegree = it.firstDegree.copy(octave = octave)) } },
+        node.firstDegree.octave,
+        { octave -> onNodeChange { it.copy(firstDegree = it.firstDegree.copy(octave = octave)) } },
       )
     } else {
       RelativeDirectionPicker(
-          direction = node.relativeDirection,
-          onChange = { direction -> onNodeChange { it.copy(relativeDirection = direction) } },
+        direction = node.relativeDirection,
+        onChange = { direction -> onNodeChange { it.copy(relativeDirection = direction) } },
       )
     }
 
     GroupLabel("THEN, ASCENDING")
     DegreeSequenceChips(
-        labels = labels,
-        selectedIndex = selectedDegreeIndex,
-        insertAfterSelected = insertAfterSelected,
-        onChipClick = {
-          selectedIndex = if (selectedDegreeIndex == it) null else it
-          insertAfterSelected = false
-        },
-        onInsertAfterSelected = {
-          selectedIndex = selectedDegreeIndex ?: labels.lastIndex
-          insertAfterSelected = !insertAfterSelected
-        },
-        onBackspace = {
-          val selected = selectedDegreeIndex
-          onNodeChange { current ->
-            val removeIndex =
-                if (selected != null && selected > 0 && selected - 1 in current.extraDegrees.indices) {
-                  selected - 1
-                } else {
-                  current.extraDegrees.lastIndex
-                }
-            if (removeIndex !in current.extraDegrees.indices) {
-              current
+      labels = labels,
+      selectedIndex = selectedDegreeIndex,
+      insertAfterSelected = insertAfterSelected,
+      onChipClick = {
+        selectedIndex = if (selectedDegreeIndex == it) null else it
+        insertAfterSelected = false
+      },
+      onInsertAfterSelected = {
+        selectedIndex = selectedDegreeIndex ?: labels.lastIndex
+        insertAfterSelected = !insertAfterSelected
+      },
+      onBackspace = {
+        val selected = selectedDegreeIndex
+        onNodeChange { current ->
+          val removeIndex =
+            if (selected != null && selected > 0 && selected - 1 in current.extraDegrees.indices) {
+              selected - 1
             } else {
-              current.copy(
-                  extraDegrees =
-                      current.extraDegrees.toMutableList().also { it.removeAt(removeIndex) }
-              )
+              current.extraDegrees.lastIndex
             }
+          if (removeIndex !in current.extraDegrees.indices) {
+            current
+          } else {
+            current.copy(
+              extraDegrees = current.extraDegrees.toMutableList().also { it.removeAt(removeIndex) }
+            )
           }
-          selectedIndex = selectedIndex?.coerceAtMost((labels.lastIndex - 1).coerceAtLeast(0))
-          insertAfterSelected = false
-        },
+        }
+        selectedIndex = selectedIndex?.coerceAtMost((labels.lastIndex - 1).coerceAtLeast(0))
+        insertAfterSelected = false
+      },
     )
     key(selectedDegreeIndex, insertAfterSelected, labels.size) {
-      DegreePalette(
-          onPick = { degree -> updateSelectedDegree(degree) },
-      )
+      DegreePalette(onPick = { degree -> updateSelectedDegree(degree) })
     }
   }
 }
 
 @Composable
 private fun RelativeDirectionPicker(
-    direction: DegreeDirection,
-    onChange: (DegreeDirection) -> Unit,
+  direction: DegreeDirection,
+  onChange: (DegreeDirection) -> Unit,
 ) {
   Row(
-      modifier = Modifier.fillMaxWidth(),
-      horizontalArrangement = Arrangement.spacedBy(8.dp),
+    modifier = Modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
   ) {
     DegreeDirection.entries.forEach { option ->
       DegreeChip(
-          label = "${option.arrow} ${option.relativeLabel.uppercase()}",
-          inverted = option == direction,
-          onClick = { onChange(option) },
-          modifier = Modifier.weight(1f),
+        label = "${option.arrow} ${option.relativeLabel.uppercase()}",
+        inverted = option == direction,
+        onClick = { onChange(option) },
+        modifier = Modifier.weight(1f),
       )
     }
   }
@@ -708,43 +694,43 @@ private fun RelativeDirectionPicker(
 
 private val DegreeDirection.relativeLabel: String
   get() =
-      when (this) {
-        DegreeDirection.Up -> "above"
-        DegreeDirection.Down -> "below"
-      }
+    when (this) {
+      DegreeDirection.Up -> "above"
+      DegreeDirection.Down -> "below"
+    }
 
 @Composable
 fun DegreeChooser(
-    degree: Degree,
-    onSelectedDegree: (Degree) -> Unit,
-    modifier: Modifier = Modifier,
+  degree: Degree,
+  onSelectedDegree: (Degree) -> Unit,
+  modifier: Modifier = Modifier,
 ) {
   CompactDropdownMenu(
-      items = Degree.chromaticOrder.map { it.label },
-      selectedItem = degree.label,
-      onItemSelected = { name ->
-        onSelectedDegree(Degree.fromName(name))
-      },
-      modifier = modifier,
+    items = Degree.chromaticOrder.map { it.label },
+    selectedItem = degree.label,
+    onItemSelected = { name ->
+      onSelectedDegree(Degree.fromName(name))
+    },
+    modifier = modifier,
   )
 }
 
 @Composable
 private fun SustainRow(
-    sustain: Boolean,
-    onChange: (Boolean) -> Unit,
+  sustain: Boolean,
+  onChange: (Boolean) -> Unit,
 ) {
   SoftControl(modifier = Modifier.fillMaxWidth()) {
     Column(modifier = Modifier.weight(1f)) {
       Text(
-          text = "Sustain",
-          color = ShuuenUi.Text,
-          style = MaterialTheme.typography.titleSmall,
+        text = "Sustain",
+        color = ShuuenUi.Text,
+        style = MaterialTheme.typography.titleSmall,
       )
       Text(
-          text = "Hold continuously like a drone instead of a timed chord.",
-          color = ShuuenUi.Muted,
-          style = MaterialTheme.typography.bodySmall,
+        text = "Hold continuously like a drone instead of a timed chord.",
+        color = ShuuenUi.Muted,
+        style = MaterialTheme.typography.bodySmall,
       )
     }
     ShuuenSwitch(checked = sustain, onCheckedChange = onChange)
@@ -753,90 +739,90 @@ private fun SustainRow(
 
 @Composable
 private fun SetupMelodyRow(
-    setupMelody: SetupMelody?,
-    onChange: (SetupMelody?) -> Unit,
-    playing: Boolean,
-    onPreview: (RelativeMelody) -> Unit,
+  setupMelody: SetupMelody?,
+  onChange: (SetupMelody?) -> Unit,
+  playing: Boolean,
+  onPreview: (RelativeMelody) -> Unit,
 ) {
   var editing by rememberSaveable { mutableStateOf(false) }
   val melody = setupMelody?.melody
 
   Column {
     SoftControl(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = { editing = !editing },
+      modifier = Modifier.fillMaxWidth(),
+      onClick = { editing = !editing },
     ) {
       Icon(
-          imageVector = Icons.Rounded.Edit,
-          contentDescription = null,
-          tint = ShuuenUi.Muted,
-          modifier = Modifier.size(20.dp),
+        imageVector = Icons.Rounded.Edit,
+        contentDescription = null,
+        tint = ShuuenUi.Muted,
+        modifier = Modifier.size(20.dp),
       )
       Column(modifier = Modifier.weight(1f)) {
         Text(
-            text = "Setup melody",
-            color = ShuuenUi.Text,
-            style = MaterialTheme.typography.titleSmall,
+          text = "Setup melody",
+          color = ShuuenUi.Text,
+          style = MaterialTheme.typography.titleSmall,
         )
         Text(
-            text = melody?.stepLabels()?.joinToString(" ") ?: "None",
-            color = ShuuenUi.Muted,
-            style = MaterialTheme.typography.bodySmall,
+          text = melody?.stepLabels()?.joinToString(" ") ?: "None",
+          color = ShuuenUi.Muted,
+          style = MaterialTheme.typography.bodySmall,
         )
       }
       Icon(
-          imageVector = if (editing) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-          contentDescription = null,
-          tint = ShuuenUi.Dim,
-          modifier = Modifier.size(22.dp),
+        imageVector = if (editing) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+        contentDescription = null,
+        tint = ShuuenUi.Dim,
+        modifier = Modifier.size(22.dp),
       )
     }
     AnimatedVisibility(
-        visible = editing,
-        enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
-        exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
+      visible = editing,
+      enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+      exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
     ) {
       Column(
-          modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-          verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
       ) {
         setupMelody?.let { setupMelody ->
           val melody = setupMelody.melody
 
           GroupLabel("FIRST DEGREE OCTAVE")
           OctaveStepper(
-              melody.firstDegree.octave,
-              {
-                onChange(
-                    setupMelody.copy(
-                        melody = melody.copy(firstDegree = melody.firstDegree.copy(octave = it))
-                    )
+            melody.firstDegree.octave,
+            {
+              onChange(
+                setupMelody.copy(
+                  melody = melody.copy(firstDegree = melody.firstDegree.copy(octave = it))
                 )
-              },
+              )
+            },
           )
         }
 
         DirectedDegreeSequenceEditor(
-            steps = melody,
-            onChange = { updatedMelody ->
-              onChange(
-                  updatedMelody?.let {
-                    SetupMelody(melody = it, repeat = setupMelody?.repeat ?: SetupMelodyRepeat.Once)
-                  }
-              )
-            },
-            modifier = Modifier.padding(top = 2.dp),
+          steps = melody,
+          onChange = { updatedMelody ->
+            onChange(
+              updatedMelody?.let {
+                SetupMelody(melody = it, repeat = setupMelody?.repeat ?: SetupMelodyRepeat.Once)
+              }
+            )
+          },
+          modifier = Modifier.padding(top = 2.dp),
         )
         setupMelody?.let { setupMelody ->
           GroupLabel("REPEAT")
           SetupMelodyRepeatPicker(
-              repeat = setupMelody.repeat,
-              onRepeatChange = { onChange(setupMelody.copy(repeat = it)) },
+            repeat = setupMelody.repeat,
+            onRepeatChange = { onChange(setupMelody.copy(repeat = it)) },
           )
         }
         SetupMelodyPreviewRow(
-            onPreview = setupMelody?.let { { onPreview(it.melody) } },
-            playing = playing,
+          onPreview = setupMelody?.let { { onPreview(it.melody) } },
+          playing = playing,
         )
       }
     }
@@ -845,29 +831,29 @@ private fun SetupMelodyRow(
 
 private val SetupMelodyRepeat.repeatLabel: String
   get() =
-      when (this) {
-        SetupMelodyRepeat.Once -> "Once"
-        SetupMelodyRepeat.EveryTime -> "Every time"
-      }
+    when (this) {
+      SetupMelodyRepeat.Once -> "Once"
+      SetupMelodyRepeat.EveryTime -> "Every time"
+    }
 
 @Composable
 private fun SetupMelodyRepeatPicker(
-    repeat: SetupMelodyRepeat,
-    onRepeatChange: (SetupMelodyRepeat) -> Unit,
+  repeat: SetupMelodyRepeat,
+  onRepeatChange: (SetupMelodyRepeat) -> Unit,
 ) {
   Row(
-      modifier =
-          Modifier.fillMaxWidth()
-              .height(42.dp)
-              .clip(ShuuenUi.ControlShape)
-              .background(ShuuenUi.Ink.copy(alpha = 0.05f)),
+    modifier =
+      Modifier.fillMaxWidth()
+        .height(42.dp)
+        .clip(ShuuenUi.ControlShape)
+        .background(ShuuenUi.Ink.copy(alpha = 0.05f))
   ) {
     SetupMelodyRepeat.entries.forEachIndexed { index, option ->
       SetupMelodyRepeatSegment(
-          repeat = option,
-          selected = option == repeat,
-          onClick = { onRepeatChange(option) },
-          modifier = Modifier.weight(1f),
+        repeat = option,
+        selected = option == repeat,
+        onClick = { onRepeatChange(option) },
+        modifier = Modifier.weight(1f),
       )
       if (index < SetupMelodyRepeat.entries.lastIndex) {
         Box(modifier = Modifier.width(1.dp).fillMaxHeight().background(ShuuenUi.Hairline))
@@ -878,44 +864,44 @@ private fun SetupMelodyRepeatPicker(
 
 @Composable
 private fun SetupMelodyRepeatSegment(
-    repeat: SetupMelodyRepeat,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
+  repeat: SetupMelodyRepeat,
+  selected: Boolean,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
   Box(
-      modifier =
-          modifier
-              .fillMaxHeight()
-              .background(if (selected) ShuuenUi.Inverse else Color.Transparent)
-              .clickable(onClick = onClick)
-              .padding(horizontal = 10.dp),
-      contentAlignment = Alignment.Center,
+    modifier =
+      modifier
+        .fillMaxHeight()
+        .background(if (selected) ShuuenUi.Inverse else Color.Transparent)
+        .clickable(onClick = onClick)
+        .padding(horizontal = 10.dp),
+    contentAlignment = Alignment.Center,
   ) {
     Text(
-        text = repeat.repeatLabel,
-        color = if (selected) ShuuenUi.OnInverse else ShuuenUi.Muted,
-        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
+      text = repeat.repeatLabel,
+      color = if (selected) ShuuenUi.OnInverse else ShuuenUi.Muted,
+      style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
     )
   }
 }
 
 @Composable
 private fun NodePreviewRow(
-    playing: Boolean,
-    onPreview: () -> Unit,
+  playing: Boolean,
+  onPreview: () -> Unit,
 ) {
   SoftControl(modifier = Modifier.fillMaxWidth(), onClick = onPreview) {
     PlayBubble(playing)
     Text(
-        text = "Preview node",
-        color = ShuuenUi.Text,
-        style = MaterialTheme.typography.titleSmall,
-        modifier = Modifier.weight(1f),
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
+      text = "Preview node",
+      color = ShuuenUi.Text,
+      style = MaterialTheme.typography.titleSmall,
+      modifier = Modifier.weight(1f),
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
     )
     //    MiniWaveform(Modifier.width(120.dp).height(28.dp), pieces = 3)
   }
@@ -923,18 +909,18 @@ private fun NodePreviewRow(
 
 @Composable
 private fun SetupMelodyPreviewRow(
-    onPreview: (() -> Unit)?,
-    playing: Boolean,
+  onPreview: (() -> Unit)?,
+  playing: Boolean,
 ) {
   SoftControl(modifier = Modifier.fillMaxWidth(), onClick = onPreview) {
     PlayBubble(playing)
     Text(
-        text = "Preview setup melody",
-        color = ShuuenUi.Text,
-        style = MaterialTheme.typography.titleSmall,
-        modifier = Modifier.weight(1f),
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
+      text = "Preview setup melody",
+      color = ShuuenUi.Text,
+      style = MaterialTheme.typography.titleSmall,
+      modifier = Modifier.weight(1f),
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
     )
     //    MiniWaveform(Modifier.width(120.dp).height(28.dp), pieces = 3)
   }
@@ -943,70 +929,67 @@ private fun SetupMelodyPreviewRow(
 @Composable
 private fun GroupLabel(text: String) {
   Text(
-      text = text,
-      color = ShuuenUi.Dim,
-      style =
-          MaterialTheme.typography.labelSmall.copy(
-              letterSpacing = ShuuenUi.labelSpacing,
-              fontWeight = FontWeight.SemiBold,
-          ),
+    text = text,
+    color = ShuuenUi.Dim,
+    style =
+      MaterialTheme.typography.labelSmall.copy(
+        letterSpacing = ShuuenUi.labelSpacing,
+        fontWeight = FontWeight.SemiBold,
+      ),
   )
 }
 
 @Composable
 private fun NodeNumber(number: Int) {
   Box(
-      modifier = Modifier.size(30.dp).clip(CircleShape).background(ShuuenUi.Ink.copy(alpha = 0.07f)),
-      contentAlignment = Alignment.Center,
+    modifier = Modifier.size(30.dp).clip(CircleShape).background(ShuuenUi.Ink.copy(alpha = 0.07f)),
+    contentAlignment = Alignment.Center,
   ) {
     Text(
-        text = number.toString(),
-        color = ShuuenUi.Muted,
-        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+      text = number.toString(),
+      color = ShuuenUi.Muted,
+      style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
     )
   }
 }
 
 @Composable
 private fun InlineCounter(
-    label: String,
-    value: Int,
-    onChange: (Int) -> Unit,
+  label: String,
+  value: Int,
+  onChange: (Int) -> Unit,
 ) {
   Row(
-      modifier = Modifier.fillMaxWidth(),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(8.dp),
+    modifier = Modifier.fillMaxWidth(),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
   ) {
     Text(
-        text = label,
-        color = ShuuenUi.Dim,
-        style = MaterialTheme.typography.labelMedium.copy(letterSpacing = ShuuenUi.labelSpacing),
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.weight(1f),
+      text = label,
+      color = ShuuenUi.Dim,
+      style = MaterialTheme.typography.labelMedium.copy(letterSpacing = ShuuenUi.labelSpacing),
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
+      modifier = Modifier.weight(1f),
     )
     CompactCounter(
-        value = value,
-        onChange = onChange,
-        modifier = Modifier.weight(1.15f),
+      value = value,
+      onChange = onChange,
+      modifier = Modifier.weight(1.15f),
     )
   }
 }
 
 @Composable
 private fun CompactCounter(
-    value: Int,
-    onChange: (Int) -> Unit,
-    modifier: Modifier = Modifier,
+  value: Int,
+  onChange: (Int) -> Unit,
+  modifier: Modifier = Modifier,
 ) {
   Row(
-      modifier =
-          modifier
-              .height(38.dp)
-              .clip(ShuuenUi.PillShape)
-              .background(ShuuenUi.Ink.copy(alpha = 0.05f)),
-      verticalAlignment = Alignment.CenterVertically,
+    modifier =
+      modifier.height(38.dp).clip(ShuuenUi.PillShape).background(ShuuenUi.Ink.copy(alpha = 0.05f)),
+    verticalAlignment = Alignment.CenterVertically,
   ) {
     CounterPiece("-", onClick = { if (value > 1) onChange(value - 1) })
     CounterPiece(value.toString(), modifier = Modifier.weight(1.35f))
@@ -1016,16 +999,16 @@ private fun CompactCounter(
 
 @Composable
 private fun RowScope.CounterPiece(
-    text: String,
-    modifier: Modifier = Modifier.weight(1f),
-    onClick: (() -> Unit)? = null,
+  text: String,
+  modifier: Modifier = Modifier.weight(1f),
+  onClick: (() -> Unit)? = null,
 ) {
   Box(
-      modifier =
-          modifier
-              .fillMaxHeight()
-              .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
-      contentAlignment = Alignment.Center,
+    modifier =
+      modifier
+        .fillMaxHeight()
+        .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+    contentAlignment = Alignment.Center,
   ) {
     Text(text = text, color = ShuuenUi.Text, style = MaterialTheme.typography.titleMedium)
   }
@@ -1034,29 +1017,29 @@ private fun RowScope.CounterPiece(
 @Composable
 private fun SequenceInfoBlock() {
   Column(
-      modifier = Modifier.fillMaxWidth(),
-      verticalArrangement = Arrangement.spacedBy(14.dp),
+    modifier = Modifier.fillMaxWidth(),
+    verticalArrangement = Arrangement.spacedBy(14.dp),
   ) {
     Hairline()
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+      modifier = Modifier.fillMaxWidth(),
+      verticalAlignment = Alignment.Top,
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
       Icon(
-          Icons.Rounded.Info,
-          contentDescription = null,
-          tint = ShuuenUi.Dim,
-          modifier = Modifier.size(22.dp),
+        Icons.Rounded.Info,
+        contentDescription = null,
+        tint = ShuuenUi.Dim,
+        modifier = Modifier.size(22.dp),
       )
       Text(
-          text =
-              "Node 1 sets the context octave. Later nodes place their first degree above or below " +
-                  "the previous node, then added degrees stack upward from that bass. Sustained nodes " +
-                  "hold like a drone; others play as timed chords.",
-          color = ShuuenUi.Muted,
-          style = MaterialTheme.typography.bodyMedium,
-          modifier = Modifier.weight(1f),
+        text =
+          "Node 1 sets the context octave. Later nodes place their first degree above or below " +
+            "the previous node, then added degrees stack upward from that bass. Sustained nodes " +
+            "hold like a drone; others play as timed chords.",
+        color = ShuuenUi.Muted,
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = Modifier.weight(1f),
       )
     }
   }
@@ -1064,26 +1047,26 @@ private fun SequenceInfoBlock() {
 
 @Composable
 private fun SmallPill(
-    text: String,
-    modifier: Modifier = Modifier,
-    selected: Boolean = false,
-    onClick: (() -> Unit)? = null,
+  text: String,
+  modifier: Modifier = Modifier,
+  selected: Boolean = false,
+  onClick: (() -> Unit)? = null,
 ) {
   Box(
-      modifier =
-          modifier
-              .height(30.dp)
-              .clip(ShuuenUi.PillShape)
-              .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
-              .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
-      contentAlignment = Alignment.Center,
+    modifier =
+      modifier
+        .height(30.dp)
+        .clip(ShuuenUi.PillShape)
+        .background(if (selected) ShuuenUi.Inverse else ShuuenUi.Ink.copy(alpha = 0.05f))
+        .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+    contentAlignment = Alignment.Center,
   ) {
     Text(
-        text = text,
-        color = if (selected) ShuuenUi.OnInverse else ShuuenUi.Muted,
-        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
+      text = text,
+      color = if (selected) ShuuenUi.OnInverse else ShuuenUi.Muted,
+      style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
     )
   }
 }
@@ -1091,22 +1074,22 @@ private fun SmallPill(
 @Composable
 private fun PlayBubble(playing: Boolean = false) {
   Box(
-      modifier = Modifier.size(34.dp).clip(CircleShape).background(ShuuenUi.Inverse),
-      contentAlignment = Alignment.Center,
+    modifier = Modifier.size(34.dp).clip(CircleShape).background(ShuuenUi.Inverse),
+    contentAlignment = Alignment.Center,
   ) {
     Icon(
-        imageVector = if (!playing) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
-        contentDescription = null,
-        tint = ShuuenUi.OnInverse,
-        modifier = Modifier.size(22.dp),
+      imageVector = if (!playing) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
+      contentDescription = null,
+      tint = ShuuenUi.OnInverse,
+      modifier = Modifier.size(22.dp),
     )
   }
 }
 
 @Composable
 private fun MiniWaveform(
-    modifier: Modifier = Modifier,
-    pieces: Int = 3,
+  modifier: Modifier = Modifier,
+  pieces: Int = 3,
 ) {
   val barColor = ShuuenUi.Ink.copy(alpha = 0.55f)
   val gapColor = ShuuenUi.Ink.copy(alpha = 0.22f)
@@ -1119,20 +1102,20 @@ private fun MiniWaveform(
       listOf(0.35f, 0.7f, 1f, 0.55f).forEach { heightFraction ->
         val lineHeight = size.height * heightFraction
         drawLine(
-            color = barColor,
-            start = Offset(x, centerY - lineHeight / 2f),
-            end = Offset(x, centerY + lineHeight / 2f),
-            strokeWidth = 2.dp.toPx(),
-            cap = StrokeCap.Round,
+          color = barColor,
+          start = Offset(x, centerY - lineHeight / 2f),
+          end = Offset(x, centerY + lineHeight / 2f),
+          strokeWidth = 2.dp.toPx(),
+          cap = StrokeCap.Round,
         )
         x += segmentWidth
       }
       if (it < pieces - 1) {
         drawLine(
-            color = gapColor,
-            start = Offset(x, centerY),
-            end = Offset(x + segmentWidth * 0.8f, centerY),
-            strokeWidth = 1.dp.toPx(),
+          color = gapColor,
+          start = Offset(x, centerY),
+          end = Offset(x + segmentWidth * 0.8f, centerY),
+          strokeWidth = 1.dp.toPx(),
         )
         x += segmentWidth * 1.2f
       }

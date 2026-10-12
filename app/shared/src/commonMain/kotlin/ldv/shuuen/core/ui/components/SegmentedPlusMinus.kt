@@ -17,7 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -35,24 +34,33 @@ fun SegmentedPlusMinus(
   delta: Int = 5,
   minimalNumber: Int = 0,
   nullCondition: ((String) -> Boolean)? = null,
-  nullLabel: String? = null
+  nullLabel: String? = null,
 ) {
   Row(
-    modifier = Modifier.height(34.dp).clip(ShuuenUi.PillShape)
-      .background(ShuuenUi.Ink.copy(alpha = 0.05f)).then(modifier),
+    modifier =
+      Modifier.height(34.dp)
+        .clip(ShuuenUi.PillShape)
+        .background(ShuuenUi.Ink.copy(alpha = 0.05f))
+        .then(modifier),
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    SegmentedPart("—", onClick = {
-      onChange((value ?: minimalNumber).let {
-        val v = it - delta
-        val considerNull = nullCondition?.invoke((v.toString())) ?: false
-        if (considerNull) return@let null
-        if (v < minimalNumber) minimalNumber else v
-      })
-    })
+    SegmentedPart(
+      "—",
+      onClick = {
+        onChange(
+          (value ?: minimalNumber).let {
+            val v = it - delta
+            val considerNull = nullCondition?.invoke((v.toString())) ?: false
+            if (considerNull) return@let null
+            if (v < minimalNumber) minimalNumber else v
+          }
+        )
+      },
+    )
     VerticalDivider(color = ShuuenUi.Hairline)
     Box(
-      modifier = Modifier.fillMaxHeight().weight(1f), contentAlignment = Alignment.Center
+      modifier = Modifier.fillMaxHeight().weight(1f),
+      contentAlignment = Alignment.Center,
     ) {
       val considerNull = value == null || nullCondition?.invoke(value.toString()) ?: false
       BasicTextField(
@@ -60,21 +68,28 @@ fun SegmentedPlusMinus(
         onValueChange = { v ->
           val considerNull = nullCondition?.invoke(v) ?: false
           Napier.v { "onChange v: $v, considerNull: $considerNull" }
-          val newValue = if (!considerNull) v.toUIntOrNull() ?: return@BasicTextField onChange(null) else return@BasicTextField onChange(null)
+          val newValue =
+            if (!considerNull) v.toUIntOrNull() ?: return@BasicTextField onChange(null)
+            else return@BasicTextField onChange(null)
           onChange(newValue.toInt())
         },
-        textStyle = MaterialTheme.typography.headlineMedium.copy(
-          color = LocalContentColor.current, textAlign = TextAlign.Center
-        ),
+        textStyle =
+          MaterialTheme.typography.headlineMedium.copy(
+            color = LocalContentColor.current,
+            textAlign = TextAlign.Center,
+          ),
         singleLine = true,
         cursorBrush = SolidColor(LocalContentColor.current),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
       )
     }
     VerticalDivider(color = ShuuenUi.Hairline)
-    SegmentedPart("+", onClick = {
-      onChange((value ?: minimalNumber) + delta)
-    })
+    SegmentedPart(
+      "+",
+      onClick = {
+        onChange((value ?: minimalNumber) + delta)
+      },
+    )
   }
 }
 

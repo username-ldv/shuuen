@@ -11,6 +11,7 @@ kotlin {
     jvmTarget = JvmTarget.JVM_11
   }
 }
+
 dependencies {
   implementation(projects.shared)
 

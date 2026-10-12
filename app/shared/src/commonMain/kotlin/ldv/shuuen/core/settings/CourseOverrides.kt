@@ -10,5 +10,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class CourseOverrides(
   /** Replaces the tune inconsistency of every level in the course; null keeps each level's own. */
-  val tuneInconsistencyCents: Int? = null,
+  val tuneInconsistencyCents: Int? = null
 )

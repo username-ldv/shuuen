@@ -114,8 +114,7 @@ fun MelodiesPlayScreen(
     },
   ) {
     when {
-      state.isLoading ->
-        CenteredMessage("Loading melody…", ShuuenUi.Muted)
+      state.isLoading -> CenteredMessage("Loading melody…", ShuuenUi.Muted)
 
       state.error != null ->
         CenteredMessage(state.error ?: "Something went wrong.", ShuuenUi.Incorrect)
@@ -145,9 +144,21 @@ fun MelodiesPlayScreen(
               val index = pitchToItemIndex(req.pitch, method.mode, currentRoot)
               when (method.component) {
                 InputComponent.Piano ->
-                  keyboardState.flash(index, req.color, holdMillis = 520, attackMillis = 80, releaseMillis = 300)
+                  keyboardState.flash(
+                    index,
+                    req.color,
+                    holdMillis = 520,
+                    attackMillis = 80,
+                    releaseMillis = 300,
+                  )
                 InputComponent.Circle ->
-                  circleState.flash(index, req.color, holdMillis = 520, attackMillis = 80, releaseMillis = 300)
+                  circleState.flash(
+                    index,
+                    req.color,
+                    holdMillis = 520,
+                    attackMillis = 80,
+                    releaseMillis = 300,
+                  )
               }
             }
           }
@@ -176,10 +187,10 @@ fun MelodiesPlayScreen(
           InputComponent.Piano -> {
             Spacer(Modifier.weight(1f))
             PianoKeyboard(
-              modifier = Modifier
-                .padding(horizontal = ScreenHorizontalPadding)
-                .fillMaxWidth()
-                .aspectRatio(PianoKeyboardDefaults.aspectRatio(12)),
+              modifier =
+                Modifier.padding(horizontal = ScreenHorizontalPadding)
+                  .fillMaxWidth()
+                  .aspectRatio(PianoKeyboardDefaults.aspectRatio(12)),
               keyCount = 12,
               state = keyboardState,
               onKeyPressedChange = { index, pressed ->
@@ -464,10 +475,9 @@ private fun MelodyCell(
     )
     Box(
       modifier =
-        Modifier
-          .size(width = 18.dp, height = 3.dp)
+        Modifier.size(width = 18.dp, height = 3.dp)
           .clip(ShuuenUi.PillShape)
-          .background(if (playing) ShuuenUi.Text else Color.Transparent),
+          .background(if (playing) ShuuenUi.Text else Color.Transparent)
     )
   }
 }
@@ -519,9 +529,19 @@ private fun TransportBar(
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
     ) {
-      TransportIcon(Icons.Rounded.FastRewind, "Rewind", size = TransportIconSize, onClick = onRewind)
+      TransportIcon(
+        Icons.Rounded.FastRewind,
+        "Rewind",
+        size = TransportIconSize,
+        onClick = onRewind,
+      )
       PlayPauseButton(isPlaying = isPlaying, onClick = onTogglePlay)
-      TransportIcon(Icons.Rounded.FastForward, "Forward", size = TransportIconSize, onClick = onForward)
+      TransportIcon(
+        Icons.Rounded.FastForward,
+        "Forward",
+        size = TransportIconSize,
+        onClick = onForward,
+      )
     }
     if (onRepeatMelody != null) {
       TransportIcon(
@@ -552,8 +572,7 @@ private fun EndlessTransportBar(
       contentDescription = "Rewind",
       size = TransportIconSize,
       modifier =
-        Modifier
-          .align(Alignment.Center)
+        Modifier.align(Alignment.Center)
           .offset(x = -(PlayPauseButtonSize / 2f + TransportButtonGap + TransportIconSize / 2f)),
       onClick = onRewind,
     )
@@ -664,8 +683,8 @@ private fun CircleCenterControls(
 }
 
 /**
- * Finite Random mode's bottom bar, arranged like the Singles one: rewind the current sequence,
- * plus a music-note button that replays the context's setup melody.
+ * Finite Random mode's bottom bar, arranged like the Singles one: rewind the current sequence, plus
+ * a music-note button that replays the context's setup melody.
  */
 @Composable
 private fun RewindBar(onRewind: () -> Unit, onRepeatMelody: () -> Unit) {

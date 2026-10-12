@@ -1,6 +1,5 @@
 package ldv.shuuen.data.audio
 
-import kotlin.math.abs
 import kotlinx.coroutines.flow.first
 import ldv.shuuen.bass.Bass
 import ldv.shuuen.bass.BassMidiEvent
@@ -9,22 +8,21 @@ import ldv.shuuen.core.audio.engine.MelodyNote
 import ldv.shuuen.core.audio.engine.MidiFilePlaybackOptions
 import ldv.shuuen.core.audio.engine.MidiFilePlayer
 import ldv.shuuen.core.audio.midi.FullPresetVolume
-import ldv.shuuen.core.audio.midi.NeutralPresetCutoff
 import ldv.shuuen.core.audio.midi.MidiChannel
+import ldv.shuuen.core.audio.midi.NeutralPresetCutoff
 import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.audio.midi.PresetCutoffs
 import ldv.shuuen.core.audio.midi.PresetVolumes
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.settings.SettingsRepository
+import kotlin.math.abs
 
 /**
  * BASS-backed [MidiFilePlayer]. Loads the MIDI from memory, lets BASS render it at its natural
  * tempo, and reads the note-on events out of the stream for display. The MIDI engine must be
  * initialized first (it sets the default soundfont that this stream inherits).
  */
-class BassMidiFilePlayer(
-  private val settingsRepository: SettingsRepository,
-) : MidiFilePlayer {
+class BassMidiFilePlayer(private val settingsRepository: SettingsRepository) : MidiFilePlayer {
   private var streamHandle: Int = 0
   private var lengthBytes: Long = 0L
   private var activePreset: Preset? = null
@@ -93,7 +91,7 @@ class BassMidiFilePlayer(
             notesPreset,
             originalVelocityMelody = options.useOriginalVelocities,
           ),
-      ),
+      )
     ) {
       "Unable to set MIDI stream filter: ${Bass.errorCode()}."
     }
@@ -301,8 +299,7 @@ class BassMidiFilePlayer(
     return Note(n)
   }
 
-  private fun isNoteOn(event: BassMidiEvent): Boolean =
-    ((event.param shr 8) and MidiByteMask) > 0
+  private fun isNoteOn(event: BassMidiEvent): Boolean = ((event.param shr 8) and MidiByteMask) > 0
 
   private fun applyActivePreset() {
     val preset = activePreset ?: return
@@ -351,8 +348,8 @@ class BassMidiFilePlayer(
   /**
    * Repositions the (paused) backing track to mirror the MIDI's current position, so the next
    * linked start plays both in sync. When the target position falls outside the audio — a
-   * negative-offset lead-in or a melody longer than the audio — the backing is unlinked so it
-   * stays silent; [syncBackingTrack] starts it if its range is reached later.
+   * negative-offset lead-in or a melody longer than the audio — the backing is unlinked so it stays
+   * silent; [syncBackingTrack] starts it if its range is reached later.
    */
   private fun alignBackingTrack() {
     if (backingHandle == 0) return
@@ -430,8 +427,8 @@ class BassMidiFilePlayer(
     const val BassNeutralTransposition = 100
 
     /**
-     * Positional disagreement between the MIDI and its backing track beyond which the periodic
-     * sync repositions the backing. Wide enough that it never trips in normal linked playback.
+     * Positional disagreement between the MIDI and its backing track beyond which the periodic sync
+     * repositions the backing. Wide enough that it never trips in normal linked playback.
      */
     const val MaxBackingDriftSeconds = 0.1
   }

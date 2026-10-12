@@ -1,6 +1,5 @@
 package ldv.shuuen.features.training.chords.play
 
-import kotlin.random.Random
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,13 +15,14 @@ import ldv.shuuen.features.training.chords.domain.ChordAnswerOrder
 import ldv.shuuen.features.training.chords.domain.ChordsLevel
 import ldv.shuuen.features.training.chords.domain.chordRepeatBudget
 import ldv.shuuen.features.training.domain.LevelConfig
+import kotlin.random.Random
 
 data class IncorrectChordsAnswer(val questionNumber: Int, val correctPitches: List<Pitch>)
 
 /**
  * How a single guess landed. [Ignored] is an [ChordAnswerOrder.Any] re-press of an already-found
- * pitch class — no feedback. Ordered modes never ignore: a repeated class may genuinely be the
- * next expected note, so every press is judged against it.
+ * pitch class — no feedback. Ordered modes never ignore: a repeated class may genuinely be the next
+ * expected note, so every press is judged against it.
  */
 enum class ChordGuessResult {
   Correct,
@@ -79,30 +79,33 @@ class ChordsLevelQuizzer(
         generator = generatorFor(root)
       }
     }
-    _quizState = MutableStateFlow(
-      ChordsQuizState(
-        root,
-        currentQuestionNumber = 1,
-        currentChord = generator.next(),
-        answeredNotes = setOf(),
-        correctAnswers = 0,
-        incorrectAnswers = listOf(),
-        questionsNumber = level.questionsNumber,
-        accidentalType = accidentalTypeFor(root),
+    _quizState =
+      MutableStateFlow(
+        ChordsQuizState(
+          root,
+          currentQuestionNumber = 1,
+          currentChord = generator.next(),
+          answeredNotes = setOf(),
+          correctAnswers = 0,
+          incorrectAnswers = listOf(),
+          questionsNumber = level.questionsNumber,
+          accidentalType = accidentalTypeFor(root),
+        )
       )
-    )
     quizState = _quizState.asStateFlow()
   }
 
-  /** Sharp/flat orientation for [root], re-rolled (randomly for ambiguous keys) on each root change. */
+  /**
+   * Sharp/flat orientation for [root], re-rolled (randomly for ambiguous keys) on each root change.
+   */
   private fun accidentalTypeFor(root: Pitch): ScaleAccidentalType =
     decideAccidentalType(root.ordinal, scaleType, allowSevenAccidentalKeys, random)
 
   /**
    * Grades a guessed [pitch] against the current chord. [exactMidiIndex] is set for MIDI keyboard
-   * guesses with the respect-octaves setting on: a chord note then only matches the exact key
-   * (same octave), so in [ChordAnswerOrder.Any] each octave copy must be played individually
-   * instead of one press resolving them all.
+   * guesses with the respect-octaves setting on: a chord note then only matches the exact key (same
+   * octave), so in [ChordAnswerOrder.Any] each octave copy must be played individually instead of
+   * one press resolving them all.
    */
   fun check(pitch: Pitch, exactMidiIndex: Int? = null): ChordGuessResult {
     val current = quizState.value
@@ -146,9 +149,12 @@ class ChordsLevelQuizzer(
           it.incorrectAnswers.any { answer -> answer.questionNumber == it.currentQuestionNumber }
         if (!isDupe) {
           it.copy(
-            incorrectAnswers = it.incorrectAnswers + IncorrectChordsAnswer(
-              it.currentQuestionNumber, it.currentChord.map { note -> note.pitch }
-            )
+            incorrectAnswers =
+              it.incorrectAnswers +
+                IncorrectChordsAnswer(
+                  it.currentQuestionNumber,
+                  it.currentChord.map { note -> note.pitch },
+                )
           )
         } else it
       }
@@ -171,7 +177,9 @@ class ChordsLevelQuizzer(
       if (rootChanged) accidentalTypeFor(nextRoot) else current.accidentalType
     _quizState.update { quizState ->
       val count =
-        if (quizState.incorrectAnswers.any { it.questionNumber == quizState.currentQuestionNumber }) 0 else 1
+        if (quizState.incorrectAnswers.any { it.questionNumber == quizState.currentQuestionNumber })
+          0
+        else 1
       quizState.copy(
         root = nextRoot,
         correctAnswers = quizState.correctAnswers + count,
@@ -224,7 +232,8 @@ class ChordsLevelQuizzer(
           ChordAnswerOrder.Any -> ::chordRepeatBudget
           // Ordered answering names each octave copy in turn, so duplicates stay unrestricted —
           // a small scale can still fill a large chord across octaves.
-          ChordAnswerOrder.FromBottom, ChordAnswerOrder.FromTop -> null
+          ChordAnswerOrder.FromBottom,
+          ChordAnswerOrder.FromTop -> null
         },
       random = random,
     )

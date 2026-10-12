@@ -81,11 +81,10 @@ class Utf8StdoutHandlerTest {
     val handler = Utf8StdoutHandler(output)
     val first = Thread { handler.publish(LogRecord(Level.INFO, "first")) }
     val secondStarted = CountDownLatch(1)
-    val second =
-      Thread {
-        secondStarted.countDown()
-        handler.publish(LogRecord(Level.INFO, "second"))
-      }
+    val second = Thread {
+      secondStarted.countDown()
+      handler.publish(LogRecord(Level.INFO, "second"))
+    }
 
     first.start()
     assertTrue(output.firstWriteEntered.await(5, TimeUnit.SECONDS))
@@ -106,7 +105,7 @@ class Utf8StdoutHandlerTest {
   }
 
   private fun Thread.awaitBlockedBeforeConcurrentWrite(
-    concurrentWriteEntered: CountDownLatch,
+    concurrentWriteEntered: CountDownLatch
   ): Boolean {
     val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
     while (System.nanoTime() < deadline) {
@@ -120,6 +119,7 @@ class Utf8StdoutHandlerTest {
   private class TrackingOutputStream : ByteArrayOutputStream() {
     var wasFlushed = false
       private set
+
     var wasClosed = false
       private set
 
@@ -134,17 +134,14 @@ class Utf8StdoutHandlerTest {
     }
   }
 
-  private class ThrowingOutputStream(
-    private val failure: IOException,
-  ) : OutputStream() {
+  private class ThrowingOutputStream(private val failure: IOException) : OutputStream() {
     override fun write(value: Int) {
       throw failure
     }
   }
 
-  private class FlushThrowingOutputStream(
-    private val failure: IOException,
-  ) : ByteArrayOutputStream() {
+  private class FlushThrowingOutputStream(private val failure: IOException) :
+    ByteArrayOutputStream() {
     override fun flush() {
       throw failure
     }
@@ -153,8 +150,10 @@ class Utf8StdoutHandlerTest {
   private class RecordingErrorManager : ErrorManager() {
     var message: String? = null
       private set
+
     var exception: Exception? = null
       private set
+
     var code: Int? = null
       private set
 

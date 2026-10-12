@@ -1,14 +1,14 @@
 package ldv.shuuen.core.music
 
-import kotlinx.serialization.Serializable
 import kotlin.time.Duration
+import kotlinx.serialization.Serializable
 
 @Serializable
 data class DegreeContext(
-    val id: String,
-    val source: ContextSource,
-    val nodes: List<DegreeContextNode>,
-    val name: String? = null,
+  val id: String,
+  val source: ContextSource,
+  val nodes: List<DegreeContextNode>,
+  val name: String? = null,
 )
 
 enum class SetupMelodyRepeat {
@@ -23,25 +23,25 @@ enum class SetupMelodyRepeat {
 
 @Serializable
 data class DegreeContextNode(
-    val firstDegree: DegreeWithOctave,
-    val extraDegrees: List<Degree>,
-    val sustain: Sustain,
-    val duration: ContextDuration,
-    val setupMelody: SetupMelody?,
-    val relativeDirection: DegreeDirection = DegreeDirection.Up,
+  val firstDegree: DegreeWithOctave,
+  val extraDegrees: List<Degree>,
+  val sustain: Sustain,
+  val duration: ContextDuration,
+  val setupMelody: SetupMelody?,
+  val relativeDirection: DegreeDirection = DegreeDirection.Up,
 )
 
 fun DegreeContextNode.toChord(root: Pitch, previousChord: Chord? = null): Chord {
   val first = firstNote(root, previousChord)
   val notes =
-      listOf(first) +
-          this.extraDegrees.fold(
-              listOf<Note>(),
-              { acc, degree ->
-                val note = (acc.lastOrNull() ?: first).next(degree.pitch(root))
-                acc + note
-              },
-          )
+    listOf(first) +
+      this.extraDegrees.fold(
+        listOf<Note>(),
+        { acc, degree ->
+          val note = (acc.lastOrNull() ?: first).next(degree.pitch(root))
+          acc + note
+        },
+      )
   return notes.chord()
 }
 
@@ -94,33 +94,33 @@ sealed interface ContextDuration {
 }
 
 val defaultContext =
-    DegreeContext(
-        id = "default",
-        source = ContextSource.BuiltIn,
-        nodes =
-            listOf(
-                DegreeContextNode(
-                    firstDegree = DegreeWithOctave(Degree.D1, 2),
-                    extraDegrees = listOf(),
-                    sustain = Sustain.Endless,
-                    duration = ContextDuration.Endless,
-                    setupMelody =
-                        SetupMelody(
-                            melody =
-                                RelativeMelody(
-                                    firstDegree = DegreeWithOctave(Degree.D1, 4),
-                                    extraDegrees =
-                                        listOf(
-                                            DirectedDegree(Degree.D3, DegreeDirection.Up),
-                                            DirectedDegree(Degree.D5, DegreeDirection.Up),
-                                            DirectedDegree(
-                                                Degree.D1,
-                                                DegreeDirection.Up,
-                                            ),
-                                        ),
-                                ),
-                            repeat = SetupMelodyRepeat.Once,
-                        ),
-                )
+  DegreeContext(
+    id = "default",
+    source = ContextSource.BuiltIn,
+    nodes =
+      listOf(
+        DegreeContextNode(
+          firstDegree = DegreeWithOctave(Degree.D1, 2),
+          extraDegrees = listOf(),
+          sustain = Sustain.Endless,
+          duration = ContextDuration.Endless,
+          setupMelody =
+            SetupMelody(
+              melody =
+                RelativeMelody(
+                  firstDegree = DegreeWithOctave(Degree.D1, 4),
+                  extraDegrees =
+                    listOf(
+                      DirectedDegree(Degree.D3, DegreeDirection.Up),
+                      DirectedDegree(Degree.D5, DegreeDirection.Up),
+                      DirectedDegree(
+                        Degree.D1,
+                        DegreeDirection.Up,
+                      ),
+                    ),
+                ),
+              repeat = SetupMelodyRepeat.Once,
             ),
-    )
+        )
+      ),
+  )

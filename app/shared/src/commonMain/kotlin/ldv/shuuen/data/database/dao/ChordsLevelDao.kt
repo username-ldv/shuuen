@@ -7,15 +7,12 @@ import ldv.shuuen.data.database.entity.ChordsLevelDbEntity
 
 @Dao
 interface ChordsLevelDao {
-  @Query("select * from levels_chords")
-  suspend fun getAll(): List<ChordsLevelDbEntity>
+  @Query("select * from levels_chords") suspend fun getAll(): List<ChordsLevelDbEntity>
 
   @Query("select * from levels_chords where id = :id")
   suspend fun getById(id: String): ChordsLevelDbEntity?
 
-  @Upsert
-  suspend fun upsertLevel(level: ChordsLevelDbEntity)
+  @Upsert suspend fun upsertLevel(level: ChordsLevelDbEntity)
 
-  @Query("delete from levels_chords where id = :id")
-  suspend fun deleteById(id: String)
+  @Query("delete from levels_chords where id = :id") suspend fun deleteById(id: String)
 }

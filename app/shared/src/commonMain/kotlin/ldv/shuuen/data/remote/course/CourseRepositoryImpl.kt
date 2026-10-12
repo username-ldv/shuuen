@@ -41,18 +41,21 @@ internal class CourseRepositoryImpl(
       sortOrder = dto.sortOrder,
       groupCount = dto.groupCount,
       levelCount = dto.levelCount,
-      groups = dto.groups
-        .map {
-          ProgressionGroup(
-            id = it.id,
-            name = it.name,
-            description = it.description,
-            sortOrder = it.sortOrder,
-            levelCount = it.levelCount,
-            sectionCount = it.sectionCount,
-          )
-        }
-        .sortedWith(compareBy(ProgressionGroup::sortOrder, ProgressionGroup::name, ProgressionGroup::id)),
+      groups =
+        dto.groups
+          .map {
+            ProgressionGroup(
+              id = it.id,
+              name = it.name,
+              description = it.description,
+              sortOrder = it.sortOrder,
+              levelCount = it.levelCount,
+              sectionCount = it.sectionCount,
+            )
+          }
+          .sortedWith(
+            compareBy(ProgressionGroup::sortOrder, ProgressionGroup::name, ProgressionGroup::id)
+          ),
     )
   }
 
@@ -103,23 +106,23 @@ internal class CourseRepositoryImpl(
       description = dto.description,
       author = dto.author,
       sortOrder = dto.sortOrder,
-      modes = dto.modes
-        .map {
-          CourseModeSummary(
-            mode = it.mode.toTrainingFlow("course ${dto.id} mode"),
-            name = it.name,
-            description = it.description,
-            sortOrder = it.sortOrder,
-            groupCount = it.groupCount,
-            levelCount = it.levelCount,
-          )
-        }
-        .sortedBy { it.sortOrder },
+      modes =
+        dto.modes
+          .map {
+            CourseModeSummary(
+              mode = it.mode.toTrainingFlow("course ${dto.id} mode"),
+              name = it.name,
+              description = it.description,
+              sortOrder = it.sortOrder,
+              groupCount = it.groupCount,
+              levelCount = it.levelCount,
+            )
+          }
+          .sortedBy { it.sortOrder },
     )
 
   private fun PageMetaDto.toDomain(): PageMeta = PageMeta(limit, offset, total)
 
   private fun String.toTrainingFlow(field: String): TrainingFlow =
-    TrainingFlow.entries.firstOrNull { it.apiName == this }
-      ?: error("Unsupported $field '$this'.")
+    TrainingFlow.entries.firstOrNull { it.apiName == this } ?: error("Unsupported $field '$this'.")
 }

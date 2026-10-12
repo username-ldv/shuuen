@@ -32,7 +32,7 @@ fun LevelAccuracyLabel(
   val accuracy = stats.accuracy
   Text(
     text = accuracy?.percentLabel() ?: "--",
-//    color = accuracy?.let(::accuracyColor) ?: ShuuenUi.Dim,
+    //    color = accuracy?.let(::accuracyColor) ?: ShuuenUi.Dim,
     color = ShuuenUi.Muted,
     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
     textAlign = TextAlign.End,
@@ -62,7 +62,7 @@ fun LevelAccuracyStatsRow(
       style = MaterialTheme.typography.labelSmall,
       textAlign = TextAlign.End,
       maxLines = 1,
-//      modifier = Modifier.widthIn(min = 52.dp),
+      //      modifier = Modifier.widthIn(min = 52.dp),
     )
   }
 }

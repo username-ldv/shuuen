@@ -1,9 +1,5 @@
 package ldv.shuuen.features.training.common
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
-import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -28,6 +24,10 @@ import ldv.shuuen.core.music.SetupMelody
 import ldv.shuuen.core.music.SetupMelodyRepeat
 import ldv.shuuen.core.music.Sustain
 import ldv.shuuen.core.music.chordAt
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DegreeContextPlayerTest {
@@ -153,7 +153,12 @@ private class FakeMidiEngine : MidiEngine {
 
   override suspend fun initialize(): MidiEngineStatus = MidiEngineStatus.Ready
 
-  override fun playNote(note: Note, channel: MidiChannel, velocity: Int, detuneCents: Int): Boolean {
+  override fun playNote(
+    note: Note,
+    channel: MidiChannel,
+    velocity: Int,
+    detuneCents: Int,
+  ): Boolean {
     playedNotes += note to channel
     return true
   }
