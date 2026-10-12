@@ -103,7 +103,8 @@ fun MainMenuScreen(
         },
         type = ShuuenTopAppBarType.Simple,
       )
-    }
+    },
+    bottomPadding = 16.dp
   ) {
     Box(modifier = Modifier.fillMaxWidth()) {
       Column(

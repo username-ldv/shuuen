@@ -27,7 +27,7 @@ fun StaticScreenFrame(
   modifier: Modifier = Modifier.Companion,
   horizontalPadding: Dp = 20.dp,
   topPadding: Dp = 0.dp,
-  bottomPadding: Dp = 16.dp,
+  bottomPadding: Dp = 0.dp,
   maxWidth: Dp = 560.dp,
   verticalSpacing: Dp = 14.dp,
   scrollable: Boolean = true,
@@ -41,7 +41,7 @@ fun StaticScreenFrame(
     Scaffold(
       modifier = Modifier.fillMaxSize(),
       containerColor = Color.Transparent,
-      contentColor = ldv.shuuen.core.ui.components.ShuuenUi.Text,
+      contentColor = ShuuenUi.Text,
       topBar = topBar,
     ) { innerPadding ->
       Box(
