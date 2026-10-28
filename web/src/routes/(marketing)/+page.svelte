@@ -10,6 +10,8 @@
   import Check from "@lucide/svelte/icons/check";
   import Monitor from "@lucide/svelte/icons/monitor";
   import Smartphone from "@lucide/svelte/icons/smartphone";
+  import GitHubIcon from "$lib/components/icons/github.svelte";
+  import DiscordIcon from "$lib/components/icons/discord.svelte";
   import { PUBLIC_SITE_URL } from "$env/static/public";
   import type { PageData } from "./$types";
 
@@ -19,7 +21,9 @@
   // /api/v1/... itself, and the reverse proxy routes /api to the backend.
   const repoUrl = PUBLIC_SITE_URL;
   const appVersion = "0.0.4";
-  const releasesUrl = "https://github.com/username-ldv/shuuen/releases/latest";
+  const githubUrl = "https://github.com/username-ldv/shuuen";
+  const discordUrl = "https://discord.gg/Qybq9qjcSJ";
+  const releasesUrl = `${githubUrl}/releases/latest`;
 
   let copied = $state(false);
   let resetTimer: ReturnType<typeof setTimeout>;
@@ -62,6 +66,30 @@
       >
     </a>
     <nav class="flex items-center gap-6">
+      <div class="flex items-center gap-1">
+        <Button
+          href={githubUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          variant="ghost"
+          size="icon-sm"
+          aria-label="GitHub"
+          title="GitHub"
+        >
+          <GitHubIcon />
+        </Button>
+        <Button
+          href={discordUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Discord"
+          title="Discord"
+        >
+          <DiscordIcon />
+        </Button>
+      </div>
       <a
         href="/library"
         class="hidden text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground sm:inline"

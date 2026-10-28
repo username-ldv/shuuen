@@ -71,6 +71,10 @@ with the preset.
 `content_copy → Copy`, `check → Check`, `desktop_windows → Monitor`,
 `smartphone → Smartphone`.
 
+Lucide has no brand logos, so the header's GitHub and Discord links use
+monochrome [Simple Icons](https://simpleicons.org) paths, kept as components in
+`src/lib/components/icons/` and filled with `currentColor`.
+
 Icons inside a `Button` use `data-icon="inline-start"` (no size classes — the
 component sizes them). See [CONTRIBUTING.md](CONTRIBUTING.md).
 
