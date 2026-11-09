@@ -4,7 +4,7 @@ import ldv.shuuen.core.music.Degree
 import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.Scale
 import ldv.shuuen.core.ui.components.BoxedListItemState
-import ldv.shuuen.features.training.domain.ScaleConfig
+import ldv.shuuen.features.training.level.ScaleConfig
 
 @JvmName("pitchStatesToBoxedItems")
 fun Iterable<ScaleConfig.ScaleItemState.ScalePitchState>.toBoxedItems(

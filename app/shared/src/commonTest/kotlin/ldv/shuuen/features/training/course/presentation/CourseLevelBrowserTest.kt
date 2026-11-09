@@ -1,5 +1,8 @@
 package ldv.shuuen.features.training.course.presentation
 
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -8,27 +11,24 @@ import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.NoteRange
 import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.ScaleType
-import ldv.shuuen.features.training.common.TrainingFlow
-import ldv.shuuen.features.training.course.domain.CourseLevelItem
-import ldv.shuuen.features.training.course.domain.CourseLevelPage
-import ldv.shuuen.features.training.course.domain.CourseLevelQuery
-import ldv.shuuen.features.training.course.domain.CourseMode
-import ldv.shuuen.features.training.course.domain.CourseModeSummary
-import ldv.shuuen.features.training.course.domain.CoursePage
-import ldv.shuuen.features.training.course.domain.CourseRepository
-import ldv.shuuen.features.training.course.domain.CourseSection
-import ldv.shuuen.features.training.course.domain.CourseSummary
-import ldv.shuuen.features.training.course.domain.LevelReference
-import ldv.shuuen.features.training.course.domain.PageMeta
-import ldv.shuuen.features.training.course.domain.PlayableTrainingLevel
-import ldv.shuuen.features.training.course.domain.ProgressionGroup
-import ldv.shuuen.features.training.domain.LevelConfig
-import ldv.shuuen.features.training.domain.LevelSource
-import ldv.shuuen.features.training.domain.ScaleConfig
-import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
+import ldv.shuuen.features.training.course.CourseLevelItem
+import ldv.shuuen.features.training.course.CourseLevelPage
+import ldv.shuuen.features.training.course.CourseLevelQuery
+import ldv.shuuen.features.training.course.CourseMode
+import ldv.shuuen.features.training.course.CourseModeSummary
+import ldv.shuuen.features.training.course.CoursePage
+import ldv.shuuen.features.training.course.CourseRepository
+import ldv.shuuen.features.training.course.CourseSection
+import ldv.shuuen.features.training.course.CourseSummary
+import ldv.shuuen.features.training.course.LevelReference
+import ldv.shuuen.features.training.course.PageMeta
+import ldv.shuuen.features.training.course.ProgressionGroup
+import ldv.shuuen.features.training.level.LevelConfig
+import ldv.shuuen.features.training.level.LevelSource
+import ldv.shuuen.features.training.level.MelodiesLevel
+import ldv.shuuen.features.training.level.PlayableTrainingLevel
+import ldv.shuuen.features.training.level.ScaleConfig
+import ldv.shuuen.features.training.level.TrainingFlow
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CourseLevelBrowserTest {

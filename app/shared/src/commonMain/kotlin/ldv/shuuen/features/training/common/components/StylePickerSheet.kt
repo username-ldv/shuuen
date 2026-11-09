@@ -19,7 +19,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import ldv.shuuen.core.music.generator.StylePreset
 import ldv.shuuen.core.music.generator.StyleTier
 import ldv.shuuen.core.ui.components.ShuuenUi
+import ldv.shuuen.core.ui.components.rememberExpandedSheetState
 
 /**
  * Generation-style picker shared by the training setups: [presets] grouped by tier, tapping one
@@ -48,7 +48,7 @@ fun <T : StylePreset> StylePickerSheet(
   onSelect: (T) -> Unit,
   onDismiss: () -> Unit,
 ) {
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  val sheetState = rememberExpandedSheetState()
 
   ModalBottomSheet(
     onDismissRequest = onDismiss,

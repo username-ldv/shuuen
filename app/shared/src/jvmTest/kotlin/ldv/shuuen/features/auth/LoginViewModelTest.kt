@@ -1,5 +1,13 @@
 package ldv.shuuen.features.auth
 
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,17 +22,9 @@ import ldv.shuuen.core.auth.AuthFailure
 import ldv.shuuen.core.auth.AuthRepository
 import ldv.shuuen.core.auth.AuthSession
 import ldv.shuuen.core.auth.AuthUser
-import ldv.shuuen.core.online.BackendStatus
-import ldv.shuuen.core.online.BackendStatusMonitor
-import ldv.shuuen.data.remote.ApiConfig
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
+import ldv.shuuen.core.network.ApiConfig
+import ldv.shuuen.core.network.BackendStatus
+import ldv.shuuen.core.network.BackendStatusMonitor
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoginViewModelTest {
@@ -232,6 +232,8 @@ private class FakeAuthRepository : AuthRepository {
   override suspend fun signOut() {
     mutableSession.value = null
   }
+
+  override suspend fun renewSession(): AuthSession? = null
 }
 
 private class FakeBackendStatusMonitor : BackendStatusMonitor {

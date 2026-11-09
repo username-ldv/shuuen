@@ -25,7 +25,7 @@ import ldv.shuuen.core.music.SetupMelodyRepeat
 import ldv.shuuen.core.music.Sustain
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.music.DegreeSequenceChips
-import ldv.shuuen.features.training.domain.LevelSource
+import ldv.shuuen.features.training.level.LevelSource
 
 /**
  * A level card's parameter chips, wrapping onto extra rows when they don't fit — a plain row would

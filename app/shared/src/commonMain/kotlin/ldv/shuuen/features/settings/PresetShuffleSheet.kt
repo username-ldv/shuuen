@@ -18,7 +18,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ldv.shuuen.core.settings.PresetShuffleMode
 import ldv.shuuen.core.ui.components.ShuuenUi
+import ldv.shuuen.core.ui.components.rememberExpandedSheetState
 
 /**
  * The three schedules a channel can re-roll its instrument on. A sheet rather than a row of pills:
@@ -45,7 +45,7 @@ fun PresetShuffleSheet(
   onSelect: (PresetShuffleMode) -> Unit,
   onDismiss: () -> Unit,
 ) {
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  val sheetState = rememberExpandedSheetState()
 
   ModalBottomSheet(
     onDismissRequest = onDismiss,

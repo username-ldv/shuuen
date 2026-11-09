@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 import ldv.shuuen.core.music.MaximumMidiTransposition
 import ldv.shuuen.core.music.MidiTransposition
 import ldv.shuuen.core.music.MidiTranspositionMode
@@ -35,9 +36,8 @@ import ldv.shuuen.core.music.MinimumMidiTransposition
 import ldv.shuuen.core.settings.MidiLevelOptions
 import ldv.shuuen.core.ui.components.PrimaryCta
 import ldv.shuuen.core.ui.components.ShuuenUi
-import ldv.shuuen.features.training.common.LevelAccuracyStats
 import ldv.shuuen.features.training.common.components.LevelSettingsSheet
-import kotlin.math.roundToInt
+import ldv.shuuen.features.training.session.LevelAccuracyStats
 
 /**
  * Level settings for an imported MIDI melody. Transposition and context are one shared setting

@@ -12,9 +12,10 @@ builds on its own, so run commands from the project's folder, not the repo root.
 ## Cross-project contract
 
 - `backend/openapi.yaml` is the API contract. When an endpoint or payload changes,
-  update it in the same change and check both clients: the app's Ktor client in
-  `app/shared/src/*/kotlin/ldv/shuuen/data/remote/`, and the web's server helpers
-  in `web/src/lib/server/`.
+  update it in the same change and check both clients: the app's `*Api` classes
+  (client setup in `app/shared/src/*/kotlin/ldv/shuuen/core/network/`, one API
+  class per feature, e.g. `features/training/course/CourseApi.kt`), and the web's
+  server helpers in `web/src/lib/server/`.
 - Level definitions use backend-owned JSON discriminators (`level_config.type`,
   `config.type`), never Kotlin class names. See "Courses and Level Progressions"
   in `backend/README.md`.

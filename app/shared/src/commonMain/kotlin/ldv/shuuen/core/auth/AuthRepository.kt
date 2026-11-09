@@ -62,4 +62,11 @@ interface AuthRepository {
 
   /** Forgets the stored session. The backend issues stateless tokens, so nothing is revoked. */
   suspend fun signOut()
+
+  /**
+   * Trades the session's token for a fresh one and returns the renewed session. Returns null when
+   * there is no session or the backend can't be reached; a backend that rejects the token signs
+   * the user out.
+   */
+  suspend fun renewSession(): AuthSession?
 }

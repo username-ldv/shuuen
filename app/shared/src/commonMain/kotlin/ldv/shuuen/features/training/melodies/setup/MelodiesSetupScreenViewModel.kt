@@ -9,6 +9,8 @@ import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.openFilePicker
 import io.github.vinceglb.filekit.name
 import io.github.vinceglb.filekit.readBytes
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -22,16 +24,14 @@ import ldv.shuuen.core.music.ScaleType
 import ldv.shuuen.core.music.generator.MelodyStyle
 import ldv.shuuen.core.music.generator.MelodyStyles
 import ldv.shuuen.core.music.toNoteRange
-import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.features.training.common.asConfigDegreeStates
 import ldv.shuuen.features.training.common.components.TuneInconsistencyRange
-import ldv.shuuen.features.training.domain.LevelConfig
-import ldv.shuuen.features.training.domain.LevelSource
-import ldv.shuuen.features.training.domain.ScaleConfig
-import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
-import ldv.shuuen.features.training.melodies.domain.MelodiesLocalLevelRepository
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
+import ldv.shuuen.features.training.level.LevelConfig
+import ldv.shuuen.features.training.level.LevelSource
+import ldv.shuuen.features.training.level.MelodiesLevel
+import ldv.shuuen.features.training.level.MelodiesLocalLevelRepository
+import ldv.shuuen.features.training.level.ScaleConfig
+import org.koin.core.annotation.InjectedParam
 
 enum class MelodiesSourceMode {
   Random,
@@ -74,7 +74,7 @@ data class MelodiesSetupState(
 
 @OptIn(ExperimentalUuidApi::class)
 class MelodiesSetupScreenViewModel(
-  editLevelId: String,
+  @InjectedParam editLevelId: String,
   private val levelRepository: MelodiesLocalLevelRepository,
 ) : ViewModel() {
   private val editedLevelId = editLevelId.takeIf { it.isNotBlank() }
@@ -87,19 +87,12 @@ class MelodiesSetupScreenViewModel(
   init {
     editedLevelId?.let { levelId ->
       viewModelScope.launch {
-        levelRepository.getLevelById(levelId).collect { response ->
-          when (response) {
-            is ResponseState.Success -> {
-              currentLevelId = response.result.id
-              _state.value = response.result.toSetupState(_state.value)
-            }
-
-            is ResponseState.Error ->
-              Napier.w(response.throwable) { "Couldn't load melodies level for editing" }
-
-            is ResponseState.Loading -> Unit
+        runCatching { levelRepository.getLevel(levelId) ?: error("Level $levelId doesn't exist.") }
+          .onSuccess { level ->
+            currentLevelId = level.id
+            _state.value = level.toSetupState(_state.value)
           }
-        }
+          .onFailure { Napier.w(it) { "Couldn't load melodies level for editing" } }
       }
     }
   }

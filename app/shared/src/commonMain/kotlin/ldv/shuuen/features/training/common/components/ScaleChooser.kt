@@ -18,7 +18,7 @@ import ldv.shuuen.core.util.updateBy
 import ldv.shuuen.features.training.common.asConfigDegreeStates
 import ldv.shuuen.features.training.common.asPitchStates
 import ldv.shuuen.features.training.common.toBoxedItems
-import ldv.shuuen.features.training.domain.ScaleConfig
+import ldv.shuuen.features.training.level.ScaleConfig
 
 @Composable
 fun ScaleChooser(scaleConfig: ScaleConfig, onScaleChosen: (ScaleConfig) -> Unit = {}) {

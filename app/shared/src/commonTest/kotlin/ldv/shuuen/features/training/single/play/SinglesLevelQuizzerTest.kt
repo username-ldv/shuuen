@@ -1,17 +1,17 @@
 package ldv.shuuen.features.training.single.play
 
-import ldv.shuuen.core.music.Note
-import ldv.shuuen.core.music.NoteRange
-import ldv.shuuen.core.music.Pitch
-import ldv.shuuen.core.music.ScaleType
-import ldv.shuuen.features.training.domain.LevelConfig
-import ldv.shuuen.features.training.domain.LevelSource
-import ldv.shuuen.features.training.domain.ScaleConfig
-import ldv.shuuen.features.training.single.domain.SinglesLevel
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import ldv.shuuen.core.music.Note
+import ldv.shuuen.core.music.NoteRange
+import ldv.shuuen.core.music.Pitch
+import ldv.shuuen.core.music.ScaleType
+import ldv.shuuen.features.training.level.LevelConfig
+import ldv.shuuen.features.training.level.LevelSource
+import ldv.shuuen.features.training.level.ScaleConfig
+import ldv.shuuen.features.training.level.SinglesLevel
 
 class SinglesLevelQuizzerTest {
   private fun level(tuneInconsistencyCents: Int) =

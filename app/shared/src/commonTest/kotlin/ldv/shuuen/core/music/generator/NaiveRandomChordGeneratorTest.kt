@@ -1,12 +1,12 @@
 package ldv.shuuen.core.music.generator
 
-import ldv.shuuen.core.music.Note
-import ldv.shuuen.core.music.Pitch
-import ldv.shuuen.features.training.chords.domain.chordRepeatBudget
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import ldv.shuuen.core.music.Note
+import ldv.shuuen.core.music.Pitch
+import ldv.shuuen.features.training.level.chordRepeatBudget
 
 class NaiveRandomChordGeneratorTest {
   /** C, D, E, G, A over two octaves — five pitch classes, ten notes. */

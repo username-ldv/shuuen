@@ -1,5 +1,13 @@
 package ldv.shuuen.features.main
 
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -14,42 +22,31 @@ import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.NoteRange
 import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.ScaleType
-import ldv.shuuen.core.result.ResponseState
-import ldv.shuuen.core.sync.DataSyncResult
-import ldv.shuuen.core.sync.DataSyncStatus
-import ldv.shuuen.core.sync.LevelSyncRepository
-import ldv.shuuen.core.sync.LevelSyncResult
-import ldv.shuuen.core.sync.TrainingSessionSyncRepository
-import ldv.shuuen.core.sync.TrainingSessionSyncResult
-import ldv.shuuen.features.training.common.LevelAccuracyStats
-import ldv.shuuen.features.training.common.TrainingFlow
-import ldv.shuuen.features.training.course.domain.CourseLevelItem
-import ldv.shuuen.features.training.course.domain.CourseLevelNavigation
-import ldv.shuuen.features.training.course.domain.CourseLevelPage
-import ldv.shuuen.features.training.course.domain.CourseLevelQuery
-import ldv.shuuen.features.training.course.domain.CourseMode
-import ldv.shuuen.features.training.course.domain.CourseModeSummary
-import ldv.shuuen.features.training.course.domain.CoursePage
-import ldv.shuuen.features.training.course.domain.CourseRepository
-import ldv.shuuen.features.training.course.domain.CourseSummary
-import ldv.shuuen.features.training.course.domain.LevelReference
-import ldv.shuuen.features.training.course.domain.PageMeta
-import ldv.shuuen.features.training.course.domain.PlayableTrainingLevel
-import ldv.shuuen.features.training.course.domain.ProgressionGroup
-import ldv.shuuen.features.training.domain.LevelConfig
-import ldv.shuuen.features.training.domain.LevelSource
-import ldv.shuuen.features.training.domain.ScaleConfig
-import ldv.shuuen.features.training.level_end.domain.TrainingSession
-import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
-import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
+import ldv.shuuen.core.sync.DataSync
+import ldv.shuuen.core.sync.SyncException
+import ldv.shuuen.core.sync.SyncResult
+import ldv.shuuen.core.sync.Synchronizer
+import ldv.shuuen.features.training.course.CourseLevelItem
+import ldv.shuuen.features.training.course.CourseLevelNavigation
+import ldv.shuuen.features.training.course.CourseLevelPage
+import ldv.shuuen.features.training.course.CourseLevelQuery
+import ldv.shuuen.features.training.course.CourseMode
+import ldv.shuuen.features.training.course.CourseModeSummary
+import ldv.shuuen.features.training.course.CoursePage
+import ldv.shuuen.features.training.course.CourseRepository
+import ldv.shuuen.features.training.course.CourseSummary
+import ldv.shuuen.features.training.course.LevelReference
+import ldv.shuuen.features.training.course.PageMeta
+import ldv.shuuen.features.training.course.ProgressionGroup
+import ldv.shuuen.features.training.level.LevelConfig
+import ldv.shuuen.features.training.level.LevelSource
+import ldv.shuuen.features.training.level.MelodiesLevel
+import ldv.shuuen.features.training.level.PlayableTrainingLevel
+import ldv.shuuen.features.training.level.ScaleConfig
+import ldv.shuuen.features.training.level.TrainingFlow
+import ldv.shuuen.features.training.session.LevelAccuracyStats
+import ldv.shuuen.features.training.session.TrainingSession
+import ldv.shuuen.features.training.session.TrainingSessionRepository
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainMenuViewModelTest {
@@ -74,8 +71,7 @@ class MainMenuViewModelTest {
         MainMenuViewModel(
           sessions,
           courses,
-          FakeLevelSyncRepository(),
-          FakeTrainingSessionSyncRepository(),
+          DataSync(emptyList()),
         )
 
       advanceUntilIdle()
@@ -102,8 +98,7 @@ class MainMenuViewModelTest {
         MainMenuViewModel(
           sessions,
           courses,
-          FakeLevelSyncRepository(),
-          FakeTrainingSessionSyncRepository(),
+          DataSync(emptyList()),
         )
 
       advanceUntilIdle()
@@ -139,8 +134,7 @@ class MainMenuViewModelTest {
         MainMenuViewModel(
           sessions,
           courses,
-          FakeLevelSyncRepository(),
-          FakeTrainingSessionSyncRepository(),
+          DataSync(emptyList()),
         )
 
       advanceUntilIdle()
@@ -154,14 +148,13 @@ class MainMenuViewModelTest {
     }
 
   @Test
-  fun manualDataSyncPublishesBothResultsWithoutLosingContinueState() =
+  fun manualDataSyncPublishesTheSummedResultsWithoutLosingContinueState() =
     runTest(dispatcher) {
       val sessions = FakeTrainingSessionRepository(localSession())
-      val levelResult = LevelSyncResult(pushed = 2, received = 3, conflicts = 1)
-      val sessionResult = TrainingSessionSyncResult(pushed = 4, received = 5, conflicts = 2)
-      val levelSync = FakeLevelSyncRepository(levelResult)
-      val sessionSync = FakeTrainingSessionSyncRepository(sessionResult)
-      val viewModel = MainMenuViewModel(sessions, FakeCourseRepository(), levelSync, sessionSync)
+      val levelSync = FakeSynchronizer(SyncResult(pushed = 2, received = 3, conflicts = 1))
+      val sessionSync = FakeSynchronizer(SyncResult(pushed = 4, received = 5, conflicts = 2))
+      val dataSync = DataSync(listOf(levelSync, sessionSync))
+      val viewModel = MainMenuViewModel(sessions, FakeCourseRepository(), dataSync)
       advanceUntilIdle()
 
       viewModel.syncData()
@@ -170,32 +163,45 @@ class MainMenuViewModelTest {
       assertEquals(1, levelSync.calls)
       assertEquals(1, sessionSync.calls)
       assertEquals(
-        DataSyncStatus.Complete(DataSyncResult(levelResult, sessionResult)),
+        DataSyncStatus.Complete(SyncResult(pushed = 6, received = 8, conflicts = 3)),
         viewModel.state.value.dataSyncStatus,
       )
       assertNotNull(viewModel.state.value.continueCard)
     }
+
+  @Test
+  fun aFailingSynchronizerDoesNotStopTheOthers() =
+    runTest(dispatcher) {
+      val levelSync = FakeSynchronizer(failure = SyncException("Couldn't sync levels."))
+      val sessionSync = FakeSynchronizer(SyncResult(pushed = 1, received = 0, conflicts = 0))
+      val viewModel =
+        MainMenuViewModel(
+          FakeTrainingSessionRepository(localSession()),
+          FakeCourseRepository(),
+          DataSync(listOf(levelSync, sessionSync)),
+        )
+      advanceUntilIdle()
+
+      viewModel.syncData()
+      advanceUntilIdle()
+
+      assertEquals(1, sessionSync.calls)
+      assertEquals(
+        DataSyncStatus.Failed("Couldn't sync levels."),
+        viewModel.state.value.dataSyncStatus,
+      )
+    }
 }
 
-private class FakeLevelSyncRepository(
-  private val result: LevelSyncResult = LevelSyncResult(pushed = 0, received = 0, conflicts = 0)
-) : LevelSyncRepository {
+private class FakeSynchronizer(
+  private val result: SyncResult = SyncResult.None,
+  private val failure: Throwable? = null,
+) : Synchronizer {
   var calls = 0
 
-  override suspend fun sync(): LevelSyncResult {
-    calls++
-    return result
-  }
-}
-
-private class FakeTrainingSessionSyncRepository(
-  private val result: TrainingSessionSyncResult =
-    TrainingSessionSyncResult(pushed = 0, received = 0, conflicts = 0)
-) : TrainingSessionSyncRepository {
-  var calls = 0
-
-  override suspend fun sync(): TrainingSessionSyncResult {
-    calls++
+  override suspend fun sync(): SyncResult {
+    calls += 1
+    failure?.let { throw it }
     return result
   }
 }
@@ -214,8 +220,7 @@ private class FakeTrainingSessionRepository(
     if (!session.finishedEarly) completed.value += session.levelId
   }
 
-  override fun getSessionById(id: String): Flow<ResponseState<TrainingSession>> =
-    flowOf(ResponseState.Error(IllegalStateException("not implemented")))
+  override suspend fun getSession(id: String): TrainingSession? = null
 
   override fun observeLatestSession(): Flow<TrainingSession?> = latest
 

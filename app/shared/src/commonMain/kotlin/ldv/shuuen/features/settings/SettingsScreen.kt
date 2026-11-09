@@ -62,6 +62,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlin.math.roundToInt
 import ldv.shuuen.core.audio.midi.MidiChannel
 import ldv.shuuen.core.music.effectiveDegreeNames
 import ldv.shuuen.core.music.effectiveNoteNames
@@ -88,7 +89,6 @@ import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.SoftControl
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.label
-import kotlin.math.roundToInt
 
 @Composable
 fun SettingsScreen(
@@ -306,7 +306,7 @@ private fun OnlineSection(
       Text(
         text = state.backendStatus.label().uppercase(),
         color =
-          if (state.backendStatus == ldv.shuuen.core.online.BackendStatus.Available) {
+          if (state.backendStatus == ldv.shuuen.core.network.BackendStatus.Available) {
             ShuuenUi.Correct
           } else {
             ShuuenUi.Dim

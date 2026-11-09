@@ -39,7 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import ldv.shuuen.core.result.ResponseState
+import ldv.shuuen.core.ui.ScreenState
 import ldv.shuuen.core.ui.components.BoxedItemRow
 import ldv.shuuen.core.ui.components.Hairline
 import ldv.shuuen.core.ui.components.PrimaryCta
@@ -48,7 +48,6 @@ import ldv.shuuen.core.ui.components.ShuuenTopAppBarType
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.SurfaceCard
-import ldv.shuuen.features.training.common.LevelAccuracyStats
 import ldv.shuuen.features.training.common.components.ContextDetails
 import ldv.shuuen.features.training.common.components.CourseLevelListHeaderItemCount
 import ldv.shuuen.features.training.common.components.CourseSettingsAction
@@ -68,7 +67,6 @@ import ldv.shuuen.features.training.common.components.LocalLevelListHeaderItemCo
 import ldv.shuuen.features.training.common.components.sortedByLevelCreation
 import ldv.shuuen.features.training.common.components.sourceLabel
 import ldv.shuuen.features.training.common.toBoxedItems
-import ldv.shuuen.features.training.course.domain.withCourseOverrides
 import ldv.shuuen.features.training.course.presentation.CourseDiscoveryMessage
 import ldv.shuuen.features.training.course.presentation.CourseLevelItemKeyPrefix
 import ldv.shuuen.features.training.course.presentation.CourseLevelsMessage
@@ -78,8 +76,10 @@ import ldv.shuuen.features.training.course.presentation.CourseSourceSelection
 import ldv.shuuen.features.training.course.presentation.CourseSourceTopBarSelector
 import ldv.shuuen.features.training.course.presentation.ProgressionGroupTabs
 import ldv.shuuen.features.training.course.presentation.progressionGroupSwipeNavigation
-import ldv.shuuen.features.training.domain.LevelConfig
-import ldv.shuuen.features.training.single.domain.SinglesLevel
+import ldv.shuuen.features.training.course.withCourseOverrides
+import ldv.shuuen.features.training.level.LevelConfig
+import ldv.shuuen.features.training.level.SinglesLevel
+import ldv.shuuen.features.training.session.LevelAccuracyStats
 
 @Composable
 fun SinglesLevelSelectScreen(
@@ -89,7 +89,7 @@ fun SinglesLevelSelectScreen(
   onEditLevel: (levelId: String) -> Unit,
   viewModel: SinglesLevelSelectScreenViewModel,
 ) {
-  val levels by viewModel.levels.collectAsStateWithLifecycle(ResponseState.Loading)
+  val levels by viewModel.levels.collectAsStateWithLifecycle()
   val courseState by viewModel.courseState.collectAsStateWithLifecycle()
   val attemptedLevelIds by viewModel.attemptedLevelIds.collectAsStateWithLifecycle()
   val courseOverrides by viewModel.courseOverrides.collectAsStateWithLifecycle()
@@ -108,7 +108,7 @@ fun SinglesLevelSelectScreen(
   var sortOrder by rememberSaveable { mutableStateOf(LevelSortOrder.Descending) }
   val orderedLocalLevels =
     when (val state = levels) {
-      is ResponseState.Success -> state.result.sortedByLevelCreation(sortOrder) { it.id }
+      is ScreenState.Success -> state.uiData.sortedByLevelCreation(sortOrder) { it.id }
       else -> emptyList()
     }
   val orderedLevelIds =
@@ -184,7 +184,7 @@ fun SinglesLevelSelectScreen(
               )
             }
             when (val l = levels) {
-              is ResponseState.Loading ->
+              is ScreenState.Loading ->
                 item {
                   Text(
                     "Loading...",
@@ -192,7 +192,7 @@ fun SinglesLevelSelectScreen(
                     style = MaterialTheme.typography.bodyLarge,
                   )
                 }
-              is ResponseState.Success ->
+              is ScreenState.Success ->
                 items(orderedLocalLevels, key = { it.id }) { level ->
                   val statsFlow = remember(viewModel, level.id) { viewModel.levelStats(level.id) }
                   val stats by statsFlow.collectAsStateWithLifecycle(LevelAccuracyStats())
@@ -207,10 +207,10 @@ fun SinglesLevelSelectScreen(
                     onDeleteLevel = { levelPendingDelete = it },
                   )
                 }
-              is ResponseState.Error ->
+              is ScreenState.Error ->
                 item {
                   Text(
-                    "Error loading levels: ${l.throwable.message}",
+                    "Error loading levels: ${l.message}",
                     color = ShuuenUi.Incorrect,
                     style = MaterialTheme.typography.bodyLarge,
                   )

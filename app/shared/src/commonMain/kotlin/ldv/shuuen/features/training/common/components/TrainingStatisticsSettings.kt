@@ -19,7 +19,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -35,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import ldv.shuuen.core.ui.components.CircleIconButton
 import ldv.shuuen.core.ui.components.ShuuenSwitch
 import ldv.shuuen.core.ui.components.ShuuenUi
+import ldv.shuuen.core.ui.components.rememberExpandedSheetState
 
 private enum class StatisticsDeletion {
   LastPlay,
@@ -159,7 +159,7 @@ private fun SettingsSheetScaffold(
   onDismiss: () -> Unit,
   content: @Composable ColumnScope.() -> Unit,
 ) {
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  val sheetState = rememberExpandedSheetState()
   ModalBottomSheet(
     onDismissRequest = onDismiss,
     sheetState = sheetState,

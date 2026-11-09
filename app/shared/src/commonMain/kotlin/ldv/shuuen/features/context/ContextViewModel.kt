@@ -24,7 +24,7 @@ import ldv.shuuen.core.music.Sustain
 import ldv.shuuen.core.music.Timing
 import ldv.shuuen.core.music.constructSetupMelodyFlow
 import ldv.shuuen.core.music.toChords
-import ldv.shuuen.features.context.domain.ContextLocalRepository
+import org.koin.core.annotation.InjectedParam
 
 private const val PreviewTempo = 90
 private val PreviewRoot = Pitch.C
@@ -38,9 +38,9 @@ private data class PlayingNodePreview(
 )
 
 class ContextViewModel(
-  contextId: String,
+  @InjectedParam contextId: String,
   private val midiEngine: MidiEngine,
-  private val contextRepository: ContextLocalRepository,
+  private val contextRepository: ContextRepository,
 ) : ViewModel() {
   private val initialContextId = contextId.takeIf { it.isNotBlank() }
   private var audioReady = false
@@ -63,7 +63,7 @@ class ContextViewModel(
     }
     initialContextId?.let { id ->
       viewModelScope.launch {
-        _initialContext.value = contextRepository.getDegreeContextById(id)
+        _initialContext.value = contextRepository.getContext(id)
       }
     }
   }

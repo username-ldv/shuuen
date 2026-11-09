@@ -21,8 +21,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.util.toRoundedString
-import ldv.shuuen.features.training.common.LevelAccuracyStats
-import ldv.shuuen.features.training.single.play.AnswerColors
+import ldv.shuuen.features.training.common.AnswerColors
+import ldv.shuuen.features.training.session.LevelAccuracyStats
 
 @Composable
 fun LevelAccuracyLabel(

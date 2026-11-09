@@ -45,9 +45,9 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.distinctUntilChanged
 import ldv.shuuen.core.ui.components.Hairline
 import ldv.shuuen.core.ui.components.ShuuenUi
-import ldv.shuuen.features.training.course.domain.CourseSection
-import ldv.shuuen.features.training.course.domain.CourseSummary
-import ldv.shuuen.features.training.course.domain.ProgressionGroup
+import ldv.shuuen.features.training.course.CourseSection
+import ldv.shuuen.features.training.course.CourseSummary
+import ldv.shuuen.features.training.course.ProgressionGroup
 
 const val CourseLevelItemKeyPrefix = "course-level:"
 

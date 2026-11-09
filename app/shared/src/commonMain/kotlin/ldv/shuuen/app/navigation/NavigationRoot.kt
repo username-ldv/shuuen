@@ -12,8 +12,11 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.scene.Scene
 import androidx.navigation3.ui.NavDisplay
 import kotlinx.serialization.serializer
-import ldv.shuuen.app.navigation.result.LocalNavResultStore
-import ldv.shuuen.app.navigation.result.rememberNavResultStore
+import ldv.shuuen.core.navigation.AppNavigator
+import ldv.shuuen.core.navigation.AppRoute
+import ldv.shuuen.core.navigation.LocalAppNavigator
+import ldv.shuuen.core.navigation.result.LocalNavResultStore
+import ldv.shuuen.core.navigation.result.rememberNavResultStore
 import org.koin.compose.navigation3.koinEntryProvider
 import org.koin.core.annotation.KoinExperimentalAPI
 

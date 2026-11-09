@@ -1,6 +1,7 @@
 package ldv.shuuen.features.training.single.play
 
 import io.github.aakira.napier.Napier
+import kotlin.random.Random
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,9 +14,8 @@ import ldv.shuuen.core.music.decideAccidentalType
 import ldv.shuuen.core.music.generator.NaiveRandomDegreeNoteGenerator
 import ldv.shuuen.core.music.generator.NaiveRandomNoteGenerator
 import ldv.shuuen.core.music.generator.NoteGenerator
-import ldv.shuuen.features.training.domain.LevelConfig
-import ldv.shuuen.features.training.single.domain.SinglesLevel
-import kotlin.random.Random
+import ldv.shuuen.features.training.level.LevelConfig
+import ldv.shuuen.features.training.level.SinglesLevel
 
 data class IncorrectSinglesAnswer(val questionNumber: Int, val correctPitch: Pitch)
 

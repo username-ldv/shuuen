@@ -34,7 +34,7 @@ import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.music.NoteRow
 import ldv.shuuen.features.training.common.components.ScaleChooser
 import ldv.shuuen.features.training.common.components.TuneInconsistencySection
-import ldv.shuuen.features.training.domain.LevelConfig
+import ldv.shuuen.features.training.level.LevelConfig
 
 @Composable
 fun SinglesSetupScreen(

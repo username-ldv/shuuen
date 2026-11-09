@@ -12,20 +12,22 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import ldv.shuuen.core.result.ResponseState
+import ldv.shuuen.core.ui.ScreenState
 import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.core.settings.coerceLevelStatsWindow
-import ldv.shuuen.features.training.chords.domain.ChordsLevel
-import ldv.shuuen.features.training.common.LevelAccuracyStats
-import ldv.shuuen.features.training.common.TrainingFlow
-import ldv.shuuen.features.training.course.domain.CourseRepository
-import ldv.shuuen.features.training.course.domain.LevelReference
-import ldv.shuuen.features.training.course.domain.PlayableTrainingLevel
-import ldv.shuuen.features.training.course.domain.TrainingLevelResolver
-import ldv.shuuen.features.training.level_end.domain.TrainingSession
-import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
-import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
-import ldv.shuuen.features.training.single.domain.SinglesLevel
+import ldv.shuuen.core.ui.loadScreenState
+import ldv.shuuen.features.training.course.CourseRepository
+import ldv.shuuen.features.training.course.LevelReference
+import ldv.shuuen.features.training.course.TrainingLevelResolver
+import ldv.shuuen.features.training.level.ChordsLevel
+import ldv.shuuen.features.training.level.MelodiesLevel
+import ldv.shuuen.features.training.level.PlayableTrainingLevel
+import ldv.shuuen.features.training.level.SinglesLevel
+import ldv.shuuen.features.training.level.TrainingFlow
+import ldv.shuuen.features.training.session.LevelAccuracyStats
+import ldv.shuuen.features.training.session.TrainingSession
+import ldv.shuuen.features.training.session.TrainingSessionRepository
+import org.koin.core.annotation.InjectedParam
 
 /** The played level's current definition, for the parameters section of the results screen. */
 sealed interface CompletedLevel {
@@ -37,7 +39,7 @@ sealed interface CompletedLevel {
 }
 
 data class LevelCompleteState(
-  val session: ResponseState<TrainingSession> = ResponseState.Loading,
+  val session: ScreenState<TrainingSession> = ScreenState.Loading,
   /** Null while loading or when the level no longer exists; the parameters section hides then. */
   val level: CompletedLevel? = null,
   /** Encoded remote reference for the next level in this progression group, when one exists. */
@@ -47,7 +49,7 @@ data class LevelCompleteState(
 )
 
 class LevelCompleteViewModel(
-  sessionId: String,
+  @InjectedParam sessionId: String,
   private val sessionRepository: TrainingSessionRepository,
   private val settingsRepository: SettingsRepository,
   private val levelResolver: TrainingLevelResolver,
@@ -59,12 +61,13 @@ class LevelCompleteViewModel(
 
   init {
     viewModelScope.launch {
-      sessionRepository.getSessionById(sessionId).collect { response ->
-        _state.update { it.copy(session = response) }
-        if (response is ResponseState.Success) {
-          observeLevelAccuracy(response.result)
-          loadLevel(response.result)
-        }
+      val session = loadScreenState {
+        sessionRepository.getSession(sessionId) ?: error("The session $sessionId doesn't exist.")
+      }
+      _state.update { it.copy(session = session) }
+      if (session is ScreenState.Success) {
+        observeLevelAccuracy(session.uiData)
+        loadLevel(session.uiData)
       }
     }
   }

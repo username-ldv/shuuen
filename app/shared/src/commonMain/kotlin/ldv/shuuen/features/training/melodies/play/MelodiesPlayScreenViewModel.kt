@@ -4,6 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
 import io.github.vinceglb.filekit.readBytes
+import kotlin.random.Random
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.ExperimentalTime
+import kotlin.time.TimeSource
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
@@ -48,24 +55,18 @@ import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
 import ldv.shuuen.features.training.common.DegreeContextPlayer
 import ldv.shuuen.features.training.common.LevelPresetController
-import ldv.shuuen.features.training.common.TrainingFlow
 import ldv.shuuen.features.training.common.components.KeyFlashRequest
-import ldv.shuuen.features.training.course.domain.TrainingLevelResolver
-import ldv.shuuen.features.training.domain.LevelConfig
-import ldv.shuuen.features.training.domain.ScaleConfig
-import ldv.shuuen.features.training.level_end.domain.QuestionResult
-import ldv.shuuen.features.training.level_end.domain.TrainingSession
-import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
-import ldv.shuuen.features.training.level_end.domain.longestCleanRun
-import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
-import ldv.shuuen.features.training.melodies.domain.MidiContentResolver
-import kotlin.random.Random
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.ExperimentalTime
-import kotlin.time.TimeSource
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
+import ldv.shuuen.features.training.course.TrainingLevelResolver
+import ldv.shuuen.features.training.level.LevelConfig
+import ldv.shuuen.features.training.level.MelodiesLevel
+import ldv.shuuen.features.training.level.MidiContentResolver
+import ldv.shuuen.features.training.level.ScaleConfig
+import ldv.shuuen.features.training.level.TrainingFlow
+import ldv.shuuen.features.training.session.QuestionResult
+import ldv.shuuen.features.training.session.TrainingSession
+import ldv.shuuen.features.training.session.TrainingSessionRepository
+import ldv.shuuen.features.training.session.longestCleanRun
+import org.koin.core.annotation.InjectedParam
 
 enum class MelodiesPlayMode {
   Midi,
@@ -180,7 +181,7 @@ private const val StreamLookahead = 12
 private data class ActivePlaybackNote(val runId: Int, val note: Note)
 
 class MelodiesPlayScreenViewModel(
-  private val levelId: String,
+  @InjectedParam private val levelId: String,
   levelResolver: TrainingLevelResolver,
   private val midiEngine: MidiEngine,
   private val player: MidiFilePlayer,

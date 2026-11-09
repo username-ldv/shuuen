@@ -7,7 +7,7 @@ import ldv.shuuen.core.audio.midi.Preset
 import ldv.shuuen.core.audio.midi.PresetCutoffScope
 import ldv.shuuen.core.audio.midi.PresetCutoffs
 import ldv.shuuen.core.audio.midi.PresetVolumes
-import ldv.shuuen.core.online.BackendStatus
+import ldv.shuuen.core.network.BackendStatus
 import ldv.shuuen.core.settings.DefaultLevelStatsWindow
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.MusicLabelSettings

@@ -3,6 +3,8 @@ package ldv.shuuen.features.training.single.setup
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -14,19 +16,17 @@ import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.Scale
 import ldv.shuuen.core.music.ScaleType
 import ldv.shuuen.core.music.toNoteRange
-import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.features.training.common.asConfigDegreeStates
 import ldv.shuuen.features.training.common.components.TuneInconsistencyRange
-import ldv.shuuen.features.training.domain.LevelConfig
-import ldv.shuuen.features.training.domain.LevelSource
-import ldv.shuuen.features.training.domain.ScaleConfig
-import ldv.shuuen.features.training.single.domain.SinglesLevel
-import ldv.shuuen.features.training.single.domain.SinglesLocalLevelRepository
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
+import ldv.shuuen.features.training.level.LevelConfig
+import ldv.shuuen.features.training.level.LevelSource
+import ldv.shuuen.features.training.level.ScaleConfig
+import ldv.shuuen.features.training.level.SinglesLevel
+import ldv.shuuen.features.training.level.SinglesLocalLevelRepository
+import org.koin.core.annotation.InjectedParam
 
 class SinglesSetupScreenViewModel(
-  editLevelId: String,
+  @InjectedParam editLevelId: String,
   val levelRepository: SinglesLocalLevelRepository,
 ) : ViewModel() {
   private val editedLevelId = editLevelId.takeIf { it.isNotBlank() }
@@ -57,14 +57,9 @@ class SinglesSetupScreenViewModel(
   init {
     editedLevelId?.let { levelId ->
       viewModelScope.launch {
-        levelRepository.getLevelById(levelId).collect { response ->
-          when (response) {
-            is ResponseState.Success -> _singlesLevelState.value = response.result
-            is ResponseState.Error ->
-              Napier.w(response.throwable) { "Couldn't load singles level for editing" }
-            is ResponseState.Loading -> Unit
-          }
-        }
+        runCatching { levelRepository.getLevel(levelId) ?: error("Level $levelId doesn't exist.") }
+          .onSuccess { _singlesLevelState.value = it }
+          .onFailure { Napier.w(it) { "Couldn't load singles level for editing" } }
       }
     }
   }

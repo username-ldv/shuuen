@@ -3,6 +3,7 @@ package ldv.shuuen.features.main
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,16 +14,24 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import ldv.shuuen.core.sync.DataSyncResult
-import ldv.shuuen.core.sync.DataSyncStatus
-import ldv.shuuen.core.sync.LevelSyncRepository
-import ldv.shuuen.core.sync.TrainingSessionSyncRepository
-import ldv.shuuen.features.training.common.TrainingFlow
-import ldv.shuuen.features.training.course.domain.CourseRepository
-import ldv.shuuen.features.training.course.domain.LevelReference
-import ldv.shuuen.features.training.level_end.domain.TrainingSession
-import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
-import kotlin.math.roundToInt
+import ldv.shuuen.core.sync.DataSync
+import ldv.shuuen.core.sync.SyncResult
+import ldv.shuuen.features.training.course.CourseRepository
+import ldv.shuuen.features.training.course.LevelReference
+import ldv.shuuen.features.training.level.TrainingFlow
+import ldv.shuuen.features.training.session.TrainingSession
+import ldv.shuuen.features.training.session.TrainingSessionRepository
+
+sealed interface DataSyncStatus {
+  data object Idle : DataSyncStatus
+
+  data object Syncing : DataSyncStatus
+
+  data class Complete(val result: SyncResult) : DataSyncStatus
+
+  /** At least one kind of data didn't sync; [message] says why. The rest synced anyway. */
+  data class Failed(val message: String) : DataSyncStatus
+}
 
 data class MainMenuState(
   val continueCard: ContinueCardState? = null,
@@ -77,8 +86,7 @@ data class CompletionProgress(
 class MainMenuViewModel(
   private val trainingSessionRepository: TrainingSessionRepository,
   private val courseRepository: CourseRepository,
-  private val levelSyncRepository: LevelSyncRepository,
-  private val trainingSessionSyncRepository: TrainingSessionSyncRepository,
+  private val dataSync: DataSync,
 ) : ViewModel() {
   private val _state = MutableStateFlow(MainMenuState())
   val state = _state.asStateFlow()
@@ -143,19 +151,19 @@ class MainMenuViewModel(
     if (_state.value.dataSyncStatus == DataSyncStatus.Syncing) return
     viewModelScope.launch {
       _state.update { it.copy(dataSyncStatus = DataSyncStatus.Syncing) }
-      try {
-        val levels = levelSyncRepository.sync()
-        val trainingSessions = trainingSessionSyncRepository.sync()
-        val result = DataSyncResult(levels = levels, trainingSessions = trainingSessions)
-        _state.update { it.copy(dataSyncStatus = DataSyncStatus.Complete(result)) }
-      } catch (error: CancellationException) {
-        throw error
-      } catch (error: Throwable) {
-        Napier.w(error) { "Couldn't sync data" }
-        _state.update {
-          it.copy(dataSyncStatus = DataSyncStatus.Failed(error.message ?: "Couldn't sync data."))
+      val report = dataSync.syncAll()
+      val status =
+        if (report.succeeded) {
+          DataSyncStatus.Complete(report.result)
+        } else {
+          DataSyncStatus.Failed(
+            report.failures
+              .map { it.message ?: "Couldn't sync data." }
+              .distinct()
+              .joinToString(" ")
+          )
         }
-      }
+      _state.update { it.copy(dataSyncStatus = status) }
     }
   }
 

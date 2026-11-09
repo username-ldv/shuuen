@@ -7,14 +7,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import ldv.shuuen.features.training.common.TrainingFlow
-import ldv.shuuen.features.training.course.domain.CourseLevelItem
-import ldv.shuuen.features.training.course.domain.CourseMode
-import ldv.shuuen.features.training.course.domain.CourseRepository
-import ldv.shuuen.features.training.course.domain.CourseSection
-import ldv.shuuen.features.training.course.domain.CourseSummary
-import ldv.shuuen.features.training.course.domain.PlayableTrainingLevel
-import ldv.shuuen.features.training.course.domain.ProgressionGroup
+import ldv.shuuen.features.training.course.CourseLevelItem
+import ldv.shuuen.features.training.course.CourseMode
+import ldv.shuuen.features.training.course.CourseRepository
+import ldv.shuuen.features.training.course.CourseSection
+import ldv.shuuen.features.training.course.CourseSummary
+import ldv.shuuen.features.training.course.ProgressionGroup
+import ldv.shuuen.features.training.level.PlayableTrainingLevel
+import ldv.shuuen.features.training.level.TrainingFlow
 
 sealed interface CourseSourceSelection {
   data object MyLevels : CourseSourceSelection

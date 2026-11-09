@@ -34,7 +34,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -64,6 +63,7 @@ import ldv.shuuen.core.audio.midi.PresetCutoffs
 import ldv.shuuen.core.audio.midi.PresetVolumes
 import ldv.shuuen.core.ui.components.ShuuenUi
 import kotlin.math.roundToInt
+import ldv.shuuen.core.ui.components.rememberExpandedSheetState
 
 /**
  * Combined soundbank + preset picker. The soundbank chips scope a searchable, scrollable preset
@@ -97,7 +97,7 @@ fun PresetPickerSheet(
   onPresetCutoffScopeChange: (Preset, PresetCutoffScope) -> Unit,
   onDismiss: () -> Unit,
 ) {
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  val sheetState = rememberExpandedSheetState()
 
   ModalBottomSheet(
     onDismissRequest = onDismiss,
