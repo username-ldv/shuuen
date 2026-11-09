@@ -2,6 +2,15 @@ package ldv.shuuen.features.training.level
 
 import ldv.shuuen.core.database.AppDatabase
 import ldv.shuuen.core.sync.Synchronizer
+import ldv.shuuen.features.training.level.definition.LevelDefinitionCodec
+import ldv.shuuen.features.training.level.storage.ChordsLevelDao
+import ldv.shuuen.features.training.level.storage.ChordsLocalLevelRepositoryImpl
+import ldv.shuuen.features.training.level.storage.MelodiesLevelDao
+import ldv.shuuen.features.training.level.storage.MelodiesLocalLevelRepositoryImpl
+import ldv.shuuen.features.training.level.storage.SinglesLevelDao
+import ldv.shuuen.features.training.level.storage.SinglesLocalLevelRepositoryImpl
+import ldv.shuuen.features.training.level.sync.LevelSyncApi
+import ldv.shuuen.features.training.level.sync.LevelSynchronizer
 import org.koin.dsl.bind
 import org.koin.dsl.module
 import org.koin.plugin.module.dsl.single

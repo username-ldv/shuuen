@@ -14,10 +14,10 @@ import ldv.shuuen.core.music.generator.ChordFigure
 import ldv.shuuen.core.network.ApiJson
 import ldv.shuuen.features.training.level.ChordAnswerOrder
 import ldv.shuuen.features.training.level.LevelConfig
-import ldv.shuuen.features.training.level.MidiFileSource
-import ldv.shuuen.features.training.level.MidiKey
 import ldv.shuuen.features.training.level.PlayableTrainingLevel
 import ldv.shuuen.features.training.level.TrainingFlow
+import ldv.shuuen.features.training.level.midi.MidiFileSource
+import ldv.shuuen.features.training.level.midi.MidiKey
 
 class CourseAdditionalMappingTest {
   @Test

@@ -36,7 +36,7 @@ import ldv.shuuen.core.music.MinimumMidiTransposition
 import ldv.shuuen.core.settings.MidiLevelOptions
 import ldv.shuuen.core.ui.components.PrimaryCta
 import ldv.shuuen.core.ui.components.ShuuenUi
-import ldv.shuuen.features.training.common.components.LevelSettingsSheet
+import ldv.shuuen.features.training.common.level_select.LevelSettingsSheet
 import ldv.shuuen.features.training.session.LevelAccuracyStats
 
 /**

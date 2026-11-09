@@ -20,7 +20,7 @@ import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.core.settings.coerceLevelStatsWindow
 import ldv.shuuen.core.ui.ScreenState
 import ldv.shuuen.core.ui.asScreenState
-import ldv.shuuen.features.training.common.components.TuneInconsistencyRange
+import ldv.shuuen.features.training.common.setup.TuneInconsistencyRange
 import ldv.shuuen.features.training.course.CourseRepository
 import ldv.shuuen.features.training.course.presentation.CourseLevelBrowser
 import ldv.shuuen.features.training.level.MelodiesLevel

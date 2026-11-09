@@ -12,6 +12,9 @@ import ldv.shuuen.core.music.generator.ChordStyle
 import ldv.shuuen.core.music.generator.ChordStyles
 import ldv.shuuen.core.music.generator.MelodyStyle
 import ldv.shuuen.core.music.generator.MelodyStyles
+import ldv.shuuen.features.training.level.midi.MidiFileSource
+import ldv.shuuen.features.training.level.midi.MidiFileSourceSerializer
+import ldv.shuuen.features.training.level.midi.MidiKey
 
 /**
  * Stored in Room as JSON (see the level type converters). The subclasses keep the serial names they

@@ -25,7 +25,7 @@ import ldv.shuuen.core.music.generator.MelodyStyle
 import ldv.shuuen.core.music.generator.MelodyStyles
 import ldv.shuuen.core.music.toNoteRange
 import ldv.shuuen.features.training.common.asConfigDegreeStates
-import ldv.shuuen.features.training.common.components.TuneInconsistencyRange
+import ldv.shuuen.features.training.common.setup.TuneInconsistencyRange
 import ldv.shuuen.features.training.level.LevelConfig
 import ldv.shuuen.features.training.level.LevelSource
 import ldv.shuuen.features.training.level.MelodiesLevel

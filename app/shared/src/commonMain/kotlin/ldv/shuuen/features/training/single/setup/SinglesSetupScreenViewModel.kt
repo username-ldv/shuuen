@@ -17,7 +17,7 @@ import ldv.shuuen.core.music.Scale
 import ldv.shuuen.core.music.ScaleType
 import ldv.shuuen.core.music.toNoteRange
 import ldv.shuuen.features.training.common.asConfigDegreeStates
-import ldv.shuuen.features.training.common.components.TuneInconsistencyRange
+import ldv.shuuen.features.training.common.setup.TuneInconsistencyRange
 import ldv.shuuen.features.training.level.LevelConfig
 import ldv.shuuen.features.training.level.LevelSource
 import ldv.shuuen.features.training.level.ScaleConfig

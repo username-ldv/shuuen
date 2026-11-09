@@ -56,10 +56,10 @@ import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.SoftControl
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.music.NoteRow
-import ldv.shuuen.features.training.common.components.NumberInputBox
-import ldv.shuuen.features.training.common.components.ScaleChooser
-import ldv.shuuen.features.training.common.components.StylePickerSheet
-import ldv.shuuen.features.training.common.components.TuneInconsistencySection
+import ldv.shuuen.features.training.common.setup.NumberInputBox
+import ldv.shuuen.features.training.common.setup.ScaleChooser
+import ldv.shuuen.features.training.common.setup.StylePickerSheet
+import ldv.shuuen.features.training.common.setup.TuneInconsistencySection
 import ldv.shuuen.features.training.level.ScaleConfig
 
 @Composable

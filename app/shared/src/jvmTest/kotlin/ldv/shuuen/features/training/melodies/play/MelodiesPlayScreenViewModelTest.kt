@@ -67,13 +67,13 @@ import ldv.shuuen.features.training.level.ChordsLevel
 import ldv.shuuen.features.training.level.LevelConfig
 import ldv.shuuen.features.training.level.LevelSource
 import ldv.shuuen.features.training.level.MelodiesLevel
-import ldv.shuuen.features.training.level.MidiContentResolver
-import ldv.shuuen.features.training.level.MidiFileSource
-import ldv.shuuen.features.training.level.MidiKey
 import ldv.shuuen.features.training.level.ScaleConfig
 import ldv.shuuen.features.training.level.ScaleConfig.ScaleItemState.ScalePitchState
 import ldv.shuuen.features.training.level.SinglesLevel
 import ldv.shuuen.features.training.level.TrainingFlow
+import ldv.shuuen.features.training.level.midi.MidiContentResolver
+import ldv.shuuen.features.training.level.midi.MidiFileSource
+import ldv.shuuen.features.training.level.midi.MidiKey
 import ldv.shuuen.features.training.session.LevelAccuracyStats
 import ldv.shuuen.features.training.session.TrainingSession
 import ldv.shuuen.features.training.session.TrainingSessionRepository

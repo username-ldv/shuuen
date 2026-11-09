@@ -11,7 +11,7 @@ import kotlinx.coroutines.test.runTest
 import ldv.shuuen.core.network.ApiConfig
 import ldv.shuuen.core.network.ApiJson
 import ldv.shuuen.core.network.configureApiClient
-import ldv.shuuen.features.training.level.MidiFileSource
+import ldv.shuuen.features.training.level.midi.MidiFileSource
 
 class MidiContentResolverImplTest {
   @Test

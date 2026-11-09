@@ -33,11 +33,18 @@ ldv.shuuen
 └── features/
     ├── auth/  context/  free_play/  main/  pitch_slide/  settings/
     └── training/
-        ├── level/       the level models of every flow, their storage, definition codec and sync
-        ├── session/     finished training sessions: history, statistics, storage and sync
+        ├── level/       the level models of every flow and their repository interfaces
+        │   ├── midi/        MIDI file sources and keys of MIDI melody levels
+        │   ├── storage/     Room: DAOs, entities, converters, repository implementations
+        │   ├── definition/  the level definition schema (codec, decoder, DTOs)
+        │   └── sync/        LevelSynchronizer, its API and DTOs
+        ├── session/     finished training sessions: model, statistics, repository interface
+        │   ├── storage/
+        │   └── sync/
         ├── course/      backend courses (API, mapper, repository), LevelReference,
         │                TrainingLevelResolver, presentation/ (course browsing UI)
-        ├── common/      training UI pieces and play helpers shared by the flows
+        ├── common/      AnswerColors, ConfigUtils, and what the flows' screens share:
+        │                level_select/, setup/, play/
         ├── single/  melodies/  chords/   level_select/, setup/, play/: screens and flow logic
         └── level_end/   the level-complete screen shared by the flows
 ```
@@ -55,21 +62,28 @@ app ──> features ──> core
   - Level entities reference `ContextDbEntity` for their foreign key and their `@Relation`, since Room needs the entity class for both.
   - `AppDatabase` (above).
 - Inside `training`, the graph is: `level` ← `session`, `course`; `common` → `level`, `session`; the flows (`single`, `melodies`, `chords`) → `level`, `session`, `course`, `common`, `level_end`; `level_end` → `level`, `session`, `course`, `common`. `main` uses `course`, `session` and `level`.
+- Inside a feature, sub-packages depend on the feature's root, not the other way round. The root reaches into them only from its Koin module (and `level` from `LevelConfig` into `level/midi`, which holds model types). No cycles between sub-packages either: in `level`, `sync` → `storage`, `definition` → root.
 - `app` may import anything. It only wires things together.
 
 ## Anatomy of a feature
 
-Data and DI live in the feature's root folder; screens and ViewModels live in screen folders (`level_select/`, `play/`, ...) or next to them in small features. Example, `features/training/session/`:
+A feature starts flat: data and DI in its root folder, screens and ViewModels in screen folders (`level_select/`, `play/`, ...) or next to them in small features. Example, `features/context/`:
 
 | File | Contents |
 |---|---|
-| `TrainingSession.kt` | The model. |
-| `TrainingSessionDbEntity.kt` | The Room entity, with its column type converters. |
-| `TrainingSessionDao.kt` | The Room DAO. |
-| `TrainingSessionRepository.kt` (+`Impl`) | What the rest of the app uses. The interface exists because ViewModel tests fake it. |
-| `TrainingSessionSyncApi.kt`, `TrainingSessionSyncDtos.kt` | The HTTP call and the backend's JSON. |
-| `TrainingSessionSynchronizer.kt` | Its `Synchronizer`. |
-| `SessionModule.kt` | Koin bindings (and navigation entries, in features with screens). |
+| `ContextDbEntity.kt`, `ContextTypeConverter.kt` | The Room entity with its column type converter, and its mapping to the model (`DegreeContext`, which lives in `core/music`). |
+| `ContextDao.kt` | The Room DAO. |
+| `ContextRepository.kt` | What the rest of the app uses. A plain class: nothing fakes it. |
+| `ContextModule.kt` | Koin bindings and navigation entries. |
+| `ContextScreen.kt`, `ContextViewModel.kt` | The screen. |
+
+When a feature's root grows past about a dozen files, group what's behind its public pieces by concern, as `training/level` and `training/session` do:
+- The root keeps what other code uses: models, repository interfaces, the Koin module.
+- `storage/` holds Room: DAOs, entities with their converters and mappers, the repository implementations.
+- `sync/` holds the `Synchronizer` with its API class and DTOs.
+- Other concerns get their own folder when they have several files (`level/definition/`, `level/midi/`).
+
+Shared UI is grouped by the kind of screen that uses it, mirroring the flows: `training/common/level_select/`, `setup/`, `play/`.
 
 Naming:
 - Name the model after the thing (`SinglesLevel`, `TrainingSession`).
@@ -148,7 +162,7 @@ Room checks the result when the database opens, so a wrong migration fails at on
 ## Tests
 
 - Test packages mirror the main packages.
-- Repositories and synchronizers are tested with fake DAOs or with an in-memory Room database in `jvmTest` (`Room.inMemoryDatabaseBuilder`, see `LevelRepositoryTest`); API classes with `MockEngine`.
+- Repositories and synchronizers are tested with fake DAOs or with an in-memory Room database in `jvmTest` (`Room.inMemoryDatabaseBuilder`, see `level/storage/LevelRepositoryTest`); API classes with `MockEngine`.
 - ViewModels are tested against fake repositories; the fakes are the reason those interfaces exist.
 
 ## Later

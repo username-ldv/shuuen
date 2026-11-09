@@ -1,6 +1,6 @@
 package ldv.shuuen.features.training.course
 
-import ldv.shuuen.features.training.level.MidiContentResolver
+import ldv.shuuen.features.training.level.midi.MidiContentResolver
 import org.koin.dsl.bind
 import org.koin.dsl.module
 import org.koin.plugin.module.dsl.single

@@ -9,14 +9,14 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlinx.coroutines.Dispatchers
 import ldv.shuuen.features.context.ContextDao
 import ldv.shuuen.features.context.ContextDbEntity
-import ldv.shuuen.features.training.level.ChordsLevelDao
-import ldv.shuuen.features.training.level.ChordsLevelDbEntity
-import ldv.shuuen.features.training.level.MelodiesLevelDao
-import ldv.shuuen.features.training.level.MelodiesLevelDbEntity
-import ldv.shuuen.features.training.level.SinglesLevelDao
-import ldv.shuuen.features.training.level.SinglesLevelDbEntity
-import ldv.shuuen.features.training.session.TrainingSessionDao
-import ldv.shuuen.features.training.session.TrainingSessionDbEntity
+import ldv.shuuen.features.training.level.storage.ChordsLevelDao
+import ldv.shuuen.features.training.level.storage.ChordsLevelDbEntity
+import ldv.shuuen.features.training.level.storage.MelodiesLevelDao
+import ldv.shuuen.features.training.level.storage.MelodiesLevelDbEntity
+import ldv.shuuen.features.training.level.storage.SinglesLevelDao
+import ldv.shuuen.features.training.level.storage.SinglesLevelDbEntity
+import ldv.shuuen.features.training.session.storage.TrainingSessionDao
+import ldv.shuuen.features.training.session.storage.TrainingSessionDbEntity
 
 /**
  * The one central Room database. It lists every feature's entities; each feature provides its own

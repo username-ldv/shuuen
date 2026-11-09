@@ -3,8 +3,8 @@ package ldv.shuuen.features.training.course
 import io.github.vinceglb.filekit.readBytes
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import ldv.shuuen.features.training.level.MidiContentResolver
-import ldv.shuuen.features.training.level.MidiFileSource
+import ldv.shuuen.features.training.level.midi.MidiContentResolver
+import ldv.shuuen.features.training.level.midi.MidiFileSource
 
 internal class MidiContentResolverImpl(private val api: CourseApi) : MidiContentResolver {
   private val cache = mutableMapOf<Long, ByteArray>()

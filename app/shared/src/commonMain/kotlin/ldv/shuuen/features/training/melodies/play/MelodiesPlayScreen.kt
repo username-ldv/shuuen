@@ -64,12 +64,12 @@ import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboard
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
 import ldv.shuuen.core.ui.components.music.inputs.rememberFifthsCircleState
 import ldv.shuuen.core.ui.components.music.inputs.rememberPianoKeyboardState
-import ldv.shuuen.features.training.common.components.CircleCenterIconButton
-import ldv.shuuen.features.training.common.components.ShufflePresetsAction
-import ldv.shuuen.features.training.common.components.circleItemNames
-import ldv.shuuen.features.training.common.components.circleTopItem
-import ldv.shuuen.features.training.common.components.inputLabelForPitch
-import ldv.shuuen.features.training.common.components.pitchToItemIndex
+import ldv.shuuen.features.training.common.play.CircleCenterIconButton
+import ldv.shuuen.features.training.common.play.ShufflePresetsAction
+import ldv.shuuen.features.training.common.play.circleItemNames
+import ldv.shuuen.features.training.common.play.circleTopItem
+import ldv.shuuen.features.training.common.play.inputLabelForPitch
+import ldv.shuuen.features.training.common.play.pitchToItemIndex
 
 @Composable
 fun MelodiesPlayScreen(

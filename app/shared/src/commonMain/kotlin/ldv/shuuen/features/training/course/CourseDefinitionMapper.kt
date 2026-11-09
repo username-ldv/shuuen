@@ -2,11 +2,11 @@ package ldv.shuuen.features.training.course
 
 import kotlinx.serialization.json.Json
 import ldv.shuuen.core.network.ApiJsonQualifier
-import ldv.shuuen.features.training.level.LevelDefinitionCodec
-import ldv.shuuen.features.training.level.LevelDefinitionException
-import ldv.shuuen.features.training.level.LevelMidiResource
 import ldv.shuuen.features.training.level.LevelSource
 import ldv.shuuen.features.training.level.TrainingFlow
+import ldv.shuuen.features.training.level.definition.LevelDefinitionCodec
+import ldv.shuuen.features.training.level.definition.LevelDefinitionException
+import ldv.shuuen.features.training.level.definition.LevelMidiResource
 import org.koin.core.annotation.Named
 
 internal class CourseDefinitionMapper(@Named(ApiJsonQualifier) json: Json) {
