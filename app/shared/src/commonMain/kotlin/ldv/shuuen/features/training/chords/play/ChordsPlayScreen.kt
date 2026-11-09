@@ -36,10 +36,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
-import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.core.settings.InputComponent
 import ldv.shuuen.core.settings.InputMode
 import ldv.shuuen.core.settings.MusicLabelSettings
+import ldv.shuuen.core.ui.ScreenState
 import ldv.shuuen.core.ui.components.LinearTrainingProgress
 import ldv.shuuen.core.ui.components.MidiKeyboardBadge
 import ldv.shuuen.core.ui.components.ShuuenTopAppBar
@@ -52,13 +52,13 @@ import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboard
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
 import ldv.shuuen.core.ui.components.music.inputs.rememberFifthsCircleState
 import ldv.shuuen.core.ui.components.music.inputs.rememberPianoKeyboardState
-import ldv.shuuen.features.training.chords.domain.ChordAnswerOrder
-import ldv.shuuen.features.training.common.components.CircleCenterIconButton
-import ldv.shuuen.features.training.common.components.ShufflePresetsAction
-import ldv.shuuen.features.training.common.components.circleItemNames
-import ldv.shuuen.features.training.common.components.circleTopItem
-import ldv.shuuen.features.training.common.components.inputLabelForPitch
-import ldv.shuuen.features.training.common.components.pitchToItemIndex
+import ldv.shuuen.features.training.common.play.CircleCenterIconButton
+import ldv.shuuen.features.training.common.play.ShufflePresetsAction
+import ldv.shuuen.features.training.common.play.circleItemNames
+import ldv.shuuen.features.training.common.play.circleTopItem
+import ldv.shuuen.features.training.common.play.inputLabelForPitch
+import ldv.shuuen.features.training.common.play.pitchToItemIndex
+import ldv.shuuen.features.training.level.ChordAnswerOrder
 
 @Composable
 fun ChordsPlayScreen(
@@ -72,9 +72,9 @@ fun ChordsPlayScreen(
   val canShufflePresets by viewModel.canShufflePresets.collectAsStateWithLifecycle()
   val title =
     when (val level = screenState.levelData) {
-      is ResponseState.Loading -> "Loading..."
-      is ResponseState.Error -> "Error"
-      is ResponseState.Success -> level.result.name
+      is ScreenState.Loading -> "Loading..."
+      is ScreenState.Error -> "Error"
+      is ScreenState.Success -> level.uiData.name
     }
 
   LaunchedEffect(screenState.phase) {
@@ -122,7 +122,7 @@ fun ChordsPlayScreen(
       )
       ChordBuffer(
         quizState = it,
-        answerOrder = (screenState.levelData as? ResponseState.Success)?.result?.answerOrder,
+        answerOrder = (screenState.levelData as? ScreenState.Success)?.uiData?.answerOrder,
         inputMode = inputMethod.mode,
         musicLabels = musicLabels,
         modifier = Modifier.padding(horizontal = ScreenHorizontalPadding),

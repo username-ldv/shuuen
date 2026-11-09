@@ -1,0 +1,89 @@
+package ldv.shuuen.features.training.chords
+
+import androidx.compose.runtime.LaunchedEffect
+import ldv.shuuen.core.navigation.AppRoute
+import ldv.shuuen.core.navigation.LocalAppNavigator
+import ldv.shuuen.core.navigation.result.ContextRecipient
+import ldv.shuuen.core.navigation.result.LocalNavResultStore
+import ldv.shuuen.core.navigation.result.NavResultKeys.ChordsContextResult
+import ldv.shuuen.features.training.chords.level_select.ChordsLevelSelectScreen
+import ldv.shuuen.features.training.chords.level_select.ChordsLevelSelectScreenViewModel
+import ldv.shuuen.features.training.chords.play.ChordsPlayScreen
+import ldv.shuuen.features.training.chords.play.ChordsPlayScreenViewModel
+import ldv.shuuen.features.training.chords.setup.ChordsSetupScreen
+import ldv.shuuen.features.training.chords.setup.ChordsSetupScreenViewModel
+import ldv.shuuen.features.training.level_end.LevelCompleteScreen
+import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.annotation.KoinExperimentalAPI
+import org.koin.core.parameter.parametersOf
+import org.koin.dsl.module
+import org.koin.dsl.navigation3.navigation
+import org.koin.plugin.module.dsl.viewModel
+
+@OptIn(KoinExperimentalAPI::class)
+val chordsModule = module {
+  viewModel<ChordsLevelSelectScreenViewModel>()
+  viewModel<ChordsSetupScreenViewModel>()
+  viewModel<ChordsPlayScreenViewModel>()
+
+  navigation<AppRoute.ChordsLevelSelect> {
+    val navigator = LocalAppNavigator.current
+    ChordsLevelSelectScreen(
+      onNavigateBack = { navigator.goBack() },
+      onStartLevel = { levelId -> navigator.add(AppRoute.ChordsPlay(levelId)) },
+      onCreateNewLevel = { navigator.add(AppRoute.ChordsSetup()) },
+      onEditLevel = { levelId -> navigator.add(AppRoute.ChordsSetup(levelId)) },
+      viewModel = koinViewModel(),
+    )
+  }
+
+  navigation<AppRoute.ChordsSetup> { route ->
+    val navigator = LocalAppNavigator.current
+    val viewModel =
+      koinViewModel<ChordsSetupScreenViewModel> {
+        parametersOf(route.levelId.orEmpty())
+      }
+    val resultStore = LocalNavResultStore.current
+    val result = resultStore.peek(ChordsContextResult)
+    LaunchedEffect(result) {
+      result?.let {
+        viewModel.updateContext(it.context)
+        resultStore.clear(ChordsContextResult)
+      }
+    }
+
+    ChordsSetupScreen(
+      onNavigateBack = { navigator.goBack() },
+      onOpenContext = { contextId ->
+        navigator.add(AppRoute.Context(ContextRecipient.ChordsSetup, contextId))
+      },
+      onSaveLevel = { navigator.goBack() },
+      viewModel = viewModel,
+    )
+  }
+
+  navigation<AppRoute.ChordsPlay> { route ->
+    val navigator = LocalAppNavigator.current
+    ChordsPlayScreen(
+      onNavigateBack = { navigator.goBack() },
+      onLevelEnd = { sessionId ->
+        navigator.replaceLastWith(AppRoute.ChordsLevelComplete(route.levelId, sessionId))
+      },
+      viewModel = koinViewModel { parametersOf(route.levelId) },
+    )
+  }
+
+  navigation<AppRoute.ChordsLevelComplete> { route ->
+    val navigator = LocalAppNavigator.current
+    LevelCompleteScreen(
+      onNavigateBack = { navigator.goBack() },
+      onRetryLevel = { navigator.replaceLastWith(AppRoute.ChordsPlay(route.levelId)) },
+      onNextLevel = { nextLevelId ->
+        navigator.replaceLastWith(AppRoute.ChordsPlay(nextLevelId))
+      },
+      // The level select this play session started from is right below on the back stack.
+      onLevelSelect = { navigator.goBack() },
+      viewModel = koinViewModel { parametersOf(route.sessionId) },
+    )
+  }
+}

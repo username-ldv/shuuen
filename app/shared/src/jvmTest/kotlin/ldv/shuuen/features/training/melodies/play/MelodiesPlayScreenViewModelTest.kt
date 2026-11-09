@@ -1,6 +1,12 @@
 package ldv.shuuen.features.training.melodies.play
 
 import androidx.lifecycle.viewModelScope
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
@@ -50,34 +56,27 @@ import ldv.shuuen.core.music.ScaleType
 import ldv.shuuen.core.music.SetupMelody
 import ldv.shuuen.core.music.SetupMelodyRepeat
 import ldv.shuuen.core.music.Sustain
-import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.core.settings.AppSettings
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.MidiLevelOptions
 import ldv.shuuen.core.settings.PresetShuffleMode
 import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.core.settings.ThemeSettings
-import ldv.shuuen.features.training.chords.domain.ChordsLevel
-import ldv.shuuen.features.training.common.LevelAccuracyStats
-import ldv.shuuen.features.training.common.TrainingFlow
-import ldv.shuuen.features.training.course.domain.TrainingLevelResolver
-import ldv.shuuen.features.training.domain.LevelConfig
-import ldv.shuuen.features.training.domain.LevelSource
-import ldv.shuuen.features.training.domain.ScaleConfig
-import ldv.shuuen.features.training.domain.ScaleConfig.ScaleItemState.ScalePitchState
-import ldv.shuuen.features.training.level_end.domain.TrainingSession
-import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
-import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
-import ldv.shuuen.features.training.melodies.domain.MidiContentResolver
-import ldv.shuuen.features.training.melodies.domain.MidiFileSource
-import ldv.shuuen.features.training.melodies.domain.MidiKey
-import ldv.shuuen.features.training.single.domain.SinglesLevel
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import ldv.shuuen.features.training.course.TrainingLevelResolver
+import ldv.shuuen.features.training.level.ChordsLevel
+import ldv.shuuen.features.training.level.LevelConfig
+import ldv.shuuen.features.training.level.LevelSource
+import ldv.shuuen.features.training.level.MelodiesLevel
+import ldv.shuuen.features.training.level.ScaleConfig
+import ldv.shuuen.features.training.level.ScaleConfig.ScaleItemState.ScalePitchState
+import ldv.shuuen.features.training.level.SinglesLevel
+import ldv.shuuen.features.training.level.TrainingFlow
+import ldv.shuuen.features.training.level.midi.MidiContentResolver
+import ldv.shuuen.features.training.level.midi.MidiFileSource
+import ldv.shuuen.features.training.level.midi.MidiKey
+import ldv.shuuen.features.training.session.LevelAccuracyStats
+import ldv.shuuen.features.training.session.TrainingSession
+import ldv.shuuen.features.training.session.TrainingSessionRepository
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MelodiesPlayScreenViewModelTest {
@@ -535,8 +534,7 @@ private class FakeTrainingSessionRepository : TrainingSessionRepository {
     savedSessions += session
   }
 
-  override fun getSessionById(id: String): Flow<ResponseState<TrainingSession>> =
-    flowOf(ResponseState.Error(IllegalStateException("not implemented")))
+  override suspend fun getSession(id: String): TrainingSession? = null
 
   override fun observeLatestSession(): Flow<TrainingSession?> = flowOf(null)
 

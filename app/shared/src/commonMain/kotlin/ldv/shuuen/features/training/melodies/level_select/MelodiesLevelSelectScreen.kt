@@ -48,7 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import ldv.shuuen.core.result.ResponseState
+import ldv.shuuen.core.ui.ScreenState
 import ldv.shuuen.core.ui.components.BoxedItemRow
 import ldv.shuuen.core.ui.components.Hairline
 import ldv.shuuen.core.ui.components.PrimaryCta
@@ -57,28 +57,26 @@ import ldv.shuuen.core.ui.components.ShuuenTopAppBarType
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.SurfaceCard
-import ldv.shuuen.features.training.common.LevelAccuracyStats
-import ldv.shuuen.features.training.common.components.ContextDetails
-import ldv.shuuen.features.training.common.components.CourseLevelListHeaderItemCount
-import ldv.shuuen.features.training.common.components.CourseSettingsAction
-import ldv.shuuen.features.training.common.components.CourseSettingsSheet
-import ldv.shuuen.features.training.common.components.DeleteLevelDialog
-import ldv.shuuen.features.training.common.components.DetailLabel
-import ldv.shuuen.features.training.common.components.DetailRow
-import ldv.shuuen.features.training.common.components.LevelAccuracyLabel
-import ldv.shuuen.features.training.common.components.LevelAccuracyStatsRow
-import ldv.shuuen.features.training.common.components.LevelListScrollControls
-import ldv.shuuen.features.training.common.components.LevelListScrollbar
-import ldv.shuuen.features.training.common.components.LevelParametersFlow
-import ldv.shuuen.features.training.common.components.LevelSettingsSheet
-import ldv.shuuen.features.training.common.components.LevelSortAction
-import ldv.shuuen.features.training.common.components.LevelSortOrder
-import ldv.shuuen.features.training.common.components.LocalLevelListHeaderItemCount
-import ldv.shuuen.features.training.common.components.MelodyStyleSummary
-import ldv.shuuen.features.training.common.components.sortedByLevelCreation
-import ldv.shuuen.features.training.common.components.sourceLabel
+import ldv.shuuen.features.training.common.level_select.ContextDetails
+import ldv.shuuen.features.training.common.level_select.CourseLevelListHeaderItemCount
+import ldv.shuuen.features.training.common.level_select.CourseSettingsAction
+import ldv.shuuen.features.training.common.level_select.CourseSettingsSheet
+import ldv.shuuen.features.training.common.level_select.DeleteLevelDialog
+import ldv.shuuen.features.training.common.level_select.DetailLabel
+import ldv.shuuen.features.training.common.level_select.DetailRow
+import ldv.shuuen.features.training.common.level_select.LevelAccuracyLabel
+import ldv.shuuen.features.training.common.level_select.LevelAccuracyStatsRow
+import ldv.shuuen.features.training.common.level_select.LevelListScrollControls
+import ldv.shuuen.features.training.common.level_select.LevelListScrollbar
+import ldv.shuuen.features.training.common.level_select.LevelParametersFlow
+import ldv.shuuen.features.training.common.level_select.LevelSettingsSheet
+import ldv.shuuen.features.training.common.level_select.LevelSortAction
+import ldv.shuuen.features.training.common.level_select.LevelSortOrder
+import ldv.shuuen.features.training.common.level_select.LocalLevelListHeaderItemCount
+import ldv.shuuen.features.training.common.level_select.MelodyStyleSummary
+import ldv.shuuen.features.training.common.level_select.sortedByLevelCreation
+import ldv.shuuen.features.training.common.level_select.sourceLabel
 import ldv.shuuen.features.training.common.toBoxedItems
-import ldv.shuuen.features.training.course.domain.withCourseOverrides
 import ldv.shuuen.features.training.course.presentation.CourseDiscoveryMessage
 import ldv.shuuen.features.training.course.presentation.CourseLevelItemKeyPrefix
 import ldv.shuuen.features.training.course.presentation.CourseLevelsMessage
@@ -88,9 +86,11 @@ import ldv.shuuen.features.training.course.presentation.CourseSourceSelection
 import ldv.shuuen.features.training.course.presentation.CourseSourceTopBarSelector
 import ldv.shuuen.features.training.course.presentation.ProgressionGroupTabs
 import ldv.shuuen.features.training.course.presentation.progressionGroupSwipeNavigation
-import ldv.shuuen.features.training.domain.LevelConfig
-import ldv.shuuen.features.training.domain.ScaleConfig
-import ldv.shuuen.features.training.melodies.domain.MelodiesLevel
+import ldv.shuuen.features.training.course.withCourseOverrides
+import ldv.shuuen.features.training.level.LevelConfig
+import ldv.shuuen.features.training.level.MelodiesLevel
+import ldv.shuuen.features.training.level.ScaleConfig
+import ldv.shuuen.features.training.session.LevelAccuracyStats
 
 @Composable
 fun MelodiesLevelSelectScreen(
@@ -101,7 +101,7 @@ fun MelodiesLevelSelectScreen(
   onOpenMidiContext: (contextId: String?) -> Unit,
   viewModel: MelodiesLevelSelectScreenViewModel,
 ) {
-  val levels by viewModel.levels.collectAsStateWithLifecycle(ResponseState.Loading)
+  val levels by viewModel.levels.collectAsStateWithLifecycle()
   val midiLevelOptions by viewModel.midiLevelOptions.collectAsStateWithLifecycle()
   val courseState by viewModel.courseState.collectAsStateWithLifecycle()
   val attemptedLevelIds by viewModel.attemptedLevelIds.collectAsStateWithLifecycle()
@@ -121,7 +121,7 @@ fun MelodiesLevelSelectScreen(
   var sortOrder by rememberSaveable { mutableStateOf(LevelSortOrder.Descending) }
   val orderedLocalLevels =
     when (val state = levels) {
-      is ResponseState.Success -> state.result.sortedByLevelCreation(sortOrder) { it.id }
+      is ScreenState.Success -> state.uiData.sortedByLevelCreation(sortOrder) { it.id }
       else -> emptyList()
     }
   val orderedLevelIds =
@@ -201,7 +201,7 @@ fun MelodiesLevelSelectScreen(
               )
             }
             when (val l = levels) {
-              is ResponseState.Loading ->
+              is ScreenState.Loading ->
                 item {
                   Text(
                     "Loading...",
@@ -209,8 +209,8 @@ fun MelodiesLevelSelectScreen(
                     style = MaterialTheme.typography.bodyLarge,
                   )
                 }
-              is ResponseState.Success ->
-                if (l.result.isEmpty()) {
+              is ScreenState.Success ->
+                if (l.uiData.isEmpty()) {
                   item { EmptyState() }
                 } else {
                   items(orderedLocalLevels, key = { it.id }) { level ->
@@ -228,10 +228,10 @@ fun MelodiesLevelSelectScreen(
                     )
                   }
                 }
-              is ResponseState.Error ->
+              is ScreenState.Error ->
                 item {
                   Text(
-                    "Error loading levels: ${l.throwable.message}",
+                    "Error loading levels: ${l.message}",
                     color = ShuuenUi.Incorrect,
                     style = MaterialTheme.typography.bodyLarge,
                   )

@@ -21,11 +21,11 @@ import ldv.shuuen.core.music.Chord
 import ldv.shuuen.core.music.MusicLabelDefaults
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.Pitch
-import ldv.shuuen.core.online.BackendStatusMonitor
+import ldv.shuuen.core.network.ApiConfig
+import ldv.shuuen.core.network.BackendStatusMonitor
+import ldv.shuuen.core.network.normalizeBackendUrl
 import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.core.settings.coerceLevelStatsWindow
-import ldv.shuuen.data.remote.ApiConfig
-import ldv.shuuen.data.remote.normalizeBackendUrl
 
 class SettingsViewModel(
   private val midiEngine: MidiEngine,

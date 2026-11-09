@@ -14,8 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import ldv.shuuen.core.online.BackendStatus
-import ldv.shuuen.core.online.BackendStatusMonitor
+import ldv.shuuen.core.network.BackendStatus
+import ldv.shuuen.core.network.BackendStatusMonitor
 import org.koin.compose.koinInject
 
 /**

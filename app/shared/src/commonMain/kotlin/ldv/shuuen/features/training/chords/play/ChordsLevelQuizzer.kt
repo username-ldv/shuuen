@@ -1,5 +1,6 @@
 package ldv.shuuen.features.training.chords.play
 
+import kotlin.random.Random
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,11 +12,10 @@ import ldv.shuuen.core.music.ScaleType
 import ldv.shuuen.core.music.decideAccidentalType
 import ldv.shuuen.core.music.generator.ChordNotesGenerator
 import ldv.shuuen.core.music.generator.WeightedChordGenerator
-import ldv.shuuen.features.training.chords.domain.ChordAnswerOrder
-import ldv.shuuen.features.training.chords.domain.ChordsLevel
-import ldv.shuuen.features.training.chords.domain.chordRepeatBudget
-import ldv.shuuen.features.training.domain.LevelConfig
-import kotlin.random.Random
+import ldv.shuuen.features.training.level.ChordAnswerOrder
+import ldv.shuuen.features.training.level.ChordsLevel
+import ldv.shuuen.features.training.level.LevelConfig
+import ldv.shuuen.features.training.level.chordRepeatBudget
 
 data class IncorrectChordsAnswer(val questionNumber: Int, val correctPitches: List<Pitch>)
 

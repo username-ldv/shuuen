@@ -54,8 +54,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlin.math.roundToInt
 import ldv.shuuen.core.music.DegreeContext
-import ldv.shuuen.core.result.ResponseState
+import ldv.shuuen.core.ui.ScreenState
 import ldv.shuuen.core.ui.components.BoxedItemRow
 import ldv.shuuen.core.ui.components.FlatSection
 import ldv.shuuen.core.ui.components.Hairline
@@ -66,22 +67,21 @@ import ldv.shuuen.core.ui.components.SoftControl
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.SurfaceCard
 import ldv.shuuen.core.util.toRoundedString
-import ldv.shuuen.features.training.common.LevelAccuracyStats
-import ldv.shuuen.features.training.common.TrainingFlow
-import ldv.shuuen.features.training.common.components.ChordStyleSummary
-import ldv.shuuen.features.training.common.components.ContextDetails
-import ldv.shuuen.features.training.common.components.DetailLabel
-import ldv.shuuen.features.training.common.components.DetailRow
-import ldv.shuuen.features.training.common.components.LevelAccuracyLabel
-import ldv.shuuen.features.training.common.components.MelodyStyleSummary
-import ldv.shuuen.features.training.common.components.sourceLabel
+import ldv.shuuen.features.training.common.level_select.ChordStyleSummary
+import ldv.shuuen.features.training.common.level_select.ContextDetails
+import ldv.shuuen.features.training.common.level_select.DetailLabel
+import ldv.shuuen.features.training.common.level_select.DetailRow
+import ldv.shuuen.features.training.common.level_select.LevelAccuracyLabel
+import ldv.shuuen.features.training.common.level_select.MelodyStyleSummary
+import ldv.shuuen.features.training.common.level_select.sourceLabel
 import ldv.shuuen.features.training.common.toBoxedItems
-import ldv.shuuen.features.training.domain.LevelConfig
-import ldv.shuuen.features.training.domain.ScaleConfig
-import ldv.shuuen.features.training.level_end.domain.AccuracyBucket
-import ldv.shuuen.features.training.level_end.domain.TrainingSession
-import ldv.shuuen.features.training.level_end.domain.accuracyBuckets
-import kotlin.math.roundToInt
+import ldv.shuuen.features.training.level.LevelConfig
+import ldv.shuuen.features.training.level.ScaleConfig
+import ldv.shuuen.features.training.level.TrainingFlow
+import ldv.shuuen.features.training.session.AccuracyBucket
+import ldv.shuuen.features.training.session.LevelAccuracyStats
+import ldv.shuuen.features.training.session.TrainingSession
+import ldv.shuuen.features.training.session.accuracyBuckets
 
 @Composable
 fun LevelCompleteScreen(
@@ -105,23 +105,23 @@ fun LevelCompleteScreen(
     },
   ) {
     when (val session = state.session) {
-      is ResponseState.Loading ->
+      is ScreenState.Loading ->
         Text(
           text = "Loading results...",
           color = ShuuenUi.Muted,
           style = MaterialTheme.typography.bodyLarge,
         )
 
-      is ResponseState.Error ->
+      is ScreenState.Error ->
         Text(
-          text = "Couldn't load the session results: ${session.throwable.message}",
+          text = "Couldn't load the session results: ${session.message}",
           color = ShuuenUi.Incorrect,
           style = MaterialTheme.typography.bodyLarge,
         )
 
-      is ResponseState.Success ->
+      is ScreenState.Success ->
         LevelCompleteContent(
-          session = session.result,
+          session = session.uiData,
           level = state.level,
           levelAccuracyStats = state.levelAccuracyStats,
           nextLevelReference = state.nextLevelReference,

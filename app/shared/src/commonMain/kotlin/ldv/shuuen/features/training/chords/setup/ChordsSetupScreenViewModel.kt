@@ -3,6 +3,8 @@ package ldv.shuuen.features.training.chords.setup
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -15,20 +17,18 @@ import ldv.shuuen.core.music.Scale
 import ldv.shuuen.core.music.ScaleType
 import ldv.shuuen.core.music.generator.ChordStyle
 import ldv.shuuen.core.music.toNoteRange
-import ldv.shuuen.core.result.ResponseState
-import ldv.shuuen.features.training.chords.domain.ChordAnswerOrder
-import ldv.shuuen.features.training.chords.domain.ChordSizeRange
-import ldv.shuuen.features.training.chords.domain.ChordsLevel
-import ldv.shuuen.features.training.chords.domain.ChordsLocalLevelRepository
 import ldv.shuuen.features.training.common.asConfigDegreeStates
-import ldv.shuuen.features.training.domain.LevelConfig
-import ldv.shuuen.features.training.domain.LevelSource
-import ldv.shuuen.features.training.domain.ScaleConfig
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
+import ldv.shuuen.features.training.level.ChordAnswerOrder
+import ldv.shuuen.features.training.level.ChordSizeRange
+import ldv.shuuen.features.training.level.ChordsLevel
+import ldv.shuuen.features.training.level.ChordsLocalLevelRepository
+import ldv.shuuen.features.training.level.LevelConfig
+import ldv.shuuen.features.training.level.LevelSource
+import ldv.shuuen.features.training.level.ScaleConfig
+import org.koin.core.annotation.InjectedParam
 
 class ChordsSetupScreenViewModel(
-  editLevelId: String,
+  @InjectedParam editLevelId: String,
   val levelRepository: ChordsLocalLevelRepository,
 ) : ViewModel() {
   private val editedLevelId = editLevelId.takeIf { it.isNotBlank() }
@@ -62,14 +62,9 @@ class ChordsSetupScreenViewModel(
   init {
     editedLevelId?.let { levelId ->
       viewModelScope.launch {
-        levelRepository.getLevelById(levelId).collect { response ->
-          when (response) {
-            is ResponseState.Success -> _chordsLevelState.value = response.result
-            is ResponseState.Error ->
-              Napier.w(response.throwable) { "Couldn't load chords level for editing" }
-            is ResponseState.Loading -> Unit
-          }
-        }
+        runCatching { levelRepository.getLevel(levelId) ?: error("Level $levelId doesn't exist.") }
+          .onSuccess { _chordsLevelState.value = it }
+          .onFailure { Napier.w(it) { "Couldn't load chords level for editing" } }
       }
     }
   }

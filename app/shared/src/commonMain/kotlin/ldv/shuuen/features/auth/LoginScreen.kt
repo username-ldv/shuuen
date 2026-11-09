@@ -32,7 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ldv.shuuen.core.auth.AuthSession
-import ldv.shuuen.core.online.BackendStatus
+import ldv.shuuen.core.network.BackendStatus
 import ldv.shuuen.core.ui.components.BackendStatusBadge
 import ldv.shuuen.core.ui.components.BackendStatusIcon
 import ldv.shuuen.core.ui.components.FlatSection

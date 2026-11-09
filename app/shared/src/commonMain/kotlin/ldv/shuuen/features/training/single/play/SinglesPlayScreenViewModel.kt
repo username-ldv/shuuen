@@ -1,9 +1,14 @@
 package ldv.shuuen.features.training.single.play
 
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.ExperimentalTime
+import kotlin.time.TimeSource
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.BufferOverflow
@@ -28,33 +33,24 @@ import ldv.shuuen.core.music.Degree
 import ldv.shuuen.core.music.DegreeContext
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.Pitch
-import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.InputMode
 import ldv.shuuen.core.settings.MusicLabelSettings
 import ldv.shuuen.core.settings.SettingsRepository
+import ldv.shuuen.core.ui.ScreenState
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
-import ldv.shuuen.features.training.common.DegreeContextPlayer
-import ldv.shuuen.features.training.common.LevelPresetController
-import ldv.shuuen.features.training.common.TrainingFlow
-import ldv.shuuen.features.training.common.components.KeyFlashRequest
-import ldv.shuuen.features.training.course.domain.TrainingLevelResolver
-import ldv.shuuen.features.training.level_end.domain.QuestionResult
-import ldv.shuuen.features.training.level_end.domain.TrainingSession
-import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
-import ldv.shuuen.features.training.level_end.domain.longestCleanRun
-import ldv.shuuen.features.training.single.domain.SinglesLevel
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.ExperimentalTime
-import kotlin.time.TimeSource
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
-
-enum class AnswerColors(val color: Color) {
-  Correct(Color(0xff32cc73)),
-  Incorrect(Color(0xffe74d3c)),
-}
+import ldv.shuuen.features.training.common.AnswerColors
+import ldv.shuuen.features.training.common.play.DegreeContextPlayer
+import ldv.shuuen.features.training.common.play.KeyFlashRequest
+import ldv.shuuen.features.training.common.play.LevelPresetController
+import ldv.shuuen.features.training.course.TrainingLevelResolver
+import ldv.shuuen.features.training.level.SinglesLevel
+import ldv.shuuen.features.training.level.TrainingFlow
+import ldv.shuuen.features.training.session.QuestionResult
+import ldv.shuuen.features.training.session.TrainingSession
+import ldv.shuuen.features.training.session.TrainingSessionRepository
+import ldv.shuuen.features.training.session.longestCleanRun
+import org.koin.core.annotation.InjectedParam
 
 /** Monotone flash used for setup-melody key highlights (colorful palette is a future option). */
 // val SetupMelodyFlashColor = Color(0xFFD9D9DE)
@@ -69,7 +65,7 @@ sealed interface QuizPhase {
 }
 
 data class SinglesPlayScreenState(
-  val levelData: ResponseState<SinglesLevel> = ResponseState.Loading,
+  val levelData: ScreenState<SinglesLevel> = ScreenState.Loading,
   val phase: QuizPhase = QuizPhase.LoadingContext,
   val quizState: QuizState? = null,
 )
@@ -77,7 +73,7 @@ data class SinglesPlayScreenState(
 val playNoteDuration = 1500.milliseconds
 
 class SinglesPlayScreenViewModel(
-  levelId: String,
+  @InjectedParam levelId: String,
   levelResolver: TrainingLevelResolver,
   val midiEngine: MidiEngine,
   settingsRepository: SettingsRepository,
@@ -172,10 +168,10 @@ class SinglesPlayScreenViewModel(
         levelResolver.resolveSingles(levelId)
       }
         .getOrElse { error ->
-          _state.update { it.copy(levelData = ResponseState.Error(error)) }
+          _state.update { it.copy(levelData = ScreenState.Error(error)) }
           return@launch
         }
-      _state.update { it.copy(levelData = ResponseState.Success(level)) }
+      _state.update { it.copy(levelData = ScreenState.Success(level)) }
       val allowSevenAccidentalKeys =
         settingsRepository.settings.map { it.allowSevenAccidentalKeys }.first()
       presets.begin()
@@ -322,7 +318,7 @@ class SinglesPlayScreenViewModel(
     sessionSaved = true
 
     val quizState = quizzer?.quizState?.value
-    val level = (_state.value.levelData as? ResponseState.Success)?.result
+    val level = (_state.value.levelData as? ScreenState.Success)?.uiData
     val answered = (quizState?.currentQuestionNumber ?: 1) - 1
     if (quizState == null || level == null || answered <= 0) {
       _state.update { it.copy(phase = QuizPhase.Complete(sessionId = null)) }

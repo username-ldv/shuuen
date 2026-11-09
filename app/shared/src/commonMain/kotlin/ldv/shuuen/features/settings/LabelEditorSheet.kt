@@ -27,7 +27,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +45,7 @@ import ldv.shuuen.core.music.MusicLabelDefaults
 import ldv.shuuen.core.music.MusicLabelPreset
 import ldv.shuuen.core.music.MusicLabelPresets
 import ldv.shuuen.core.ui.components.ShuuenUi
+import ldv.shuuen.core.ui.components.rememberExpandedSheetState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,7 +58,7 @@ fun LabelEditorSheet(
   onSaveCustom: (List<String>) -> Unit,
   onDismiss: () -> Unit,
 ) {
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  val sheetState = rememberExpandedSheetState()
 
   ModalBottomSheet(
     onDismissRequest = onDismiss,

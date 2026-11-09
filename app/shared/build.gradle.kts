@@ -68,6 +68,7 @@ kotlin {
       implementation(libs.kotlinx.serialization.json)
       implementation(libs.ktor.client.core)
       implementation(libs.ktor.client.content.negotiation)
+      implementation(libs.ktor.client.auth)
       implementation(libs.ktor.serialization.json)
       implementation(libs.napier)
       implementation(libs.kstore)
@@ -77,7 +78,7 @@ kotlin {
       implementation(libs.filekit.dialogs.compose)
 
       // to review
-      implementation(compose.materialIconsExtended)
+      implementation(libs.compose.materialIconsExtended)
     }
     jvmMain.dependencies {
       implementation(libs.appdirs)

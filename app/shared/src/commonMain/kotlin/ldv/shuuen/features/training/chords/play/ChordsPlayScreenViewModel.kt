@@ -3,6 +3,12 @@ package ldv.shuuen.features.training.chords.play
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.aakira.napier.Napier
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.ExperimentalTime
+import kotlin.time.TimeSource
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
@@ -29,29 +35,24 @@ import ldv.shuuen.core.music.Degree
 import ldv.shuuen.core.music.DegreeContext
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.Pitch
-import ldv.shuuen.core.result.ResponseState
 import ldv.shuuen.core.settings.InputMethod
 import ldv.shuuen.core.settings.InputMode
 import ldv.shuuen.core.settings.MusicLabelSettings
 import ldv.shuuen.core.settings.SettingsRepository
+import ldv.shuuen.core.ui.ScreenState
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.music.inputs.PianoKeyboardDefaults
-import ldv.shuuen.features.training.chords.domain.ChordsLevel
-import ldv.shuuen.features.training.common.DegreeContextPlayer
-import ldv.shuuen.features.training.common.LevelPresetController
-import ldv.shuuen.features.training.common.TrainingFlow
-import ldv.shuuen.features.training.common.components.KeyFlashRequest
-import ldv.shuuen.features.training.course.domain.TrainingLevelResolver
-import ldv.shuuen.features.training.level_end.domain.QuestionResult
-import ldv.shuuen.features.training.level_end.domain.TrainingSession
-import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
-import ldv.shuuen.features.training.level_end.domain.longestCleanRun
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.ExperimentalTime
-import kotlin.time.TimeSource
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
+import ldv.shuuen.features.training.common.play.DegreeContextPlayer
+import ldv.shuuen.features.training.common.play.KeyFlashRequest
+import ldv.shuuen.features.training.common.play.LevelPresetController
+import ldv.shuuen.features.training.course.TrainingLevelResolver
+import ldv.shuuen.features.training.level.ChordsLevel
+import ldv.shuuen.features.training.level.TrainingFlow
+import ldv.shuuen.features.training.session.QuestionResult
+import ldv.shuuen.features.training.session.TrainingSession
+import ldv.shuuen.features.training.session.TrainingSessionRepository
+import ldv.shuuen.features.training.session.longestCleanRun
+import org.koin.core.annotation.InjectedParam
 
 sealed interface ChordsQuizPhase {
   object LoadingContext : ChordsQuizPhase
@@ -63,7 +64,7 @@ sealed interface ChordsQuizPhase {
 }
 
 data class ChordsPlayScreenState(
-  val levelData: ResponseState<ChordsLevel> = ResponseState.Loading,
+  val levelData: ScreenState<ChordsLevel> = ScreenState.Loading,
   val phase: ChordsQuizPhase = ChordsQuizPhase.LoadingContext,
   val quizState: ChordsQuizState? = null,
 )
@@ -72,7 +73,7 @@ data class ChordsPlayScreenState(
 val playChordDuration = 1800.milliseconds
 
 class ChordsPlayScreenViewModel(
-  levelId: String,
+  @InjectedParam levelId: String,
   levelResolver: TrainingLevelResolver,
   val midiEngine: MidiEngine,
   settingsRepository: SettingsRepository,
@@ -168,10 +169,10 @@ class ChordsPlayScreenViewModel(
         levelResolver.resolveChords(levelId)
       }
         .getOrElse { error ->
-          _state.update { it.copy(levelData = ResponseState.Error(error)) }
+          _state.update { it.copy(levelData = ScreenState.Error(error)) }
           return@launch
         }
-      _state.update { it.copy(levelData = ResponseState.Success(level)) }
+      _state.update { it.copy(levelData = ScreenState.Success(level)) }
       val allowSevenAccidentalKeys =
         settingsRepository.settings.map { it.allowSevenAccidentalKeys }.first()
       presets.begin()
@@ -316,7 +317,7 @@ class ChordsPlayScreenViewModel(
     playChordJob?.cancelAndJoin()
 
     val quizState = quizzer?.quizState?.value
-    val level = (_state.value.levelData as? ResponseState.Success)?.result
+    val level = (_state.value.levelData as? ScreenState.Success)?.uiData
     val answered = (quizState?.currentQuestionNumber ?: 1) - 1
     if (quizState == null || level == null || answered <= 0) {
       _state.update { it.copy(phase = ChordsQuizPhase.Complete(sessionId = null)) }

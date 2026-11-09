@@ -1,19 +1,19 @@
 package ldv.shuuen.features.training.chords.play
 
+import kotlin.random.Random
+import kotlin.test.Test
+import kotlin.test.assertEquals
 import ldv.shuuen.core.music.Note
 import ldv.shuuen.core.music.NoteRange
 import ldv.shuuen.core.music.Pitch
 import ldv.shuuen.core.music.ScaleType
 import ldv.shuuen.core.music.generator.ChordStyles
-import ldv.shuuen.features.training.chords.domain.ChordAnswerOrder
-import ldv.shuuen.features.training.chords.domain.ChordSizeRange
-import ldv.shuuen.features.training.chords.domain.ChordsLevel
-import ldv.shuuen.features.training.domain.LevelConfig
-import ldv.shuuen.features.training.domain.LevelSource
-import ldv.shuuen.features.training.domain.ScaleConfig
-import kotlin.random.Random
-import kotlin.test.Test
-import kotlin.test.assertEquals
+import ldv.shuuen.features.training.level.ChordAnswerOrder
+import ldv.shuuen.features.training.level.ChordSizeRange
+import ldv.shuuen.features.training.level.ChordsLevel
+import ldv.shuuen.features.training.level.LevelConfig
+import ldv.shuuen.features.training.level.LevelSource
+import ldv.shuuen.features.training.level.ScaleConfig
 
 class ChordsLevelQuizzerTest {
   /**

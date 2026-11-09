@@ -8,8 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.map
-import ldv.shuuen.app.di.commonModule
-import ldv.shuuen.app.di.platformModule
+import ldv.shuuen.app.di.appModule
 import ldv.shuuen.app.navigation.NavigationRoot
 import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.core.settings.ThemeAppearance
@@ -20,7 +19,7 @@ import org.koin.compose.koinInject
 import org.koin.dsl.koinConfiguration
 
 private val appKoinConfiguration = koinConfiguration {
-  modules(listOf(commonModule, platformModule))
+  modules(appModule)
 }
 
 @Composable

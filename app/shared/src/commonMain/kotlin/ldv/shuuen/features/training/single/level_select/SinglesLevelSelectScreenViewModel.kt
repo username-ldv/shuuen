@@ -4,27 +4,28 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ldv.shuuen.core.settings.CourseOverrides
 import ldv.shuuen.core.settings.DefaultLevelStatsWindow
 import ldv.shuuen.core.settings.SettingsRepository
 import ldv.shuuen.core.settings.coerceLevelStatsWindow
-import ldv.shuuen.features.training.common.LevelAccuracyStats
-import ldv.shuuen.features.training.common.TrainingFlow
-import ldv.shuuen.features.training.common.components.TuneInconsistencyRange
-import ldv.shuuen.features.training.course.domain.CourseRepository
-import ldv.shuuen.features.training.course.domain.PlayableTrainingLevel
+import ldv.shuuen.core.ui.ScreenState
+import ldv.shuuen.core.ui.asScreenState
+import ldv.shuuen.features.training.common.setup.TuneInconsistencyRange
+import ldv.shuuen.features.training.course.CourseRepository
 import ldv.shuuen.features.training.course.presentation.CourseLevelBrowser
-import ldv.shuuen.features.training.level_end.domain.TrainingSessionRepository
-import ldv.shuuen.features.training.single.domain.SinglesLocalLevelRepository
+import ldv.shuuen.features.training.level.PlayableTrainingLevel
+import ldv.shuuen.features.training.level.SinglesLevel
+import ldv.shuuen.features.training.level.SinglesLocalLevelRepository
+import ldv.shuuen.features.training.level.TrainingFlow
+import ldv.shuuen.features.training.session.LevelAccuracyStats
+import ldv.shuuen.features.training.session.TrainingSessionRepository
 
 class SinglesLevelSelectScreenViewModel(
   private val levelRepository: SinglesLocalLevelRepository,
@@ -32,10 +33,12 @@ class SinglesLevelSelectScreenViewModel(
   private val trainingSessionRepository: TrainingSessionRepository,
   courseRepository: CourseRepository,
 ) : ViewModel() {
-  private val refreshRequests = MutableStateFlow(0)
-
-  @OptIn(ExperimentalCoroutinesApi::class)
-  val levels = refreshRequests.flatMapLatest { levelRepository.getLevels() }
+  /** Updates by itself after an edit, a delete or a sync. */
+  val levels: StateFlow<ScreenState<List<SinglesLevel>>> =
+    levelRepository
+      .observeLevels()
+      .asScreenState()
+      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ScreenState.Loading)
 
   private val courseBrowser =
     CourseLevelBrowser(
@@ -87,7 +90,6 @@ class SinglesLevelSelectScreenViewModel(
   fun deleteLevel(levelId: String) {
     viewModelScope.launch {
       levelRepository.deleteLevel(levelId)
-      refreshRequests.update { it + 1 }
     }
   }
 

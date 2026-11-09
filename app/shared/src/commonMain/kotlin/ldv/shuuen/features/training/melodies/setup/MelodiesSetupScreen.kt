@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import ldv.shuuen.core.music.DegreeContext
 import ldv.shuuen.core.music.generator.MelodyStyles
@@ -55,12 +56,11 @@ import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.SoftControl
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.music.NoteRow
-import ldv.shuuen.features.training.common.components.NumberInputBox
-import ldv.shuuen.features.training.common.components.ScaleChooser
-import ldv.shuuen.features.training.common.components.StylePickerSheet
-import ldv.shuuen.features.training.common.components.TuneInconsistencySection
-import ldv.shuuen.features.training.domain.ScaleConfig
-import kotlin.math.roundToInt
+import ldv.shuuen.features.training.common.setup.NumberInputBox
+import ldv.shuuen.features.training.common.setup.ScaleChooser
+import ldv.shuuen.features.training.common.setup.StylePickerSheet
+import ldv.shuuen.features.training.common.setup.TuneInconsistencySection
+import ldv.shuuen.features.training.level.ScaleConfig
 
 @Composable
 fun MelodiesSetupScreen(

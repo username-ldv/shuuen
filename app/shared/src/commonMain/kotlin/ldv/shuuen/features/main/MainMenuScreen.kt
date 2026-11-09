@@ -57,7 +57,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ldv.shuuen.core.auth.AuthRepository
-import ldv.shuuen.core.sync.DataSyncStatus
 import ldv.shuuen.core.ui.components.AccountBadge
 import ldv.shuuen.core.ui.components.BackendStatusBadge
 import ldv.shuuen.core.ui.components.Hairline
@@ -68,7 +67,7 @@ import ldv.shuuen.core.ui.components.ShuuenTopAppBarType
 import ldv.shuuen.core.ui.components.ShuuenUi
 import ldv.shuuen.core.ui.components.StaticScreenFrame
 import ldv.shuuen.core.ui.components.SurfaceCard
-import ldv.shuuen.features.training.common.TrainingFlow
+import ldv.shuuen.features.training.level.TrainingFlow
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.koinInject
 import shuuen.shared.generated.resources.Res
