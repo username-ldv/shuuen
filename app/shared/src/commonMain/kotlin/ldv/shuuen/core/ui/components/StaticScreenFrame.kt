@@ -1,5 +1,6 @@
 package ldv.shuuen.core.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,11 +22,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+
+/** Opacity of the scrim behind the top bar while content is scrolled beneath it. */
+private const val TopBarScrimAlpha = 0.85f
 
 @Composable
 fun StaticScreenFrame(
@@ -39,23 +45,41 @@ fun StaticScreenFrame(
   topBar: @Composable () -> Unit = {},
   content: @Composable ColumnScope.() -> Unit,
 ) {
+  val scrollState = rememberScrollState()
+  val background = MaterialTheme.colorScheme.background
+  // The top bar stays transparent at rest; once content scrolls up beneath it, a
+  // translucent scrim fades in so the bar's icons stay readable over that content.
+  val scrimAlpha by
+    animateFloatAsState(
+      targetValue = if (scrollable && scrollState.canScrollBackward) TopBarScrimAlpha else 0f,
+      label = "topBarScrim",
+    )
+
   Box(
-    modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+    modifier = modifier.fillMaxSize().background(background),
     contentAlignment = Alignment.TopCenter,
   ) {
     Scaffold(
       modifier = Modifier.fillMaxSize(),
       containerColor = Color.Transparent,
       contentColor = ShuuenUi.Text,
-      topBar = topBar,
+      topBar = {
+        Box(Modifier.drawBehind { drawRect(background.copy(alpha = scrimAlpha)) }) { topBar() }
+      },
     ) { innerPadding ->
+      // The top inset is applied inside the scrolling column, not around it, so content
+      // scrolls up under the top bar instead of being clipped at the bar's bottom edge.
+      val topInset = innerPadding.calculateTopPadding()
       Box(
         modifier =
           Modifier.fillMaxSize()
-            .padding(innerPadding - WindowInsets.navigationBars.asPaddingValues()),
+            .padding(
+              innerPadding -
+                WindowInsets.navigationBars.asPaddingValues() -
+                PaddingValues(top = topInset)
+            ),
         contentAlignment = Alignment.TopCenter,
       ) {
-        val scrollState = rememberScrollState()
         var columnModifier = Modifier.widthIn(max = maxWidth).fillMaxWidth().fillMaxHeight()
 
         if (scrollable) {
@@ -66,7 +90,7 @@ fun StaticScreenFrame(
           modifier =
             columnModifier.padding(
               horizontalPadding,
-              topPadding,
+              topInset + topPadding,
               horizontalPadding,
               bottomPadding,
             ),

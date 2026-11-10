@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -29,10 +28,9 @@ enum class ShuuenTopAppBarType(val height: Dp) {
   Labeled(TopAppBarDefaults.TopAppBarExpandedHeight),
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShuuenTopAppBar(
-  modifier: Modifier = Modifier.Companion,
+  modifier: Modifier = Modifier,
   title: String? = null,
   subtitle: String? = null,
   onBack: (() -> Unit)? = null,
@@ -42,8 +40,7 @@ fun ShuuenTopAppBar(
   statusContent: @Composable () -> Unit = {},
   /** Extra action buttons, sitting between the status content and the trailing icon. */
   actions: @Composable RowScope.() -> Unit = {},
-  type: ldv.shuuen.core.ui.components.ShuuenTopAppBarType =
-    ldv.shuuen.core.ui.components.ShuuenTopAppBarType.Simple,
+  type: ShuuenTopAppBarType = ShuuenTopAppBarType.Simple,
   /** Replaces the standard title/subtitle column when the app bar needs interactive title UI. */
   titleContent: (@Composable () -> Unit)? = null,
 ) {
@@ -64,12 +61,12 @@ fun ShuuenTopAppBar(
             if (title != null) {
               Text(
                 text = title,
-                color = ldv.shuuen.core.ui.components.ShuuenUi.Text,
+                color = ShuuenUi.Text,
                 style =
                   MaterialTheme.typography.displayMedium.copy(
                     fontSize = titleSize,
                     lineHeight = if (compact) 31.sp else 38.sp,
-                    letterSpacing = ldv.shuuen.core.ui.components.ShuuenUi.titlesSpacing,
+                    letterSpacing = ShuuenUi.titlesSpacing,
                     fontWeight = FontWeight.SemiBold,
                   ),
                 textAlign = TextAlign.Center,
@@ -80,7 +77,7 @@ fun ShuuenTopAppBar(
             if (subtitle != null) {
               Text(
                 text = subtitle,
-                color = ldv.shuuen.core.ui.components.ShuuenUi.Muted,
+                color = ShuuenUi.Muted,
                 style =
                   if (compact) MaterialTheme.typography.bodyMedium
                   else MaterialTheme.typography.bodyLarge,
@@ -95,7 +92,7 @@ fun ShuuenTopAppBar(
       modifier = Modifier.fillMaxWidth(),
       navigationIcon = {
         if (onBack != null) {
-          ldv.shuuen.core.ui.components.CircleIconButton(
+          CircleIconButton(
             icon = Icons.AutoMirrored.Rounded.ArrowBack,
             contentDescription = "Back",
             onClick = onBack,
@@ -106,7 +103,7 @@ fun ShuuenTopAppBar(
         statusContent()
         actions()
         if (trailingIcon != null) {
-          ldv.shuuen.core.ui.components.CircleIconButton(
+          CircleIconButton(
             icon = trailingIcon,
             contentDescription = null,
             onClick = onTrailingClick ?: {},
@@ -117,9 +114,9 @@ fun ShuuenTopAppBar(
         TopAppBarDefaults.topAppBarColors(
           containerColor = Color.Transparent,
           scrolledContainerColor = Color.Transparent,
-          navigationIconContentColor = ldv.shuuen.core.ui.components.ShuuenUi.Text,
-          titleContentColor = ldv.shuuen.core.ui.components.ShuuenUi.Text,
-          actionIconContentColor = ldv.shuuen.core.ui.components.ShuuenUi.Text,
+          navigationIconContentColor = ShuuenUi.Text,
+          titleContentColor = ShuuenUi.Text,
+          actionIconContentColor = ShuuenUi.Text,
         ),
     )
   }
